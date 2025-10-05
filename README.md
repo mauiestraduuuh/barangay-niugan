@@ -42,4 +42,6 @@ PR TEMPLATE:
     [] you reviewed your code
     [] you ran it locally and there are no issues
     [] all dependent modules are up to date
-    
+
+
+IMPORTANT NOTE: don't change anything in prisma folder. if you need new table in db, inform DB LEAD.

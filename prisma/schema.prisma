@@ -1,0 +1,122 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// Users table
+model User {
+  user_id    Int       @id @default(autoincrement())
+  username   String    @unique
+  password   String
+  role       String
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+
+  // Relations
+  residents         Resident[]
+  certificateApprovals CertificateRequest[] @relation("ApprovedBy")
+  digitalIdIssued   DigitalID[]           @relation("IssuedBy")
+  demographicAssigned DemographicTag[]    @relation("AssignedBy")
+  announcementsPosted Announcement[]
+  feedbackResponded Feedback[]             @relation("RespondedBy")
+}
+
+// Residents table
+model Resident {
+  resident_id  Int       @id @default(autoincrement())
+  user_id      Int
+  first_name   String
+  last_name    String
+  birthdate    DateTime
+  gender       String?
+  address      String?
+  contact_no   String?
+  senior_mode  Boolean
+  created_at   DateTime  @default(now())
+  updated_at   DateTime  @updatedAt
+
+  // Relations
+  user               User @relation(fields: [user_id], references: [user_id])
+  certificateRequests CertificateRequest[]
+  digitalIds          DigitalID[]
+  demographicTags     DemographicTag[]
+  feedbacks           Feedback[]
+}
+
+// Certificate Requests table
+model CertificateRequest {
+  request_id      Int       @id @default(autoincrement())
+  resident_id     Int
+  certificate_type String
+  purpose         String?
+  status          String
+  approved_by     Int?
+  requested_at    DateTime  @default(now())
+  approved_at     DateTime?
+  file_path       String?
+
+  // Relations
+  resident   Resident @relation(fields: [resident_id], references: [resident_id])
+  approvedBy User?    @relation("ApprovedBy", fields: [approved_by], references: [user_id])
+}
+
+// Digital IDs table
+model DigitalID {
+  digital_id  Int      @id @default(autoincrement())
+  resident_id Int
+  id_number   String   @unique
+  qr_code     String?
+  issued_by   Int
+  issued_at   DateTime @default(now())
+
+  // Relations
+  resident Resident @relation(fields: [resident_id], references: [resident_id])
+  issuedBy User     @relation("IssuedBy", fields: [issued_by], references: [user_id])
+}
+
+// Demographic Tags table
+model DemographicTag {
+  tag_id      Int      @id @default(autoincrement())
+  resident_id Int
+  tag_type    String
+  assigned_by Int
+  assigned_at DateTime @default(now())
+
+  // Relations
+  resident   Resident @relation(fields: [resident_id], references: [resident_id])
+  assignedBy User     @relation("AssignedBy", fields: [assigned_by], references: [user_id])
+}
+
+// Announcements table
+model Announcement {
+  announcement_id Int      @id @default(autoincrement())
+  title           String
+  content         String?
+  posted_by       Int
+  posted_at       DateTime @default(now())
+  is_public       Boolean
+
+  // Relations
+  postedBy User @relation(fields: [posted_by], references: [user_id])
+}
+
+// Feedback table
+model Feedback {
+  feedback_id   Int      @id @default(autoincrement())
+  resident_id   Int
+  message       String
+  status        String
+  response      String?
+  responded_by  Int?
+  submitted_at  DateTime @default(now())
+  responded_at  DateTime?
+
+  // Relations
+  resident   Resident @relation(fields: [resident_id], references: [resident_id])
+  respondedBy User?    @relation("RespondedBy", fields: [responded_by], references: [user_id])
+}
