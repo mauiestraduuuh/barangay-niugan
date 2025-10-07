@@ -16,8 +16,6 @@ If you successfully reached no.5 then your set up is successful:
 BRANCHING ROLES:
 + main - stable code (dont code directly here)
 + dev - integration branch (merge must happen here first)
-+ backend - contains backend-code only (API, Prisma, routes)
-+ frontend - contains frontend-code only (React pages and UI)
     before starting work:
     - make sure you are on DEV
     - create a feature branch (ex: feature/module name-your role & name)
