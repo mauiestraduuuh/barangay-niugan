@@ -8,27 +8,51 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-// Users table
-model User {
-  user_id    Int       @id @default(autoincrement())
-  username   String    @unique
-  password   String
-  role       String
-  created_at DateTime  @default(now())
-  updated_at DateTime  @updatedAt
-
-  // Relations
-  residents         Resident[]
-  certificateApprovals CertificateRequest[] @relation("ApprovedBy")
-  digitalIdIssued   DigitalID[]           @relation("IssuedBy")
-  demographicAssigned DemographicTag[]    @relation("AssignedBy")
-  announcementsPosted Announcement[]
-  feedbackResponded Feedback[]             @relation("RespondedBy")
+enum Role {
+  ADMIN
+  STAFF
+  RESIDENT
 }
 
-// Residents table
+enum CertificateStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum FeedbackStatus {
+  PENDING
+  RESOLVED
+  IN_PROGRESS
+}
+
+//
+// USERS
+//
+model User {
+  user_id    Int      @id @default(autoincrement())
+  username   String   @unique
+  password   String
+  role       Role     @default(RESIDENT)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  // Relations
+  residents            Resident[]
+  certificateApprovals CertificateRequest[] @relation("ApprovedBy")
+  digitalIdIssued      DigitalID[]          @relation("IssuedBy")
+  demographicAssigned  DemographicTag[]     @relation("AssignedBy")
+  announcementsPosted  Announcement[]
+  feedbackResponded    Feedback[]           @relation("RespondedBy")
+  clearancesIssued     Clearance[]          @relation("ClearanceIssuedBy")
+  eventsCreated        Event[]              @relation("EventCreatedBy")
+}
+
+//
+// RESIDENTS
+//
 model Resident {
-  resident_id  Int       @id @default(autoincrement())
+  resident_id  Int      @id @default(autoincrement())
   user_id      Int
   first_name   String
   last_name    String
@@ -36,36 +60,60 @@ model Resident {
   gender       String?
   address      String?
   contact_no   String?
-  senior_mode  Boolean
-  created_at   DateTime  @default(now())
-  updated_at   DateTime  @updatedAt
+  senior_mode  Boolean  @default(false)
+  household_id Int?
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
 
   // Relations
-  user               User @relation(fields: [user_id], references: [user_id])
+  user                User                 @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  household           Household?           @relation("HouseholdMembers", fields: [household_id], references: [id], onDelete: SetNull)
   certificateRequests CertificateRequest[]
   digitalIds          DigitalID[]
   demographicTags     DemographicTag[]
   feedbacks           Feedback[]
+  clearances          Clearance[]
+  headedHouseholds    Household[]          @relation("HouseholdHead")
 }
 
-// Certificate Requests table
-model CertificateRequest {
-  request_id      Int       @id @default(autoincrement())
-  resident_id     Int
-  certificate_type String
-  purpose         String?
-  status          String
-  approved_by     Int?
-  requested_at    DateTime  @default(now())
-  approved_at     DateTime?
-  file_path       String?
+//
+// HOUSEHOLDS
+//
+model Household {
+  id         Int      @id @default(autoincrement())
+  head_id    Int
+  address    String
+  created_at DateTime @default(now())
 
   // Relations
-  resident   Resident @relation(fields: [resident_id], references: [resident_id])
+  head    Resident   @relation("HouseholdHead", fields: [head_id], references: [resident_id], onDelete: Cascade)
+  members Resident[] @relation("HouseholdMembers")
+
+  @@index([head_id])
+}
+
+//
+// CERTIFICATE REQUESTS
+//
+model CertificateRequest {
+  request_id       Int               @id @default(autoincrement())
+  resident_id      Int
+  certificate_type String
+  purpose          String?
+  status           CertificateStatus @default(PENDING)
+  approved_by      Int?
+  requested_at     DateTime          @default(now())
+  approved_at      DateTime?
+  file_path        String?
+
+  // Relations
+  resident   Resident @relation(fields: [resident_id], references: [resident_id], onDelete: Cascade)
   approvedBy User?    @relation("ApprovedBy", fields: [approved_by], references: [user_id])
 }
 
-// Digital IDs table
+//
+// DIGITAL IDs
+//
 model DigitalID {
   digital_id  Int      @id @default(autoincrement())
   resident_id Int
@@ -75,11 +123,13 @@ model DigitalID {
   issued_at   DateTime @default(now())
 
   // Relations
-  resident Resident @relation(fields: [resident_id], references: [resident_id])
+  resident Resident @relation(fields: [resident_id], references: [resident_id], onDelete: Cascade)
   issuedBy User     @relation("IssuedBy", fields: [issued_by], references: [user_id])
 }
 
-// Demographic Tags table
+//
+// DEMOGRAPHIC TAGS
+//
 model DemographicTag {
   tag_id      Int      @id @default(autoincrement())
   resident_id Int
@@ -88,35 +138,75 @@ model DemographicTag {
   assigned_at DateTime @default(now())
 
   // Relations
-  resident   Resident @relation(fields: [resident_id], references: [resident_id])
+  resident   Resident @relation(fields: [resident_id], references: [resident_id], onDelete: Cascade)
   assignedBy User     @relation("AssignedBy", fields: [assigned_by], references: [user_id])
 }
 
-// Announcements table
+//
+// ANNOUNCEMENTS
+//
 model Announcement {
   announcement_id Int      @id @default(autoincrement())
   title           String
   content         String?
   posted_by       Int
   posted_at       DateTime @default(now())
-  is_public       Boolean
+  is_public       Boolean  @default(true)
 
   // Relations
   postedBy User @relation(fields: [posted_by], references: [user_id])
 }
 
-// Feedback table
+//
+// FEEDBACK
+//
 model Feedback {
-  feedback_id   Int      @id @default(autoincrement())
-  resident_id   Int
-  message       String
-  status        String
-  response      String?
-  responded_by  Int?
-  submitted_at  DateTime @default(now())
-  responded_at  DateTime?
+  feedback_id  Int            @id @default(autoincrement())
+  resident_id  Int
+  message      String
+  status       FeedbackStatus @default(PENDING)
+  response     String?
+  responded_by Int?
+  submitted_at DateTime       @default(now())
+  responded_at DateTime?
 
   // Relations
-  resident   Resident @relation(fields: [resident_id], references: [resident_id])
+  resident    Resident @relation(fields: [resident_id], references: [resident_id], onDelete: Cascade)
   respondedBy User?    @relation("RespondedBy", fields: [responded_by], references: [user_id])
+}
+
+//
+// CLEARANCES
+//
+model Clearance {
+  clearance_id Int               @id @default(autoincrement())
+  resident_id  Int
+  issued_for   String
+  purpose      String?
+  status       CertificateStatus @default(PENDING)
+  issued_by    Int?
+  requested_at DateTime          @default(now())
+  issued_at    DateTime?
+  file_path    String?
+
+  // Relations
+  resident Resident @relation(fields: [resident_id], references: [resident_id], onDelete: Cascade)
+  issuer   User?    @relation("ClearanceIssuedBy", fields: [issued_by], references: [user_id])
+}
+
+//
+// EVENTS
+//
+model Event {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String?
+  location    String?
+  event_date  DateTime
+  created_by  Int?
+  created_at  DateTime @default(now())
+  is_public   Boolean  @default(true)
+
+  // Relations
+  creator User? @relation("EventCreatedBy", fields: [created_by], references: [user_id])
 }
