@@ -1,7 +1,8 @@
-"use client";
+"use client"; 
 import { useEffect, useState } from "react";
 import { Role, RegistrationStatus } from "@prisma/client";
 
+// interface definition, what u intent to get from backend
 interface RegistrationRequest {
   request_id: number;
   first_name: string;
@@ -13,14 +14,17 @@ interface RegistrationRequest {
   birthdate: string;
 }
 
+// main component and state variables
 export default function ApproveRegistrationPage() {
   const [requests, setRequests] = useState<RegistrationRequest[]>([]);
   const [message, setMessage] = useState("");
 
+  // function to get pending registrations
   useEffect(() => {
     fetchPending();
   }, []);
 
+  // calls ur API
   const fetchPending = async () => {
     try {
       const res = await fetch("/api/auth/approve-registration/");
@@ -33,6 +37,7 @@ export default function ApproveRegistrationPage() {
     }
   };
 
+  // approve function
   const approve = async (id: number) => {
     setMessage("Approving...");
     try {
@@ -56,6 +61,8 @@ export default function ApproveRegistrationPage() {
     }
   };
 
+
+  // "table of request" i used .map() to loop this table for each request
   return (
     <div className="max-w-4xl mx-auto mt-10 p-6">
       <h1 className="text-2xl font-bold mb-4">Pending Registrations</h1>
