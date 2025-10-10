@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -35,14 +36,71 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="max-w-md mx-auto mt-10 p-6 border rounded-md shadow-md">
-      <h1 className="text-2xl font-bold mb-4">Login</h1>
-      <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-        <input type="text" name="username" placeholder="Email" onChange={handleChange} required className="border p-2 rounded" />
-        <input type="password" name="password" placeholder="Password" onChange={handleChange} required className="border p-2 rounded" />
-        <button type="submit" className="bg-green-500 text-white p-2 rounded">Login</button>
-      </form>
-      {message && <p className="mt-3 text-center">{message}</p>}
+<div className="relative min-h-screen flex items-center justify-center">
+  <div
+    className="absolute inset-0 bg-[url('/bg.jpg')] bg-cover bg-center opacity-40" //pede i change ung pics depende
+  ></div>
+    <div className="bg-white backdrop-blur-md rounded-2xl shadow-lg flex w-[800px] overflow-hidden">
+      {/* Left side */}
+      <div className="w-1/2 bg-gray-900 text-white flex flex-col items-center justify-center p-10">
+        <h1 className="text-3xl font-bold mb-2">Welcome Back!</h1>
+        <p className="text-sm text-gray-300 text-center">
+          Login to access your barangay services and dashboard.
+        </p>
+      </div>
+
+      {/* Right side (Login form) */}
+      <div className="w-1/2 p-10">
+        <h2 className="text-2xl font-semibold text-gray-900 mb-4">Login</h2>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <input
+            type="text"
+            name="username"
+            placeholder="Email"
+            onChange={handleChange}
+            required
+            className="border border-gray-300 p-3 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-900"
+          />
+          <input
+            type="password"
+            name="password"
+            placeholder="Password"
+            onChange={handleChange}
+            required
+            className="border border-gray-300 p-3 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-900"
+          />
+          <button
+            type="submit"
+            className="w-full bg-gray-900 text-white py-3 rounded-md hover:bg-white hover:text-gray-900 transition duration-300"
+          >
+            Login
+          </button>
+        </form>
+
+        <p className="text-sm text-center mt-4 text-gray-700">
+          Don’t have an account?{" "}
+          <a
+            href="/register"
+            className="text-gray-900 font-semibold hover:text-green-600 transition-colors"
+          >
+            Register
+          </a>
+        </p>
+
+        {message && <p className="mt-4 text-center text-gray-800">{message}</p>}
+      </div>
     </div>
-  );
+  </div>
+);
 }
+
+
+/*    <div className="max-w-md mx-auto mt-10 p-6 border rounded-md shadow-md">
+<h2 className="text-3xl font-extrabold mb-4">Login</h2>
+<form onSubmit={handleSubmit} className="flex flex-col gap-3">
+  <input type="text" name="username" placeholder="Email" onChange={handleChange} required className="border p-2 rounded" />
+  <input type="password" name="password" placeholder="Password" onChange={handleChange} required className="border p-2 rounded" />
+  <button type="submit" className="bg-green-500 text-white p-2 rounded">Login</button>
+</form>
+{message && <p className="mt-3 text-center">{message}</p>}
+</div> */
