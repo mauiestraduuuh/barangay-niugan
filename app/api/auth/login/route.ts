@@ -21,3 +21,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ message: "Login failed" }, { status: 500 });
   }
 }
+
+
+// i didnt do anything here after my last polishes sa register and approve-request
