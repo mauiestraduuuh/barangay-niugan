@@ -36,13 +36,12 @@ export default function LoginPage() {
   };
 
   return (
-<div className="relative min-h-screen flex items-center justify-center">
-  <div
-    className="absolute inset-0 bg-[url('/bg.jpg')] bg-cover bg-center opacity-40" //pede i change ung pics depende
-  ></div>
+
+<div className="relative min-h-screen flex items-center justify-center bg-[linear-gradient(90deg,rgba(2,0,36,1)_0%,rgba(156,11,11,1)_43%,rgba(255,255,255,1)_100%)] h-screen">
+
     <div className="bg-white backdrop-blur-md rounded-2xl shadow-lg flex w-[800px] overflow-hidden">
       {/* Left side */}
-      <div className="w-1/2 bg-gray-900 text-white flex flex-col items-center justify-center p-10">
+      <div className="w-1/2 bg-black text-white flex flex-col items-center justify-center p-10">
         <h1 className="text-3xl font-bold mb-2">Welcome Back!</h1>
         <p className="text-sm text-gray-300 text-center">
           Login to access your barangay services and dashboard.
@@ -71,7 +70,7 @@ export default function LoginPage() {
           />
           <button
             type="submit"
-            className="w-full bg-gray-900 text-white py-3 rounded-md hover:bg-white hover:text-gray-900 transition duration-300"
+            className="w-full bg-gray-900 text-white py-3 rounded-md hover:bg-red-600  hover:text-white transition duration-300"
           >
             Login
           </button>
@@ -81,7 +80,7 @@ export default function LoginPage() {
           Don’t have an account?{" "}
           <a
             href="/register"
-            className="text-gray-900 font-semibold hover:text-green-600 transition-colors"
+            className="text-gray-900 font-semibold hover:text-red-600 transition-colors"
           >
             Register
           </a>
