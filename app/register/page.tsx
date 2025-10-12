@@ -27,16 +27,17 @@ export default function RegisterPage() {
   const [photo, setPhoto] = useState<File | null>(null); // stores uploaded photo
   const [message, setMessage] = useState(""); //
 
-  const handleChange = (
-  e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+const handleChange = (
+  e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
 ) => {
-  const target = e.target as HTMLInputElement | HTMLSelectElement;
+  const target = e.target as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
   const { name, value } = target;
 
-  // Explicitly check for input type
   if (target instanceof HTMLInputElement && target.type === "checkbox") {
+    // Handle checkbox specifically
     setForm((prev) => ({ ...prev, [name]: target.checked }));
   } else {
+    // Handle text, select, and textarea
     setForm((prev) => ({ ...prev, [name]: value }));
   }
 };
@@ -92,141 +93,148 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <form
-        onSubmit={handleSubmit}
-        className="bg-white p-6 rounded-xl shadow-md w-[400px]"
-      >
-        <h1 className="text-2xl font-semibold text-center mb-4">
-          Resident Registration
-        </h1>
+<div className="relative flex min-h-screen items-center justify-center bg-[linear-gradient(90deg,rgba(255,0,0,1)_0%,rgba(0,0,0,1)_50%,rgba(255,255,255,1)_100%)] h-screen">
 
-        <div className="grid gap-3">
-          <input
-            name="first_name"
-            placeholder="First Name"
-            value={form.first_name}
-            onChange={handleChange}
-            className="border p-2 rounded"
-            required
-          />
-          <input
-            name="last_name"
-            placeholder="Last Name"
-            value={form.last_name}
-            onChange={handleChange}
-            className="border p-2 rounded"
-            required
-          />
-          <input
-            name="email"
-            placeholder="Email (optional)"
-            value={form.email}
-            onChange={handleChange}
-            className="border p-2 rounded"
-          />
-          <input
-            name="contact_no"
-            placeholder="Contact Number"
-            value={form.contact_no}
-            onChange={handleChange}
-            className="border p-2 rounded"
-            required
-          />
-          <input
-            type="date"
-            name="birthdate"
-            value={form.birthdate}
-            onChange={handleChange}
-            className="border p-2 rounded"
-            required
-          />
-          <select
-            name="gender"
-            value={form.gender}
-            onChange={handleChange}
-            className="border p-2 rounded"
-          >
-            <option value="">Select Gender</option>
-            <option value="MALE">Male</option>
-            <option value="FEMALE">Female</option>
-            <option value="OTHERS">Others</option>
-          </select>
-          <input
-            name="address"
-            placeholder="Address"
-            value={form.address}
-            onChange={handleChange}
-            className="border p-2 rounded"
-          />
+  <div className="relative z-10 bg-black/80 backdrop-blur-lg shadow-2xl max-w-4xl w-full rounded-2xl p-8 border border-white/40 flex flex-col md:flex-row gap-8">
+    {/* Left side — heading */}
+    <div className="flex-1 flex flex-col justify-center text-center md:text-left">
+      <h1 className="text-3xl font-bold font-poppins text-white mb-3">
+        Register 
+      </h1>
+      <p className="text-white text-sm leading-relaxed">
+        Fill in your details to keep our community database updated and accessible.
+      </p>
+    </div>
 
-          <div className="flex flex-col gap-1 text-sm">
-            <label>
-              <input
-                type="checkbox"
-                name="is_head_of_family"
-                checked={form.is_head_of_family}
-                onChange={handleChange}
-              />{" "}
-              Head of Family
-            </label>
-            <label>
-              <input
-                type="checkbox"
-                name="is_4ps_member"
-                checked={form.is_4ps_member}
-                onChange={handleChange}
-              />{" "}
-              4Ps Member
-            </label>
-            <label>
-              <input
-                type="checkbox"
-                name="is_pwd"
-                checked={form.is_pwd}
-                onChange={handleChange}
-              />{" "}
-              PWD
-            </label>
-            <label>
-              <input
-                type="checkbox"
-                name="is_indigenous"
-                checked={form.is_indigenous}
-                onChange={handleChange}
-              />{" "}
-              Indigenous
-            </label>
-            <label>
-              <input
-                type="checkbox"
-                name="is_slp_beneficiary"
-                checked={form.is_slp_beneficiary}
-                onChange={handleChange}
-              />{" "}
-              SLP Beneficiary
-            </label>
-          </div>
+    {/* Right side — form */}
+    <div className="flex-1 bg-white rounded-xl p-5 shadow-md">
+      {message && (
+        <p className="mb-4 text-center text-sm text-green-600 font-medium">
+          {message}
+        </p>
+      )}
 
-          <input
-            type="file"
-            accept="image/*"
-            onChange={(e) => setPhoto(e.target.files?.[0] || null)}
-            className="border p-2 rounded"
-          />
+      <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-3 text-sm">
+        <input
+          type="text"
+          name="first_name"
+          placeholder="First Name"
+          value={form.first_name}
+          onChange={handleChange}
+          className="col-span-1 px-3 py-2 rounded-md border border-gray-300 focus:ring-2 focus:ring-red-600 focus:outline-none"
+          required
+        />
+        <input
+          type="text"
+          name="last_name"
+          placeholder="Last Name"
+          value={form.last_name}
+          onChange={handleChange}
+          className="col-span-1 px-3 py-2 rounded-md border border-gray-300 focus:ring-2 focus:ring-red-600 focus:outline-none"
+          required
+        />
+        <input
+          type="email"
+          name="email"
+          placeholder="Email (Optional)"
+          value={form.email}
+          onChange={handleChange}
+          className="col-span-2 px-3 py-2 rounded-md border border-gray-300 focus:ring-2 focus:ring-red-600 focus:outline-none"
+        />
+        <input
+          type="text"
+          name="contact_no"
+          placeholder="Contact Number"
+          value={form.contact_no}
+          onChange={handleChange}
+          className="col-span-1 px-3 py-2 rounded-md border border-gray-300 focus:ring-2 focus:ring-red-600 focus:outline-none"
+          required
+        />
+        <input
+          type="date"
+          name="birthdate"
+          value={form.birthdate}
+          onChange={handleChange}
+          className="col-span-1 px-3 py-2 rounded-md border border-gray-300 focus:ring-2 focus:ring-red-600 focus:outline-none"
+          required
+        />
 
-          <button
-            type="submit"
-            className="bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition"
-          >
-            Submit Registration
-          </button>
+        <select
+          name="gender"
+          value={form.gender}
+          onChange={handleChange}
+          className="col-span-1 px-3 py-2 rounded-md border border-gray-300 bg-white focus:ring-2 focus:ring-red-600 focus:outline-none"
+        >
+          <option value="">Gender</option>
+          <option value="MALE">Male</option>
+          <option value="FEMALE">Female</option>
+          <option value="OTHERS">Others</option>
+        </select>
+
+        <select
+          name="role"
+          value={form.role}
+          onChange={handleChange}
+          className="col-span-1 px-3 py-2 rounded-md border border-gray-300 bg-white focus:ring-2 focus:ring-red-600 focus:outline-none"
+        >
+          <option value="RESIDENT">Resident</option>
+          <option value="STAFF">Staff</option>
+          <option value="ADMIN">Admin</option>
+        </select>
+
+        <textarea
+          name="address"
+          placeholder="Complete Address"
+          value={form.address}
+          onChange={handleChange}
+          className="col-span-2 px-3 py-2 rounded-md border border-gray-300 focus:ring-2 focus:ring-red-600 focus:outline-none resize-none"
+        ></textarea>
+
+        {/* Checkboxes */}
+        <div className="col-span-2 grid grid-cols-2 gap-1 text-xs text-gray-700">
+          <label className="flex items-center gap-2">
+            <input type="checkbox" name="is_head_of_family" onChange={handleChange} />
+            Head of Family
+          </label>
+          <label className="flex items-center gap-2">
+            <input type="checkbox" name="is_4ps_member" onChange={handleChange} />
+            4Ps Member
+          </label>
+          <label className="flex items-center gap-2">
+            <input type="checkbox" name="is_pwd" onChange={handleChange} />
+            PWD
+          </label>
+          <label className="flex items-center gap-2">
+            <input type="checkbox" name="is_indigenous" onChange={handleChange} />
+            Indigenous
+          </label>
+          <label className="flex items-center gap-2">
+            <input type="checkbox" name="is_slp_beneficiary" onChange={handleChange} />
+            SLP Beneficiary
+          </label>
         </div>
 
-        {message && (
-          <p className="mt-4 text-center text-sm text-gray-700">{message}</p>
-        )}
+        <div className="col-span-2">
+          <label className="block text-xs font-medium mb-1">Upload Photo</label>
+          <input
+            type="file"
+            name="photo"
+            accept="image/*"
+            onChange={handleChange}
+            className="w-full px-2 py-1 rounded-md border border-gray-300 focus:ring-2 focus:ring-red-600 focus:outline-none"
+          />
+        </div>
+
+        <button
+          type="submit"
+          className="col-span-2 py-2 mt-2 text-sm font-semibold rounded-md bg-gradient-to-r from-red-700 to-red-500 text-white hover:from-black hover:to-gray-800 transition-all duration-300 shadow-md hover:shadow-lg"
+        >
+          Register
+        </button>
       </form>
     </div>
+  </div>
+</div>
   );
 }
+
