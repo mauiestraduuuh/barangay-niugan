@@ -4,9 +4,9 @@ const prisma = new PrismaClient();
 async function main() {
   const newUser = await prisma.user.create({
     data: {
-      username: 'apitest',
-      password: '123456',
-      role: 'RESIDENT', // must match enum
+      username: 'adminch',
+      password: '12345678',
+      role: 'ADMIN', // must match enum
     },
   });
   console.log('Created user:', newUser);
