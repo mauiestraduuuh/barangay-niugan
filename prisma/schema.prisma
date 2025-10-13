@@ -53,6 +53,7 @@ model User {
 
   // Relations
   residents            Resident[]
+  staffs               Staff[]
   certificateApprovals CertificateRequest[]  @relation("ApprovedBy")
   digitalIdIssued      DigitalID[]           @relation("IssuedBy")
   demographicAssigned  DemographicTag[]      @relation("AssignedBy")
@@ -75,17 +76,17 @@ model Resident {
   gender             String?
   address            String?
   contact_no         String?
-  photo_url          String?   // Supabase photo URL
-  senior_mode        Boolean   @default(false)
-  is_head_of_family  Boolean   @default(false)
-  head_id            Int?      // If not head, link to their head
-  is_4ps_member      Boolean   @default(false)
-  is_indigenous      Boolean   @default(false)
-  is_slp_beneficiary Boolean   @default(false)
-  is_pwd             Boolean   @default(false)
+  photo_url          String? // Supabase photo URL
+  senior_mode        Boolean  @default(false)
+  is_head_of_family  Boolean  @default(false)
+  head_id            Int? // If not head, link to their head
+  is_4ps_member      Boolean  @default(false)
+  is_indigenous      Boolean  @default(false)
+  is_slp_beneficiary Boolean  @default(false)
+  is_pwd             Boolean  @default(false)
   household_id       Int?
-  created_at         DateTime  @default(now())
-  updated_at         DateTime  @updatedAt
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
 
   // Relations
   user                User                 @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
@@ -101,6 +102,39 @@ model Resident {
 }
 
 //
+// STAFF
+//
+model Staff {
+  staff_id           Int      @id @default(autoincrement())
+  user_id            Int
+  first_name         String
+  last_name          String
+  birthdate          DateTime
+  gender             String?
+  address            String?
+  contact_no         String?
+  photo_url          String?
+  senior_mode        Boolean  @default(false)
+  is_head_of_family  Boolean  @default(false)
+  head_id            Int?
+  is_4ps_member      Boolean  @default(false)
+  is_indigenous      Boolean  @default(false)
+  is_slp_beneficiary Boolean  @default(false)
+  is_pwd             Boolean  @default(false)
+  household_id       Int?
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
+
+  // Relations
+  user       User       @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  household  Household? @relation("StaffHouseholdMembers", fields: [household_id], references: [id], onDelete: SetNull)
+  head       Staff?     @relation("StaffHead", fields: [head_id], references: [staff_id])
+  dependents Staff[]    @relation("StaffHead")
+  digitalId DigitalID?
+
+}
+
+//
 // HOUSEHOLDS
 //
 model Household {
@@ -110,8 +144,9 @@ model Household {
   created_at DateTime @default(now())
 
   // Relations
-  head    Resident   @relation("HouseholdHead", fields: [head_id], references: [resident_id], onDelete: Cascade)
-  members Resident[] @relation("HouseholdMembers")
+  head          Resident   @relation("HouseholdHead", fields: [head_id], references: [resident_id], onDelete: Cascade)
+  members       Resident[] @relation("HouseholdMembers")
+  staff_members Staff[]    @relation("StaffHouseholdMembers")
 
   @@index([head_id])
 }
@@ -139,20 +174,19 @@ model CertificateRequest {
 // DIGITAL IDs
 //
 model DigitalID {
-  id          Int      @id @default(autoincrement())
-  resident_id Int      @unique
-  id_number   String   @unique
-  qr_code     String?
-  issued_by   Int
-  issued_at   DateTime @default(now())
+  id           Int      @id @default(autoincrement())
+  resident_id  Int?     @unique
+  staff_id     Int?     @unique
+  id_number    String   @unique  
+  qr_code      String?
+  issued_by    Int
+  issued_at    DateTime @default(now())
 
   // Relations
-  resident Resident @relation(fields: [resident_id], references: [resident_id], onDelete: Cascade)
-  issuedBy User     @relation("IssuedBy", fields: [issued_by], references: [user_id])
-  tags     DigitalIDTag[]
-
-  @@unique([resident_id, id_number])
-
+  resident     Resident? @relation(fields: [resident_id], references: [resident_id], onDelete: Cascade)
+  staff        Staff?    @relation(fields: [staff_id], references: [staff_id], onDelete: Cascade)
+  issuedBy     User      @relation("IssuedBy", fields: [issued_by], references: [user_id])
+  tags         DigitalIDTag[]
 }
 
 model DigitalIDTag {
@@ -162,7 +196,6 @@ model DigitalIDTag {
 
   digitalID DigitalID @relation(fields: [digitalId], references: [id])
 }
-
 
 //
 // DEMOGRAPHIC TAGS
@@ -249,30 +282,27 @@ model Event {
 }
 
 model RegistrationRequest {
-  request_id      Int                @id @default(autoincrement())
-  first_name      String
-  last_name       String
-  email           String?             @unique
-  contact_no      String
-  birthdate       DateTime
-  role         Role               @default(RESIDENT)
-  gender          String?
-  address         String?
-  photo_url       String?
-  is_head_of_family  Boolean   @default(false)
+  request_id         Int                @id @default(autoincrement())
+  first_name         String
+  last_name          String
+  email              String?            @unique
+  contact_no         String
+  birthdate          DateTime
+  role               Role               @default(RESIDENT)
+  gender             String?
+  address            String?
+  photo_url          String?
+  is_head_of_family  Boolean            @default(false)
   head_id            Int?
-  is_4ps_member      Boolean   @default(false)
-  is_indigenous      Boolean   @default(false)
-  is_slp_beneficiary Boolean   @default(false)
-  is_pwd             Boolean   @default(false)
-  is_senior          Boolean       @default(false)
-  status          RegistrationStatus @default(PENDING)
-  submitted_at    DateTime           @default(now())
-  approved_at     DateTime?
-  approved_by     Int?
+  is_4ps_member      Boolean            @default(false)
+  is_indigenous      Boolean            @default(false)
+  is_slp_beneficiary Boolean            @default(false)
+  is_pwd             Boolean            @default(false)
+  is_senior          Boolean            @default(false)
+  status             RegistrationStatus @default(PENDING)
+  submitted_at       DateTime           @default(now())
+  approved_at        DateTime?
+  approved_by        Int?
 
   approvedBy User? @relation("ApprovedRequests", fields: [approved_by], references: [user_id])
 }
-
-
-
