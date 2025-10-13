@@ -27,7 +27,7 @@ export async function GET() {
 // POST handler
 export async function POST(req: NextRequest) {
   try {
-    const { requestId, approverId }: { requestId: number; approverId: number } = await req.json(); 
+    const { requestId, approverId }: { requestId: number; approverId: number } = await req.json();
 
     // fetches the registration request, retrieves registration request from db (RegistrationRequest table)
     const request = await prisma.registrationRequest.findUnique({
@@ -60,7 +60,6 @@ export async function POST(req: NextRequest) {
     }
 
     // validation, prevents creating user with invalid credentials
-    // ensures at least email or last name is available
     if (!request.email && !request.last_name) {
       return NextResponse.json(
         { message: "Cannot approve request without email or last name" },
@@ -75,19 +74,19 @@ export async function POST(req: NextRequest) {
     // use email if available, otherwise last name as username
     const username = request.email ?? request.last_name;
 
-    // create user, inserts new table to User DB
-    // uses the hashed password
+    // create user
     const user = await prisma.user.create({
       data: {
         username,
         password: hashedPassword,
-        role: request.role, // requested role during registration
+        role: request.role,
       },
     });
 
     let resident = null;
+    let staff = null;
 
-    // creates resident role, if resident
+    // creates resident role
     if (request.role === Role.RESIDENT) {
       resident = await prisma.resident.create({
         data: {
@@ -124,8 +123,49 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    // creates staff role
+    if (request.role === Role.STAFF) {
+      staff = await prisma.staff.create({
+        data: {
+          user_id: user.user_id,
+          first_name: request.first_name,
+          last_name: request.last_name,
+          contact_no: request.contact_no ?? "",
+          birthdate: request.birthdate,
+          gender: request.gender ?? "",
+          address: request.address ?? "",
+          is_head_of_family: request.is_head_of_family ?? false,
+          head_id: request.head_id ?? null,
+          is_4ps_member: request.is_4ps_member ?? false,
+          is_pwd: request.is_pwd ?? false,
+          is_indigenous: request.is_indigenous ?? false,
+          is_slp_beneficiary: request.is_slp_beneficiary ?? false,
+          senior_mode: request.is_senior ?? false,
+          photo_url: request.photo_url ?? "",
+        },
+      });
+
+      // generate QR code
+      const qrData = JSON.stringify(staff);
+      const qrCode = await QRCode.toDataURL(qrData);
+
+      await prisma.digitalID.create({
+        data: {
+          staff_id: staff.staff_id,
+          id_number: `ID-${user.user_id}`,
+          qr_code: qrCode,
+          issued_by: approverId,
+          issued_at: new Date(),
+        },
+      });
+    }
+
     // delete registration request after approval
-    await prisma.registrationRequest.delete({ where: { request_id: requestId } });
+    await prisma.registrationRequest.update({
+        where: { request_id: requestId },
+         data: { status: RegistrationStatus.APPROVED },
+        });
+
 
     // sends email with credentials
     try {
@@ -150,7 +190,7 @@ export async function POST(req: NextRequest) {
 
       await transporter.sendMail({
         from: `"Barangay Niugan" <${process.env.SMTP_USER}>`,
-        to: request.email ?? "", // fallback to empty string // ?? means optional
+        to: request.email ?? "",
         subject: "Registration Approved",
         html: emailHtml,
       });
@@ -163,9 +203,8 @@ export async function POST(req: NextRequest) {
       message: "Registration approved successfully",
       userId: user.user_id,
       residentId: resident?.resident_id ?? null,
+      staffId: staff?.staff_id ?? null,
     });
-
-    //error handling
   } catch (error) {
     console.error("Approval failed:", error);
     return NextResponse.json(

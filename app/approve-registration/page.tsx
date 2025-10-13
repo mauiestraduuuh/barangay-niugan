@@ -31,7 +31,7 @@ export default function ApproveRegistrationPage() {
 
   const fetchPending = async () => {
     try {
-      const res = await fetch("/api/auth/approve-registration/");
+      const res = await fetch("/api/auth/approve-registration");
       if (!res.ok) throw new Error("Failed to fetch pending registrations");
       const data: RegistrationRequest[] = await res.json();
       setRequests(data);
