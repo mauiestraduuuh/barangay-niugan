@@ -15,8 +15,7 @@ If you successfully reached no.5 then your set up is successful:
 
 BRANCHING ROLES:
 + main - stable code (dont code directly here)
-+ dev - development branch (merge must happen here first)
-+ /features - individual branches for tasks
++ dev - integration branch (merge must happen here first)
     before starting work:
     - make sure you are on DEV
     - create a feature branch (ex: feature/module name-your role & name)
