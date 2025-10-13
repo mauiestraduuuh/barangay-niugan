@@ -23,6 +23,8 @@ export default function ApproveRegistrationPage() {
     step: "confirm" | "success" | null;
   }>({ type: null, id: null, step: null });
 
+  const [fadeOut, setFadeOut] = useState(false); // for smooth fade
+
   useEffect(() => {
     fetchPending();
   }, []);
@@ -39,32 +41,46 @@ export default function ApproveRegistrationPage() {
     }
   };
 
-  const handleAction = async (id: number, action: "approve" | "reject") => {
-    setMessage(`${action === "approve" ? "Approving" : "Rejecting"}...`);
+  const handleAction = async (action: "approve" | "reject", id: number) => {
     try {
-      const res = await fetch("/api/auth/approve-registration", {
+      const endpoint =
+        action === "approve"
+          ? "/api/auth/approve-registration"
+          : "/api/auth/reject-registration";
+
+      const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ requestId: id, approverId: 1, action }),
+        body: JSON.stringify({ requestId: id, approverId: 1 }), // replace with actual approverId
       });
 
-      const data = await res.json(); // ✅ must come before checking res.ok
-
+      const data = await res.json();
       if (!res.ok) throw new Error(data?.message || `${action} failed`);
 
       setConfirmAction({ type: action, id, step: "success" });
       setMessage(data.message || `${action} successful`);
-
-      // ✅ Refresh list after success
-      setTimeout(() => {
-        setConfirmAction({ type: null, id: null, step: null });
-        fetchPending();
-      }, 1500);
-    } catch (err: any) {
-      console.error(err);
-      setMessage(`❌ ${action} failed: ${err.message}`);
+      setRequests((prev) => prev.filter((r) => r.request_id !== id));
+    } catch (err) {
+      console.error(`${action} failed:`, err);
+      setMessage(`${action} failed. Please try again.`);
     }
   };
+
+  // Auto-close modal with fade effect
+  useEffect(() => {
+    if (confirmAction.step === "success") {
+      const fadeTimer = setTimeout(() => setFadeOut(true), 1000); // start fade
+      const closeTimer = setTimeout(() => {
+        setConfirmAction({ type: null, id: null, step: null });
+        setFadeOut(false);
+      }, 1500); // fully close
+
+      return () => {
+        clearTimeout(fadeTimer);
+        clearTimeout(closeTimer);
+      };
+    }
+  }, [confirmAction.step]);
 
   return (
     <div className="min-h-screen flex bg-black text-white relative">
@@ -176,8 +192,14 @@ export default function ApproveRegistrationPage() {
 
       {/* Modal */}
       {confirmAction.step && (
-        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center">
-          <div className="bg-white/10 border border-white/20 rounded-2xl p-8 text-center max-w-sm">
+        <div
+          className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center transition-opacity duration-500"
+          style={{ opacity: fadeOut ? 0 : 1 }}
+        >
+          <div
+            className="bg-white/10 border border-white/20 rounded-2xl p-8 text-center max-w-sm transition-transform duration-500"
+            style={{ transform: fadeOut ? "scale(0.95)" : "scale(1)" }}
+          >
             {confirmAction.step === "confirm" && (
               <>
                 <h2 className="text-xl mb-4 font-semibold">
@@ -189,8 +211,8 @@ export default function ApproveRegistrationPage() {
                   <button
                     onClick={() =>
                       handleAction(
-                        confirmAction.id!,
-                        confirmAction.type as "approve" | "reject"
+                        confirmAction.type as "approve" | "reject",
+                        confirmAction.id!
                       )
                     }
                     className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg text-white"
@@ -210,8 +232,7 @@ export default function ApproveRegistrationPage() {
             )}
             {confirmAction.step === "success" && (
               <h2 className="text-lg text-green-400">
-                ✅ {confirmAction.type === "approve" ? "Approved" : "Rejected"}{" "}
-                successfully!
+                ✅ {confirmAction.type === "approve" ? "Approved" : "Rejected"} successfully!
               </h2>
             )}
           </div>
