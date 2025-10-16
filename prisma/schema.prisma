@@ -52,7 +52,7 @@ model User {
   updated_at DateTime @updatedAt
 
   // Relations
-  residents            Resident[]
+  residents            Resident[] 
   staffs               Staff[]
   certificateApprovals CertificateRequest[]  @relation("ApprovedBy")
   digitalIdIssued      DigitalID[]           @relation("IssuedBy")
@@ -76,10 +76,11 @@ model Resident {
   gender             String?
   address            String?
   contact_no         String?
-  photo_url          String? // Supabase photo URL
+  photo_url          String?
   senior_mode        Boolean  @default(false)
   is_head_of_family  Boolean  @default(false)
-  head_id            Int? // If not head, link to their head
+  head_id            BigInt?
+  household_number   String?
   is_4ps_member      Boolean  @default(false)
   is_indigenous      Boolean  @default(false)
   is_slp_beneficiary Boolean  @default(false)
@@ -89,20 +90,18 @@ model Resident {
   updated_at         DateTime @updatedAt
 
   // Relations
-  user                User                 @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
-  household           Household?           @relation("HouseholdMembers", fields: [household_id], references: [id], onDelete: SetNull)
-  head                Resident?            @relation("ResidentHead", fields: [head_id], references: [resident_id])
-  dependents          Resident[]           @relation("ResidentHead")
+  user                User       @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  household           Household? @relation("HouseholdMembers", fields: [household_id], references: [id], onDelete: SetNull)
+  headedHousehold     Household? @relation("HouseholdHeadResident")
   certificateRequests CertificateRequest[]
   digitalIds          DigitalID[]
   demographicTags     DemographicTag[]
   feedbacks           Feedback[]
   clearances          Clearance[]
-  headedHouseholds    Household[]          @relation("HouseholdHead")
 }
 
 //
-// STAFF
+// STAFFS
 //
 model Staff {
   staff_id           Int      @id @default(autoincrement())
@@ -116,7 +115,8 @@ model Staff {
   photo_url          String?
   senior_mode        Boolean  @default(false)
   is_head_of_family  Boolean  @default(false)
-  head_id            Int?
+  head_id            BigInt?
+  household_number   String?
   is_4ps_member      Boolean  @default(false)
   is_indigenous      Boolean  @default(false)
   is_slp_beneficiary Boolean  @default(false)
@@ -126,30 +126,28 @@ model Staff {
   updated_at         DateTime @updatedAt
 
   // Relations
-  user       User       @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
-  household  Household? @relation("StaffHouseholdMembers", fields: [household_id], references: [id], onDelete: SetNull)
-  head       Staff?     @relation("StaffHead", fields: [head_id], references: [staff_id])
-  dependents Staff[]    @relation("StaffHead")
-  digitalId DigitalID?
-
+  user          User       @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  household     Household? @relation("HouseholdMembersStaff", fields: [household_id], references: [id], onDelete: SetNull)
+  headedHousehold Household? @relation("HouseholdHeadStaff")
+  digitalId     DigitalID?
 }
 
 //
 // HOUSEHOLDS
 //
 model Household {
-  id         Int      @id @default(autoincrement())
-  head_id    Int
-  address    String
-  created_at DateTime @default(now())
+  id             Int       @id @default(autoincrement()) // ← this is the household number
+  head_resident  Int?      @unique
+  head_staff     Int?      @unique
+  address        String
+  created_at     DateTime  @default(now())
 
-  // Relations
-  head          Resident   @relation("HouseholdHead", fields: [head_id], references: [resident_id], onDelete: Cascade)
-  members       Resident[] @relation("HouseholdMembers")
-  staff_members Staff[]    @relation("StaffHouseholdMembers")
-
-  @@index([head_id])
+  headResident   Resident?  @relation("HouseholdHeadResident", fields: [head_resident], references: [resident_id], onDelete: Cascade)
+  headStaff      Staff?     @relation("HouseholdHeadStaff", fields: [head_staff], references: [staff_id], onDelete: Cascade)
+  members        Resident[] @relation("HouseholdMembers")
+  staff_members  Staff[]    @relation("HouseholdMembersStaff")
 }
+
 
 //
 // CERTIFICATE REQUESTS
@@ -188,6 +186,7 @@ model DigitalID {
   issuedBy     User      @relation("IssuedBy", fields: [issued_by], references: [user_id])
   tags         DigitalIDTag[]
 }
+
 
 model DigitalIDTag {
   id        Int    @id @default(autoincrement())
@@ -281,6 +280,9 @@ model Event {
   creator User? @relation("EventCreatedBy", fields: [created_by], references: [user_id])
 }
 
+//
+// REGISTRATION REQUESTS
+//
 model RegistrationRequest {
   request_id         Int                @id @default(autoincrement())
   first_name         String
@@ -294,6 +296,7 @@ model RegistrationRequest {
   photo_url          String?
   is_head_of_family  Boolean            @default(false)
   head_id            Int?
+  household_number   String?           
   is_4ps_member      Boolean            @default(false)
   is_indigenous      Boolean            @default(false)
   is_slp_beneficiary Boolean            @default(false)
