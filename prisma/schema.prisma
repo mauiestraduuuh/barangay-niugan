@@ -40,6 +40,7 @@ enum DemoTag {
   PWD
 }
 
+
 //
 // USERS
 //
@@ -62,6 +63,7 @@ model User {
   clearancesIssued     Clearance[]           @relation("ClearanceIssuedBy")
   eventsCreated        Event[]               @relation("EventCreatedBy")
   approvedRequests     RegistrationRequest[] @relation("ApprovedRequests")
+  notifications        Notification[]
 }
 
 //
@@ -309,3 +311,20 @@ model RegistrationRequest {
 
   approvedBy User? @relation("ApprovedRequests", fields: [approved_by], references: [user_id])
 }
+
+//
+//NOTIFICATIONS
+//
+model Notification {
+  id           Int      @id @default(autoincrement())
+  user_id      Int
+  title        String
+  message      String
+  type         String?     // e.g. "announcement", "certificate", "feedback"
+  is_read      Boolean  @default(false)
+  created_at   DateTime @default(now())
+
+  user         User     @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+}
+
+
