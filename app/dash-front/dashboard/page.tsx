@@ -1,3 +1,5 @@
+//base code for our dashboard
+
 "use client";
 
 import { useState } from 'react';
