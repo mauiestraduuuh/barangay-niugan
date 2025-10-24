@@ -100,10 +100,10 @@ export default function FeedbackPage() {
   };
 
   const features = [
-    { name: 'home', label: 'Home', icon: HomeIcon },
-    { name: 'manage-profile', label: 'Manage Profile', icon: UserIcon },
+    { name: 'the-dash-resident', label: 'Home', icon: HomeIcon },
+    { name: 'resident', label: 'Manage Profile', icon: UserIcon },
     { name: 'digital-id', label: 'Digital ID', icon: CreditCardIcon },
-    { name: 'certificates', label: 'Certificates', icon: ClipboardDocumentIcon },
+    { name: 'certificate-request', label: 'Certificates', icon: ClipboardDocumentIcon },
     { name: 'feedback', label: 'Feedback / Complain', icon: ChatBubbleLeftEllipsisIcon },
     { name: 'notifications', label: 'Notifications', icon: BellIcon },
   ];

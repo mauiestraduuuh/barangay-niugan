@@ -1,31 +1,45 @@
-//base code for our dashboard
-
 "use client";
 
-import { useState } from 'react';
-import {BellIcon,UserIcon,HomeIcon,ChartBarIcon,CogIcon,Bars3Icon,ChevronLeftIcon,ChevronRightIcon,
-XMarkIcon,
-} from '@heroicons/react/24/outline';
+import Link from "next/link";
+import { useState } from "react";
+import {
+  BellIcon,
+  UserIcon,
+  HomeIcon,
+  CreditCardIcon,
+  ClipboardDocumentIcon,
+  ChatBubbleLeftEllipsisIcon,
+  Bars3Icon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  XMarkIcon,
+} from "@heroicons/react/24/outline";
 
 export default function Dashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [activeItem, setActiveItem] = useState('home');
+  const [activeItem, setActiveItem] = useState("the-dash-resident");
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
+
+  const features = [
+    { name: "the-dash-resident", label: "Home", icon: HomeIcon },
+    { name: "resident", label: "Manage Profile", icon: UserIcon },
+    { name: "digital-id", label: "Digital ID", icon: CreditCardIcon },
+    { name: "certificate-request", label: "Certificates", icon: ClipboardDocumentIcon },
+    { name: "feedback", label: "Feedback / Complain", icon: ChatBubbleLeftEllipsisIcon },
+    { name: "notifications", label: "Notifications", icon: BellIcon },
+  ];
 
   return (
     <div className="min-h-screen bg-gray-200 p-4 flex gap-4">
       {/* Sidebar */}
       <div
         className={`${
-          sidebarOpen ? 'w-64' : 'w-16'
-        } bg-gray-50 shadow-lg rounded-xl transition-all duration-300 ease-in-out flex flex-col ${
-          sidebarOpen ? 'block' : 'hidden'
-        } md:block md:relative md:translate-x-0 ${
-          sidebarOpen ? 'fixed inset-y-0 left-0 z-50 md:static md:translate-x-0' : ''
-        }`}
+          sidebarOpen ? "w-64" : "w-16"
+        } bg-gray-50 shadow-lg rounded-xl transition-all duration-300 ease-in-out flex flex-col
+        ${sidebarOpen ? "fixed inset-y-0 left-0 z-50 md:static md:translate-x-0" : "hidden md:flex"}`}
       >
-        {/* Top Section */}
+        {/* Logo + Close */}
         <div className="p-4 flex items-center justify-between">
           <img
             src="/logo.png"
@@ -43,36 +57,45 @@ export default function Dashboard() {
         {/* Navigation */}
         <nav className="flex-1 mt-6">
           <ul>
-            {[
-              { name: 'home', label: 'Home', icon: HomeIcon },
-              { name: 'analytics', label: 'Analytics', icon: ChartBarIcon },
-              { name: 'settings', label: 'Settings', icon: CogIcon },
-            ].map(({ name, label, icon: Icon }) => (
+            {features.map(({ name, label, icon: Icon }) => (
               <li key={name} className="mb-2">
-                <button
+                <Link
+                  href={`/dash-front/${name}`}
                   onClick={() => setActiveItem(name)}
                   className={`relative flex items-center w-full px-4 py-2 text-left group transition-colors duration-200 ${
                     activeItem === name
-                      ? 'text-red-700'
-                      : 'text-black hover:text-red-700'
+                      ? "text-red-700 font-semibold"
+                      : "text-black hover:text-red-700"
                   }`}
                 >
-                  <div
-                    className={`absolute left-0 top-0 bottom-0 w-1 bg-red-700 rounded-r-full ${
-                      activeItem === name ? 'block' : 'hidden'
+                  {activeItem === name && (
+                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-700 rounded-r-full" />
+                  )}
+                  <Icon
+                    className={`w-6 h-6 mr-2 ${
+                      activeItem === name
+                        ? "text-red-700"
+                        : "text-gray-600 group-hover:text-red-700"
                     }`}
                   />
-                  <Icon className="w-6 h-6 mr-2 group-hover:text-red-700" />
                   {sidebarOpen && (
-                    <span className="group-hover:text-red-700">{label}</span>
+                    <span
+                      className={`${
+                        activeItem === name
+                          ? "text-red-700"
+                          : "group-hover:text-red-700"
+                      }`}
+                    >
+                      {label}
+                    </span>
                   )}
-                </button>
+                </Link>
               </li>
             ))}
           </ul>
         </nav>
 
-        {/* Toggle Button (Desktop Only) - At the Bottom */}
+        {/* Sidebar Toggle (desktop only) */}
         <div className="p-4 flex justify-center hidden md:flex">
           <button
             onClick={toggleSidebar}
@@ -87,7 +110,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Overlay for Mobile */}
+      {/* Mobile Overlay */}
       {sidebarOpen && (
         <div
           className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
@@ -105,7 +128,7 @@ export default function Dashboard() {
           >
             <Bars3Icon className="w-6 h-6" />
           </button>
-          <h1 className="text-xl font-semibold text-black">Dashboard</h1>
+          <h1 className="text-xl font-semibold text-black">Resident Dashboard</h1>
           <div className="flex items-center space-x-4">
             <button className="text-black hover:text-red-700 focus:outline-none">
               <BellIcon className="w-6 h-6" />
@@ -118,12 +141,14 @@ export default function Dashboard() {
 
         {/* Main Content */}
         <main className="flex-1 bg-gray-50 rounded-xl p-6 shadow-sm">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <h2 className="text-2xl font-semibold mb-4">Welcome !</h2>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
             {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="bg-white p-6 rounded-lg shadow-md">
-                <h2 className="text-lg font-semibold text-black mb-4">
+              <div key={i} className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition">
+                <h3 className="text-lg font-semibold text-black mb-4">
                   Card {i + 1}
-                </h2>
+                </h3>
                 <p className="text-gray-700">
                   Placeholder content for card {i + 1}.
                 </p>

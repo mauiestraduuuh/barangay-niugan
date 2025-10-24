@@ -1,14 +1,16 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import axios from "axios";
 import jsPDF from "jspdf";
 import {
   BellIcon,
   UserIcon,
   HomeIcon,
-  ChartBarIcon,
-  CogIcon,
+  CreditCardIcon,
+  ClipboardDocumentIcon,
+  ChatBubbleLeftEllipsisIcon,
   Bars3Icon,
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -26,7 +28,6 @@ interface CertificateRequest {
 
 export default function Dashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [activeItem, setActiveItem] = useState("certificates");
   const [requests, setRequests] = useState<CertificateRequest[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [certificateType, setCertificateType] = useState("");
@@ -36,6 +37,15 @@ export default function Dashboard() {
     typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
+
+    const features = [
+    { name: 'the-dash-resident', label: 'Home', icon: HomeIcon },
+    { name: 'resident', label: 'Manage Profile', icon: UserIcon },
+    { name: 'digital-id', label: 'Digital ID', icon: CreditCardIcon },
+    { name: 'certificate-request', label: 'Certificates', icon: ClipboardDocumentIcon },
+    { name: 'feedback', label: 'Feedback / Complain', icon: ChatBubbleLeftEllipsisIcon },
+    { name: 'notifications', label: 'Notifications', icon: BellIcon },
+  ];
 
   useEffect(() => {
     fetchRequests();
@@ -80,11 +90,20 @@ export default function Dashboard() {
     doc.setFontSize(18);
     doc.text("Barangay Certificate", 105, 20, { align: "center" });
     doc.setFontSize(12);
-    doc.text("This certifies that the following request has been approved.", 105, 30, { align: "center" });
+    doc.text(
+      "This certifies that the following request has been approved.",
+      105,
+      30,
+      { align: "center" }
+    );
     doc.text(`Certificate ID: ${req.request_id}`, 20, 50);
     doc.text(`Certificate Type: ${req.certificate_type}`, 20, 60);
     doc.text(`Purpose: ${req.purpose || "N/A"}`, 20, 70);
-    doc.text(`Requested On: ${new Date(req.requested_at).toLocaleDateString()}`, 20, 80);
+    doc.text(
+      `Requested On: ${new Date(req.requested_at).toLocaleDateString()}`,
+      20,
+      80
+    );
     doc.text(`Status: ${req.status}`, 20, 90);
     doc.text("__________________________", 140, 120);
     doc.text("Authorized Signature", 150, 125);
@@ -105,7 +124,9 @@ export default function Dashboard() {
             <p><strong>Certificate ID:</strong> ${req.request_id}</p>
             <p><strong>Certificate Type:</strong> ${req.certificate_type}</p>
             <p><strong>Purpose:</strong> ${req.purpose || "N/A"}</p>
-            <p><strong>Requested On:</strong> ${new Date(req.requested_at).toLocaleDateString()}</p>
+            <p><strong>Requested On:</strong> ${new Date(
+              req.requested_at
+            ).toLocaleDateString()}</p>
             <p><strong>Status:</strong> ${req.status}</p>
             <br><br>
             <p style="text-align: right;">__________________________<br>Authorized Signature</p>
@@ -132,87 +153,83 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-gray-200 p-4 flex gap-4">
-      {/* Sidebar */}
+{/* Sidebar */}
       <div
-        className={`${
-          sidebarOpen ? "w-64" : "w-16"
-        } bg-gray-50 shadow-lg rounded-xl transition-all duration-300 ease-in-out flex flex-col ${
-          sidebarOpen ? "block" : "hidden"
-        } md:block md:relative md:translate-x-0 ${
-          sidebarOpen
-            ? "fixed inset-y-0 left-0 z-50 md:static md:translate-x-0"
-            : ""
-        }`}
-      >
-        <div className="p-4 flex items-center justify-between">
-          <img
-            src="/logo.png"
-            alt="Logo"
-            className="w-10 h-10 rounded-full object-cover"
-          />
-          <button
-            onClick={toggleSidebar}
-            className="block md:hidden text-black hover:text-red-700 focus:outline-none"
-          >
-            <XMarkIcon className="w-6 h-6" />
-          </button>
-        </div>
+  className={`${
+    sidebarOpen ? "w-64" : "w-16"
+  } bg-gray-50 shadow-lg rounded-xl transition-all duration-300 ease-in-out flex flex-col
+  ${sidebarOpen ? "fixed inset-y-0 left-0 z-50 md:static md:translate-x-0" : "hidden md:flex"}`}
+>
+  <div className="p-4 flex items-center justify-between">
+    <img
+      src="/logo.png"
+      alt="Logo"
+      className="w-10 h-10 rounded-full object-cover"
+    />
+    <button
+      onClick={toggleSidebar}
+      className="block md:hidden text-black hover:text-red-700 focus:outline-none"
+    >
+      <XMarkIcon className="w-6 h-6" />
+    </button>
+  </div>
 
-        <nav className="flex-1 mt-6">
-          <ul>
-            {[
-              { name: "home", label: "Home", icon: HomeIcon },
-              { name: "certificates", label: "Certificates", icon: ChartBarIcon },
-              { name: "settings", label: "Settings", icon: CogIcon },
-            ].map(({ name, label, icon: Icon }) => (
-              <li key={name} className="mb-2">
-                <button
-                  onClick={() => setActiveItem(name)}
-                  className={`relative flex items-center w-full px-4 py-2 text-left group transition-colors duration-200 ${
-                    activeItem === name
-                      ? "text-red-700"
-                      : "text-black hover:text-red-700"
+  <nav className="flex-1 mt-6">
+    <ul>
+      {features.map(({ name, label, icon: Icon }) => {
+        const href = `/dash-front/${name}`;
+        const isActive = name === "certificate-request";
+        return (
+          <li key={name} className="mb-2">
+            <Link href={href}>
+              <span
+                className={`relative flex items-center w-full px-4 py-2 text-left group transition-colors duration-200 ${
+                  isActive
+                    ? "text-red-700 "
+                    : "text-black hover:text-red-700"
+                }`}
+              >
+                {isActive && (
+                  <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-700 rounded-r-full" />
+                )}
+                <Icon
+                  className={`w-6 h-6 mr-2 ${
+                    isActive ? "text-red-700" : "text-gray-600 group-hover:text-red-700"
                   }`}
-                >
-                  <div
-                    className={`absolute left-0 top-0 bottom-0 w-1 bg-red-700 rounded-r-full ${
-                      activeItem === name ? "block" : "hidden"
+                />
+                {sidebarOpen && (
+                  <span
+                    className={`${
+                      isActive ? "text-red-700" : "group-hover:text-red-700"
                     }`}
-                  />
-                  <Icon className="w-6 h-6 mr-2 group-hover:text-red-700" />
-                  {sidebarOpen && (
-                    <span className="group-hover:text-red-700">{label}</span>
-                  )}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </nav>
+                  >
+                    {label}
+                  </span>
+                )}
+              </span>
+            </Link>
+          </li>
+        );
+      })}
+    </ul>
+  </nav>
 
-        <div className="p-4 flex justify-center hidden md:flex">
-          <button
-            onClick={toggleSidebar}
-            className="w-10 h-10 bg-white hover:bg-red-50 rounded-full flex items-center justify-center focus:outline-none transition-colors duration-200 shadow-sm"
-          >
-            {sidebarOpen ? (
-              <ChevronLeftIcon className="w-5 h-5 text-black" />
-            ) : (
-              <ChevronRightIcon className="w-5 h-5 text-black" />
-            )}
-          </button>
-        </div>
-      </div>
-
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
-          onClick={toggleSidebar}
-        ></div>
+  <div className="p-4 flex justify-center hidden md:flex">
+    <button
+      onClick={toggleSidebar}
+      className="w-10 h-10 bg-white hover:bg-red-50 rounded-full flex items-center justify-center focus:outline-none transition-colors duration-200 shadow-sm"
+    >
+      {sidebarOpen ? (
+        <ChevronLeftIcon className="w-5 h-5 text-black" />
+      ) : (
+        <ChevronRightIcon className="w-5 h-5 text-black" />
       )}
+    </button>
+  </div>
+</div>
 
       {/* Main Section */}
       <div className="flex-1 flex flex-col gap-4">
-        {/* Header */}
         <header className="bg-gray-50 shadow-sm p-4 flex justify-between items-center rounded-xl">
           <button
             onClick={toggleSidebar}
@@ -221,9 +238,7 @@ export default function Dashboard() {
             <Bars3Icon className="w-6 h-6" />
           </button>
           <h1 className="text-xl font-semibold text-black">
-            {activeItem === "certificates"
-              ? "Certificate Requests"
-              : "Dashboard"}
+            Certificate Requests
           </h1>
           <div className="flex items-center space-x-4">
             <button className="text-black hover:text-red-700 focus:outline-none">
@@ -235,89 +250,80 @@ export default function Dashboard() {
           </div>
         </header>
 
-        {/* Main Content */}
         <main className="flex-1 bg-gray-50 rounded-xl p-6 shadow-sm">
-          {activeItem === "certificates" ? (
-            <>
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-semibold text-gray-800">
-                  My Certificate Requests
-                </h2>
-                <button
-                  onClick={() => setShowModal(true)}
-                  className="bg-red-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-red-800"
-                >
-                  <PlusIcon className="w-5 h-5" /> Request Certificate
-                </button>
-              </div>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold text-gray-800">
+              My Certificate Requests
+            </h2>
+            <button
+              onClick={() => setShowModal(true)}
+              className="bg-red-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-red-800"
+            >
+              <PlusIcon className="w-5 h-5" /> Request Certificate
+            </button>
+          </div>
 
-              {message && (
-                <p className="text-center bg-gray-900 text-white p-2 rounded mb-4">
-                  {message}
-                </p>
-              )}
-
-              <div className="overflow-x-auto bg-white rounded-xl shadow">
-                <table className="w-full border-collapse">
-                  <thead className="bg-gray-200 text-gray-800">
-                    <tr>
-                      <th className="border-b p-4 text-left">ID</th>
-                      <th className="border-b p-4 text-left">Type</th>
-                      <th className="border-b p-4 text-left">Purpose</th>
-                      <th className="border-b p-4 text-left">Requested At</th>
-                      <th className="border-b p-4 text-left">Status</th>
-                      <th className="border-b p-4 text-center">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {requests.map((req) => (
-                      <tr key={req.request_id} className="hover:bg-gray-50">
-                        <td className="border-b p-4">{req.request_id}</td>
-                        <td className="border-b p-4">{req.certificate_type}</td>
-                        <td className="border-b p-4">{req.purpose || "-"}</td>
-                        <td className="border-b p-4">
-                          {new Date(req.requested_at).toLocaleDateString()}
-                        </td>
-                        <td
-                          className={`border-b p-4 font-semibold ${statusColor(
-                            req.status
-                          )}`}
-                        >
-                          {req.status}
-                        </td>
-                        <td className="border-b p-4 text-center">
-                          {req.status === "APPROVED" ? (
-                            <div className="flex justify-center gap-2">
-                              <button
-                                onClick={() => handlePrint(req)}
-                                className="bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700"
-                              >
-                                Print
-                              </button>
-                              <button
-                                onClick={() => handleDownloadPDF(req)}
-                                className="bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700"
-                              >
-                                PDF
-                              </button>
-                            </div>
-                          ) : (
-                            <span className="text-gray-400 italic">
-                              No actions
-                            </span>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </>
-          ) : (
-            <div className="text-center text-gray-500">
-              Select “Certificates” from the sidebar to manage your requests.
-            </div>
+          {message && (
+            <p className="text-center bg-gray-900 text-white p-2 rounded mb-4">
+              {message}
+            </p>
           )}
+
+          <div className="overflow-x-auto bg-white rounded-xl shadow">
+            <table className="w-full border-collapse">
+              <thead className="bg-gray-200 text-gray-800">
+                <tr>
+                  <th className="border-b p-4 text-left">ID</th>
+                  <th className="border-b p-4 text-left">Type</th>
+                  <th className="border-b p-4 text-left">Purpose</th>
+                  <th className="border-b p-4 text-left">Requested At</th>
+                  <th className="border-b p-4 text-left">Status</th>
+                  <th className="border-b p-4 text-center">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {requests.map((req) => (
+                  <tr key={req.request_id} className="hover:bg-gray-50">
+                    <td className="border-b p-4">{req.request_id}</td>
+                    <td className="border-b p-4">{req.certificate_type}</td>
+                    <td className="border-b p-4">{req.purpose || "-"}</td>
+                    <td className="border-b p-4">
+                      {new Date(req.requested_at).toLocaleDateString()}
+                    </td>
+                    <td
+                      className={`border-b p-4 font-semibold ${statusColor(
+                        req.status
+                      )}`}
+                    >
+                      {req.status}
+                    </td>
+                    <td className="border-b p-4 text-center">
+                      {req.status === "APPROVED" ? (
+                        <div className="flex justify-center gap-2">
+                          <button
+                            onClick={() => handlePrint(req)}
+                            className="bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700"
+                          >
+                            Print
+                          </button>
+                          <button
+                            onClick={() => handleDownloadPDF(req)}
+                            className="bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700"
+                          >
+                            PDF
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="text-gray-400 italic">
+                          No actions
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </main>
       </div>
 
