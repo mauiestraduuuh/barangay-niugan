@@ -1,5 +1,3 @@
-// add this to import at any page import NotificationDropdown from "./components/notif-dropdown";
-
 "use client";
 
 import { useState } from "react";
@@ -14,16 +12,39 @@ interface Notification {
 }
 
 interface NotificationDropdownProps {
-  notifications: Notification[]; // Pass notifications from parent
+  notifications: Notification[];
+  loading?: boolean;      
+  error?: string | null;   
 }
 
-export default function NotificationDropdown({ notifications }: NotificationDropdownProps) {
+export default function NotificationDropdown({
+  notifications,
+  loading,
+  error,
+}: NotificationDropdownProps) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
   const toggleDropdown = () => setDropdownOpen(!dropdownOpen);
 
   const unreadCount = notifications.filter(n => !n.is_read).length;
   const recentNotifications = notifications.slice(0, 5); // Show top 5 recent
+
+  // Show loading or error first
+  if (loading) {
+    return (
+      <div className="text-gray-500 text-sm px-2 py-1">
+        Loading notifications...
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-red-500 text-sm px-2 py-1">
+        {error}
+      </div>
+    );
+  }
 
   return (
     <div className="relative">
@@ -47,7 +68,10 @@ export default function NotificationDropdown({ notifications }: NotificationDrop
             ) : (
               <ul className="space-y-2">
                 {recentNotifications.map((notif) => (
-                  <li key={notif.notification_id} className={`p-2 rounded ${notif.is_read ? 'bg-gray-100' : 'bg-blue-50'}`}>
+                  <li
+                    key={notif.notification_id}
+                    className={`p-2 rounded ${notif.is_read ? 'bg-gray-100' : 'bg-blue-50'}`}
+                  >
                     <p className="text-sm font-medium">{notif.type.replace('_', ' ').toUpperCase()}</p>
                     <p className="text-sm">{notif.message}</p>
                     <p className="text-xs text-gray-400">{new Date(notif.created_at).toLocaleString()}</p>
