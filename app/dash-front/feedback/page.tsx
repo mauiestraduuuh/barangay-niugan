@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import axios from "axios";
+import NotificationDropdown from "../../components/NotificationDropdown";
 import {
   HomeIcon,
   UserIcon,
@@ -13,6 +14,7 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   XMarkIcon,
+  ArrowRightOnRectangleIcon,
 } from "@heroicons/react/24/outline";
 
 interface Resident {
@@ -32,6 +34,14 @@ interface Feedback {
   responded_at?: string | null;
 }
 
+interface Notification {
+  notification_id: number;
+  type: string; // e.g., 'certificate_request', 'complaint', 'announcement'
+  message: string;
+  is_read: boolean;
+  created_at: string;
+}
+
 export default function FeedbackPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeItem, setActiveItem] = useState('feedback');
@@ -40,6 +50,7 @@ export default function FeedbackPage() {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [infoMessage, setInfoMessage] = useState("");
+  const [notifications, setNotifications] = useState<Notification[]>([]);
 
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
@@ -110,78 +121,104 @@ export default function FeedbackPage() {
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
+  useEffect(() => {
+    fetchNotifications();
+  }, []);
+
+  const fetchNotifications = async () => {
+    try {
+      const res = await fetch("/api/dash/notifications");
+      if (!res.ok) throw new Error("Failed to fetch notifications");
+      const data: Notification[] = await res.json();
+      setNotifications(data);
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-200 p-4 flex gap-4">
-      {/* Sidebar */}
+{/* Sidebar */}
       <div
-        className={`${
-          sidebarOpen ? 'w-64' : 'w-16'
-        } bg-gray-50 shadow-lg rounded-xl transition-all duration-300 ease-in-out flex flex-col ${
-          sidebarOpen ? 'block' : 'hidden'
-        } md:block md:relative md:translate-x-0 ${
-          sidebarOpen ? 'fixed inset-y-0 left-0 z-50 md:static md:translate-x-0' : ''
-        }`}
-      >
-        {/* Top Section */}
-        <div className="p-4 flex items-center justify-between">
-          <img
-            src="/logo.png"
-            alt="Company Logo"
-            className="w-10 h-10 rounded-full object-cover"
-          />
-          <button
-            onClick={toggleSidebar}
-            className="block md:hidden text-black hover:text-red-700 focus:outline-none"
-          >
-            <XMarkIcon className="w-6 h-6" />
-          </button>
-        </div>
-        {/* Navigation */}
-        <nav className="flex-1 mt-6">
-          <ul>
-            {features.map(({ name, label, icon: Icon }) => (
-              <li key={name} className="mb-2">
-                <Link
-                  href={`/dash-front/${name.replace('-', '-')}`} 
-                  className={`relative flex items-center w-full px-4 py-2 text-left group transition-colors duration-200 ${
-                    activeItem === name ? 'text-red-700' : 'text-black hover:text-red-700'
+  className={`${
+    sidebarOpen ? "w-64" : "w-16"
+  } bg-gray-50 shadow-lg rounded-xl transition-all duration-300 ease-in-out flex flex-col
+  ${sidebarOpen ? "fixed inset-y-0 left-0 z-50 md:static md:translate-x-0" : "hidden md:flex"}`}
+>
+  <div className="p-4 flex items-center justify-between">
+    <img
+      src="/logo.png"
+      alt="Logo"
+      className="w-10 h-10 rounded-full object-cover"
+    />
+    <button
+      onClick={toggleSidebar}
+      className="block md:hidden text-black hover:text-red-700 focus:outline-none"
+    >
+      <XMarkIcon className="w-6 h-6" />
+    </button>
+  </div>
+
+  <nav className="flex-1 mt-6">
+    <ul>
+      {features.map(({ name, label, icon: Icon }) => {
+        const href = `/dash-front/${name}`;
+        const isActive = name === "feedback";
+        return (
+          <li key={name} className="mb-2">
+            <Link href={href}>
+              <span
+                className={`relative flex items-center w-full px-4 py-2 text-left group transition-colors duration-200 ${
+                  isActive
+                    ? "text-red-700 "
+                    : "text-black hover:text-red-700"
+                }`}
+              >
+                {isActive && (
+                  <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-700 rounded-r-full" />
+                )}
+                <Icon
+                  className={`w-6 h-6 mr-2 ${
+                    isActive ? "text-red-700" : "text-gray-600 group-hover:text-red-700"
                   }`}
-                  onClick={() => setActiveItem(name)}
-                >
-                  <div
-                    className={`absolute left-0 top-0 bottom-0 w-1 bg-red-700 rounded-r-full ${
-                      activeItem === name ? 'block' : 'hidden'
+                />
+                {sidebarOpen && (
+                  <span
+                    className={`${
+                      isActive ? "text-red-700" : "group-hover:text-red-700"
                     }`}
-                  />
-                  <Icon className="w-6 h-6 mr-2 group-hover:text-red-700" />
-                  {sidebarOpen && (
-                    <span className="group-hover:text-red-700">{label}</span>
-                  )}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </nav>
-        {/* Logout Button */}
-        <div className="p-4">
-          <button className="flex items-center gap-3 text-red-500 hover:text-red-700 transition w-full text-left">
-            Log Out
-          </button>
-        </div>
-        {/* Toggle Button (Desktop Only) - At the Bottom */}
-        <div className="p-4 flex justify-center hidden md:flex">
-          <button
-            onClick={toggleSidebar}
-            className="w-10 h-10 bg-white hover:bg-red-50 rounded-full flex items-center justify-center focus:outline-none transition-colors duration-200 shadow-sm"
-          >
-            {sidebarOpen ? (
-              <ChevronLeftIcon className="w-5 h-5 text-black" />
-            ) : (
-              <ChevronRightIcon className="w-5 h-5 text-black" />
-            )}
-          </button>
-        </div>
-      </div>
+                  >
+                    {label}
+                  </span>
+                )}
+              </span>
+            </Link>
+          </li>
+        );
+      })}
+    </ul>
+  </nav>
+
+  <div className="p-4">
+    <button className="flex items-center gap-3 text-black hover:text-red-700 transition w-full text-left">
+      <ArrowRightOnRectangleIcon className="w-6 h-6" />
+      {sidebarOpen && <span>Log Out</span>}
+    </button>
+  </div>
+
+  <div className="p-4 flex justify-center hidden md:flex">
+    <button
+      onClick={toggleSidebar}
+      className="w-10 h-10 bg-white hover:bg-red-50 rounded-full flex items-center justify-center focus:outline-none transition-colors duration-200 shadow-sm"
+    >
+      {sidebarOpen ? (
+        <ChevronLeftIcon className="w-5 h-5 text-black" />
+      ) : (
+        <ChevronRightIcon className="w-5 h-5 text-black" />
+      )}
+    </button>
+  </div>
+</div>
       {/* Overlay for Mobile */}
       {sidebarOpen && (
         <div
@@ -201,9 +238,7 @@ export default function FeedbackPage() {
           </button>
           <h1 className="text-xl font-semibold text-black">Resident Dashboard</h1>
           <div className="flex items-center space-x-4">
-            <button className="text-black hover:text-red-700 focus:outline-none">
-              <BellIcon className="w-6 h-6" />
-            </button>
+            <NotificationDropdown notifications={notifications} />   
             <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center shadow-sm">
               <img
                 src={resident?.photo_url || "/default-profile.png"}
@@ -211,6 +246,7 @@ export default function FeedbackPage() {
                 className="w-8 h-8 rounded-full object-cover"
               />
             </div>
+            
           </div>
         </header>
         {/* Main Content */}

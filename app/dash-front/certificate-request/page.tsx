@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import axios from "axios";
 import jsPDF from "jspdf";
+import NotificationDropdown from "../../components/NotificationDropdown";
 import {
   BellIcon,
   UserIcon,
@@ -16,6 +17,7 @@ import {
   ChevronRightIcon,
   XMarkIcon,
   PlusIcon,
+  ArrowRightOnRectangleIcon, 
 } from "@heroicons/react/24/outline";
 
 interface CertificateRequest {
@@ -25,6 +27,13 @@ interface CertificateRequest {
   requested_at: string;
   status: string;
 }
+interface Notification {
+  notification_id: number;
+  type: string; 
+  message: string;
+  is_read: boolean;
+  created_at: string;
+}
 
 export default function Dashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -33,12 +42,14 @@ export default function Dashboard() {
   const [certificateType, setCertificateType] = useState("");
   const [purpose, setPurpose] = useState("");
   const [message, setMessage] = useState("");
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [messageType, setMessageType] = useState<"success" | "error" | "">("");
   const token =
     typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
-    const features = [
+  const features = [
     { name: 'the-dash-resident', label: 'Home', icon: HomeIcon },
     { name: 'resident', label: 'Manage Profile', icon: UserIcon },
     { name: 'digital-id', label: 'Digital ID', icon: CreditCardIcon },
@@ -54,10 +65,10 @@ export default function Dashboard() {
   const fetchRequests = async () => {
     if (!token) return setMessage("Unauthorized: No token found");
     try {
-      const res = await axios.get("/api/dash/resident/certificates", {
+      const res = await axios.get("/api/dash/certificate-request", {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setRequests(res.data);
+      setRequests(res.data.requests);
     } catch (err) {
       console.error(err);
       setMessage("Failed to fetch certificate requests");
@@ -70,18 +81,28 @@ export default function Dashboard() {
 
     try {
       await axios.post(
-        "/api/dash/resident/certificates",
+        "/api/dash/certificate-request",
         { certificate_type: certificateType, purpose },
         { headers: { Authorization: `Bearer ${token}` } }
       );
+      setMessageType("success");
       setMessage("Certificate request submitted successfully!");
       setShowModal(false);
       setCertificateType("");
       setPurpose("");
       fetchRequests();
+      setTimeout(() => {
+        setMessage("");
+        setMessageType("");
+      }, 5000); // Clear message after 5 seconds
     } catch (err) {
       console.error(err);
+      setMessageType("error");
       setMessage("Failed to submit request.");
+      setTimeout(() => {
+        setMessage("");
+        setMessageType("");
+      }, 5000);
     }
   };
 
@@ -150,6 +171,20 @@ export default function Dashboard() {
         return "text-gray-600";
     }
   };
+  useEffect(() => {
+    fetchNotifications();
+  }, []);
+
+  const fetchNotifications = async () => {
+    try {
+      const res = await fetch("/api/dash/notifications");
+      if (!res.ok) throw new Error("Failed to fetch notifications");
+      const data: Notification[] = await res.json();
+      setNotifications(data);
+    } catch (error) {
+      console.error(error);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-200 p-4 flex gap-4">
@@ -214,6 +249,13 @@ export default function Dashboard() {
     </ul>
   </nav>
 
+  <div className="p-4">
+    <button className="flex items-center gap-3 text-black hover:text-red-700 transition w-full text-left">
+      <ArrowRightOnRectangleIcon className="w-6 h-6" />
+      {sidebarOpen && <span>Log Out</span>}
+    </button>
+  </div>
+
   <div className="p-4 flex justify-center hidden md:flex">
     <button
       onClick={toggleSidebar}
@@ -241,9 +283,7 @@ export default function Dashboard() {
             Certificate Requests
           </h1>
           <div className="flex items-center space-x-4">
-            <button className="text-black hover:text-red-700 focus:outline-none">
-              <BellIcon className="w-6 h-6" />
-            </button>
+            <NotificationDropdown notifications={notifications} />
             <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center shadow-sm">
               <UserIcon className="w-5 h-5 text-black" />
             </div>
@@ -264,7 +304,7 @@ export default function Dashboard() {
           </div>
 
           {message && (
-            <p className="text-center bg-gray-900 text-white p-2 rounded mb-4">
+            <p className={`text-center p-2 rounded mb-4 ${messageType === "success" ? "bg-green-500 text-white" : "bg-red-500 text-white"}`}>
               {message}
             </p>
           )}
@@ -353,7 +393,7 @@ export default function Dashboard() {
                   onChange={(e) => setCertificateType(e.target.value)}
                   required
                 >
-                  <option value="">Select Type</option>
+                  <option value="" disabled>Select Type</option>
                   <option value="Barangay Clearance">Barangay Clearance</option>
                   <option value="Certificate of Residency">
                     Certificate of Residency

@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import NotificationDropdown from "../../components/NotificationDropdown";
 import {
   BellIcon,
   UserIcon,
@@ -13,11 +14,22 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   XMarkIcon,
+  ArrowRightOnRectangleIcon,
 } from "@heroicons/react/24/outline";
+
+// Add this interface definition
+interface Notification {
+  notification_id: number;
+  type: string; // e.g., 'certificate_request', 'complaint', 'announcement'
+  message: string;
+  is_read: boolean;
+  created_at: string;
+}
 
 export default function Dashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeItem, setActiveItem] = useState("the-dash-resident");
+  const [notifications, setNotifications] = useState<Notification[]>([]);
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
@@ -29,6 +41,21 @@ export default function Dashboard() {
     { name: "feedback", label: "Feedback / Complain", icon: ChatBubbleLeftEllipsisIcon },
     { name: "notifications", label: "Notifications", icon: BellIcon },
   ];
+
+  useEffect(() => {
+    fetchNotifications();
+  }, []);
+
+  const fetchNotifications = async () => {
+    try {
+      const res = await fetch("/api/dash/notifications");
+      if (!res.ok) throw new Error("Failed to fetch notifications");
+      const data: Notification[] = await res.json();
+      setNotifications(data);
+    } catch (error) {
+      console.error(error);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-200 p-4 flex gap-4">
@@ -95,6 +122,14 @@ export default function Dashboard() {
           </ul>
         </nav>
 
+        {/* Logout Button */}
+        <div className="p-4">
+          <button className="flex items-center gap-3 text-black hover:text-red-700 transition w-full text-left">
+            <ArrowRightOnRectangleIcon className="w-6 h-6" />
+            {sidebarOpen && <span>Log Out</span>}
+          </button>
+        </div>
+
         {/* Sidebar Toggle (desktop only) */}
         <div className="p-4 flex justify-center hidden md:flex">
           <button
@@ -130,9 +165,7 @@ export default function Dashboard() {
           </button>
           <h1 className="text-xl font-semibold text-black">Resident Dashboard</h1>
           <div className="flex items-center space-x-4">
-            <button className="text-black hover:text-red-700 focus:outline-none">
-              <BellIcon className="w-6 h-6" />
-            </button>
+            <NotificationDropdown notifications={notifications} />
             <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center shadow-sm">
               <UserIcon className="w-5 h-5 text-black" />
             </div>
