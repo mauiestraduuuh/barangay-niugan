@@ -30,7 +30,6 @@ function serializeResident(resident: any) {
   };
 }
 
-// GET resident profile
 export async function GET(req: NextRequest) {
   try {
     const userId = getUserIdFromToken(req);
@@ -40,50 +39,28 @@ export async function GET(req: NextRequest) {
 
     const resident = await prisma.resident.findFirst({
       where: { user_id: userId },
+      include: {
+        user: {
+          select: {
+            username: true, // ✅ use username instead of email
+          },
+        },
+      },
     });
 
     if (!resident) {
       return NextResponse.json({ error: "Resident not found" }, { status: 404 });
     }
 
-    return NextResponse.json(serializeResident(resident));
+    const data = {
+      ...serializeResident(resident),
+      email: resident.user?.username || null, // ✅ treat username as email
+    };
+
+    return NextResponse.json(data);
   } catch (error) {
     console.error(error);
     return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
-  }
-}
-
-// PUT update resident profile
-export async function PUT(req: NextRequest) {
-  try {
-    const userId = getUserIdFromToken(req);
-    if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-    const data = await req.json();
-    const { first_name, last_name, birthdate, contact_no, address } = data;
-
-    // fetch the resident_id for this user
-    const resident = await prisma.resident.findFirst({ where: { user_id: userId } });
-    if (!resident) return NextResponse.json({ error: "Resident not found" }, { status: 404 });
-
-    const updatedResident = await prisma.resident.update({
-      where: { resident_id: resident.resident_id },
-      data: {
-        first_name,
-        last_name,
-        birthdate: new Date(birthdate),
-        contact_no,
-        address,
-      },
-    });
-
-    return NextResponse.json({
-      message: "Profile updated",
-      resident: serializeResident(updatedResident),
-    });
-  } catch (error) {
-    console.error(error);
-    return NextResponse.json({ error: "Failed to update profile" }, { status: 500 });
   }
 }
 
@@ -104,7 +81,8 @@ export async function PATCH(req: NextRequest) {
     if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
     const isValid = await bcrypt.compare(current_password, user.password);
-    if (!isValid) return NextResponse.json({ error: "Current password is incorrect" }, { status: 401 });
+    if (!isValid)
+      return NextResponse.json({ error: "Current password is incorrect" }, { status: 401 });
 
     const hashedPassword = await bcrypt.hash(new_password, 10);
     await prisma.user.update({ where: { user_id: userId }, data: { password: hashedPassword } });
