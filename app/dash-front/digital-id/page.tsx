@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import axios from "axios";
-import QRCode from "react-qr-code";
 import html2canvas from "html2canvas";
 import NotificationDropdown from "../../components/NotificationDropdown";
 import {
@@ -22,7 +21,6 @@ import {
 
 interface Resident {
   resident_id: number;
-  user_id?: number;
   first_name: string;
   last_name: string;
   address?: string;
@@ -31,12 +29,7 @@ interface Resident {
   birthdate?: string;
   issued_at?: string | null;
   issued_by?: string | null;
-  is_head?: boolean;
-  household_id?: string | null;
-  fourps?: boolean;
-  pwd?: boolean;
-  senior?: boolean;
-  slp?: boolean;
+  qr_code?: string | null;
 }
 
 interface Notification {
@@ -63,7 +56,7 @@ export default function DigitalID() {
     typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
   useEffect(() => {
-    const fetchResident = async () => {
+    const fetchDigitalID = async () => {
       setLoadingResident(true);
       setErrorResident(null);
       try {
@@ -73,18 +66,29 @@ export default function DigitalID() {
           return;
         }
 
-        // Mirror Manage Profile: use the same endpoint and header
-        const res = await axios.get<Resident>("/api/dash/resident", {
+        const res = await axios.get("/api/dash/digital-id", {
           headers: { Authorization: `Bearer ${token}` },
         });
 
-        if (!res.data || !res.data.resident_id) {
-          setErrorResident("Invalid resident data received");
+        const { resident, digitalID } = res.data;
+        if (!resident || !digitalID) {
+          setErrorResident("Invalid digital ID data received.");
           return;
         }
-        setResident(res.data);
+
+        setResident({
+          resident_id: resident.resident_id,
+          first_name: resident.first_name,
+          last_name: resident.last_name,
+          address: resident.address,
+          photo_url: resident.photo_url,
+          birthdate: resident.birthdate,
+          id_number: digitalID.id_number,
+          issued_at: digitalID.issued_at,
+          issued_by: digitalID.issued_by?.toString() || "N/A",
+          qr_code: digitalID.qr_code || null,
+        });
       } catch (err: any) {
-        // If the backend returns JSON { error: "..." }, axios puts it in err.response.data
         const status = err?.response?.status;
         const apiMsg = err?.response?.data?.error || err?.response?.data?.message;
 
@@ -95,11 +99,11 @@ export default function DigitalID() {
         }
         if (status === 404) {
           setErrorResident(
-            "Resident data not found. Your profile may not be set up yet. Please contact the barangay administrator to register your information."
+            "Digital ID not found. Please ensure your profile has been approved by the barangay administrator."
           );
           return;
         }
-        setErrorResident(apiMsg || "Failed to fetch resident info");
+        setErrorResident(apiMsg || "Failed to fetch digital ID");
       } finally {
         setLoadingResident(false);
       }
@@ -116,7 +120,6 @@ export default function DigitalID() {
         });
         setNotifications(Array.isArray(res.data) ? res.data : []);
       } catch (err: any) {
-        // Non-blocking: show error but don't break the page
         const apiMsg = err?.response?.data?.error || err?.response?.data?.message;
         setErrorNotifications(apiMsg || "Failed to fetch notifications");
       } finally {
@@ -124,30 +127,70 @@ export default function DigitalID() {
       }
     };
 
-    fetchResident();
+    fetchDigitalID();
     fetchNotifications();
   }, []);
 
-  const handleDownload = async () => {
-    if (!cardRef.current || !resident) return;
-    const canvas = await html2canvas(cardRef.current);
-    const link = document.createElement("a");
-    link.download = `${resident.first_name}-${resident.last_name}-DigitalID.png`;
-    link.href = canvas.toDataURL();
-    link.click();
-  };
+ // 🧼 helper to sanitize any oklch() colors before rendering
+const sanitizeOklchColors = (el: HTMLElement) => {
+  const elements = el.querySelectorAll("*");
+  elements.forEach((child) => {
+    const style = window.getComputedStyle(child);
+    const bg = style.backgroundColor;
+    const color = style.color;
+    if (bg.includes("oklch")) (child as HTMLElement).style.backgroundColor = "#fff";
+    if (color.includes("oklch")) (child as HTMLElement).style.color = "#000";
+  });
+};
 
-  const handlePrint = async () => {
-    if (!cardRef.current || !resident) return;
-    const canvas = await html2canvas(cardRef.current);
-    const dataUrl = canvas.toDataURL();
-    const printWindow = window.open("");
-    if (printWindow) {
-      printWindow.document.write(`<img src="${dataUrl}" style="width:100%">`);
-      printWindow.document.close();
-      printWindow.print();
-    }
-  };
+// 🖼️ download the card as PNG
+const handleDownload = async () => {
+  if (!cardRef.current || !resident) return;
+
+  sanitizeOklchColors(cardRef.current); // 🧩 apply fix before capture
+
+  const canvas = await html2canvas(cardRef.current, {
+    useCORS: true,
+    allowTaint: true,
+    scale: 3,
+    backgroundColor: "#ffffff",
+  });
+
+  const link = document.createElement("a");
+  link.download = `${resident.first_name}-${resident.last_name}-DigitalID.png`;
+  link.href = canvas.toDataURL("image/png");
+  link.click();
+};
+
+// 🖨️ print the card
+const handlePrint = async () => {
+  if (!cardRef.current || !resident) return;
+
+  sanitizeOklchColors(cardRef.current); // 🧩 apply fix before capture
+
+  const canvas = await html2canvas(cardRef.current, {
+    useCORS: true,
+    allowTaint: true,
+    scale: 3,
+    backgroundColor: "#ffffff",
+  });
+
+  const dataUrl = canvas.toDataURL("image/png");
+  const printWindow = window.open("", "_blank");
+  if (printWindow) {
+    printWindow.document.write(`
+      <html>
+        <head><title>${resident.first_name} ${resident.last_name} - Digital ID</title></head>
+        <body style="margin:0;display:flex;justify-content:center;align-items:center;height:100vh;background:#f9f9f9;">
+          <img src="${dataUrl}" style="width:550px;border-radius:12px;box-shadow:0 0 10px rgba(0,0,0,0.2);" />
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
+  }
+};
 
   const features = [
     { name: "home", label: "Home", icon: HomeIcon },
@@ -158,7 +201,7 @@ export default function DigitalID() {
     { name: "notifications", label: "Notifications", icon: BellIcon },
   ];
 
-  if (loadingResident) return <p className="text-center mt-20">Loading resident info...</p>;
+  if (loadingResident) return <p className="text-center mt-20">Loading digital ID...</p>;
   if (errorResident) {
     return (
       <div className="text-center mt-20 text-red-500">
@@ -168,12 +211,14 @@ export default function DigitalID() {
           <Link href="/dash-front/resident" className="text-blue-600 underline">
             Manage Profile
           </Link>{" "}
-          to set up or verify your information.
+          to verify your information.
         </p>
       </div>
     );
   }
-  if (!resident) return <p className="text-center mt-20 text-red-500">Resident info not found</p>;
+
+  if (!resident)
+    return <p className="text-center mt-20 text-red-500">Digital ID not found</p>;
 
   return (
     <div className="min-h-screen bg-gray-200 p-4 flex gap-4">
@@ -197,7 +242,11 @@ export default function DigitalID() {
               return (
                 <li key={name} className="mb-2">
                   <Link href={href}>
-                    <span className={`flex items-center px-4 py-2 ${isActive ? "text-red-700" : "text-black"}`}>
+                    <span
+                      className={`flex items-center px-4 py-2 ${
+                        isActive ? "text-red-700" : "text-black"
+                      }`}
+                    >
                       <Icon className="w-6 h-6 mr-2" />
                       {sidebarOpen && label}
                     </span>
@@ -223,16 +272,10 @@ export default function DigitalID() {
           </button>
           <h1 className="text-xl font-semibold text-black">Barangay Digital ID</h1>
           <div className="flex items-center space-x-4">
-            <NotificationDropdown
-              notifications={notifications}
-              loading={loadingNotifications}
-              error={errorNotifications}
-            />
-            <img
-              src={resident.photo_url || "/default-profile.png"}
-              alt="Profile"
-              className="w-8 h-8 rounded-full object-cover shadow-sm"
-            />
+            <NotificationDropdown notifications={notifications} />
+            <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center shadow-sm">
+              <UserIcon className="w-5 h-5 text-black" />
+            </div>
           </div>
         </header>
 
@@ -248,6 +291,7 @@ export default function DigitalID() {
                 <img
                   src={resident.photo_url || "/default-profile.png"}
                   alt="Profile"
+                  crossOrigin="anonymous"
                   className="w-28 h-28 rounded-md border border-gray-300 object-cover"
                 />
                 <div className="text-sm mt-2">
@@ -269,10 +313,16 @@ export default function DigitalID() {
                   <p className="text-sm text-gray-700">{resident.address}</p>
                 </div>
                 <div className="flex justify-end">
-                  <QRCode
-                    value={`Name: ${resident.first_name} ${resident.last_name}\nID: ${resident.id_number}\nAddress: ${resident.address}`}
-                    size={90}
-                  />
+                  {resident.qr_code ? (
+                    <img
+                      src={resident.qr_code}
+                      alt="QR Code"
+                      crossOrigin="anonymous"
+                      className="w-[90px] h-[90px] object-contain"
+                    />
+                  ) : (
+                    <p className="text-xs text-gray-500">QR not available</p>
+                  )}
                 </div>
               </div>
             </div>
