@@ -5,6 +5,7 @@ import jwt from "jsonwebtoken";
 
 const JWT_SECRET = process.env.JWT_SECRET!;
 
+// Extract User ID from JWT
 function getUserIdFromToken(req: NextRequest): number | null {
   try {
     const authHeader = req.headers.get("authorization");
@@ -18,7 +19,7 @@ function getUserIdFromToken(req: NextRequest): number | null {
   }
 }
 
-// Convert BigInt fields to string
+// Converts BigInt to string for JSON safety
 function safeBigInt(obj: any) {
   return JSON.parse(
     JSON.stringify(obj, (_, value) =>
@@ -27,10 +28,21 @@ function safeBigInt(obj: any) {
   );
 }
 
+// CORS preflight handler
+export async function OPTIONS() {
+  const res = NextResponse.json({}, { status: 200 });
+  res.headers.set("Access-Control-Allow-Origin", "*");
+  res.headers.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  return res;
+}
+
+// Main GET route
 export async function GET(req: NextRequest) {
   try {
     const userId = getUserIdFromToken(req);
-    if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!userId)
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const resident = await prisma.resident.findFirst({
       where: { user_id: userId },
@@ -50,7 +62,8 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    if (!resident) return NextResponse.json({ error: "Resident not found" }, { status: 404 });
+    if (!resident)
+      return NextResponse.json({ error: "Resident not found" }, { status: 404 });
 
     const digitalID = await prisma.digitalID.findFirst({
       where: { resident_id: resident.resident_id },
@@ -63,7 +76,11 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    if (!digitalID) return NextResponse.json({ error: "Digital ID not found" }, { status: 404 });
+    if (!digitalID)
+      return NextResponse.json(
+        { error: "Digital ID not found" },
+        { status: 404 }
+      );
 
     // QR content
     const membership = [];
@@ -80,7 +97,7 @@ export async function GET(req: NextRequest) {
       birthdate: resident.birthdate.toISOString().split("T")[0],
       address: resident.address,
       head_id: resident.head_id?.toString() || null,
-      memberships: membership, // only include if they have any
+      memberships: membership,
     };
 
     const qrDataURL = await QRCode.toDataURL(JSON.stringify(qrContent));
@@ -91,12 +108,20 @@ export async function GET(req: NextRequest) {
       qr_code: qrDataURL,
     });
 
-    return NextResponse.json({
+    // Add CORS headers before returning
+    const response = NextResponse.json({
       digitalID: safeDigitalID,
       resident: safeBigInt(resident),
     });
+    response.headers.set("Access-Control-Allow-Origin", "*");
+    return response;
   } catch (err) {
-    console.error(err);
-    return NextResponse.json({ error: "Failed to fetch digital ID" }, { status: 500 });
+    console.error("Error fetching digital ID:", err);
+    const response = NextResponse.json(
+      { error: "Failed to fetch digital ID" },
+      { status: 500 }
+    );
+    response.headers.set("Access-Control-Allow-Origin", "*");
+    return response;
   }
 }
