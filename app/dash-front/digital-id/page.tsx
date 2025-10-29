@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
 import NotificationDropdown from "../../components/NotificationDropdown";
 import {
   HomeIcon,
@@ -11,7 +12,6 @@ import {
   CreditCardIcon,
   ClipboardDocumentIcon,
   ChatBubbleLeftEllipsisIcon,
-  BellIcon,
   Bars3Icon,
   XMarkIcon,
   ArrowDownTrayIcon,
@@ -45,12 +45,10 @@ export default function DigitalID() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [resident, setResident] = useState<Resident | null>(null);
   const [loadingResident, setLoadingResident] = useState(true);
-  const [loadingNotifications, setLoadingNotifications] = useState(true);
   const [errorResident, setErrorResident] = useState<string | null>(null);
-  const [errorNotifications, setErrorNotifications] = useState<string | null>(null);
-
+  const [household, setHousehold] = useState<any[]>([]);
+  const [householdRegNo, setHouseholdRegNo] = useState<string>("");
   const cardRef = useRef<HTMLDivElement>(null);
-  const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
   const getToken = () =>
     typeof window !== "undefined" ? localStorage.getItem("token") : null;
@@ -58,24 +56,16 @@ export default function DigitalID() {
   useEffect(() => {
     const fetchDigitalID = async () => {
       setLoadingResident(true);
-      setErrorResident(null);
       try {
         const token = getToken();
         if (!token) {
           window.location.href = "/login";
           return;
         }
-
         const res = await axios.get("/api/dash/digital-id", {
           headers: { Authorization: `Bearer ${token}` },
         });
-
         const { resident, digitalID } = res.data;
-        if (!resident || !digitalID) {
-          setErrorResident("Invalid digital ID data received.");
-          return;
-        }
-
         setResident({
           resident_id: resident.resident_id,
           first_name: resident.first_name,
@@ -87,141 +77,406 @@ export default function DigitalID() {
           issued_at: digitalID.issued_at,
           issued_by: digitalID.issued_by?.toString() || "N/A",
           qr_code: digitalID.qr_code || null,
+          hpusehold_id: resident.household_id ?? null
         });
-      } catch (err: any) {
-        const status = err?.response?.status;
-        const apiMsg = err?.response?.data?.error || err?.response?.data?.message;
-
-        if (status === 401) {
-          localStorage.removeItem("token");
-          window.location.href = "/login";
-          return;
-        }
-        if (status === 404) {
-          setErrorResident(
-            "Digital ID not found. Please ensure your profile has been approved by the barangay administrator."
-          );
-          return;
-        }
-        setErrorResident(apiMsg || "Failed to fetch digital ID");
+      } catch (err) {
+        console.error(err);
+        setErrorResident("Failed to fetch digital ID");
       } finally {
         setLoadingResident(false);
       }
     };
-
-    const fetchNotifications = async () => {
-      setLoadingNotifications(true);
-      setErrorNotifications(null);
-      try {
-        const token = getToken();
-        if (!token) return;
-        const res = await axios.get<Notification[]>("/api/dash/notification", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setNotifications(Array.isArray(res.data) ? res.data : []);
-      } catch (err: any) {
-        const apiMsg = err?.response?.data?.error || err?.response?.data?.message;
-        setErrorNotifications(apiMsg || "Failed to fetch notifications");
-      } finally {
-        setLoadingNotifications(false);
-      }
-    };
-
     fetchDigitalID();
-    fetchNotifications();
   }, []);
 
- // 🧼 helper to sanitize any oklch() colors before rendering
-const sanitizeOklchColors = (el: HTMLElement) => {
-  const elements = el.querySelectorAll("*");
-  elements.forEach((child) => {
-    const style = window.getComputedStyle(child);
-    const bg = style.backgroundColor;
-    const color = style.color;
-    if (bg.includes("oklch")) (child as HTMLElement).style.backgroundColor = "#fff";
-    if (color.includes("oklch")) (child as HTMLElement).style.color = "#000";
-  });
-};
+  // Generate PDF with resident details and household
+  const handleDownload = () => {
+    if (!resident) return;
 
-// 🖼️ download the card as PNG
-const handleDownload = async () => {
-  if (!cardRef.current || !resident) return;
+    const doc = new jsPDF({
+      orientation: "portrait",
+      unit: "mm",
+      format: "a4",
+    });
 
-  sanitizeOklchColors(cardRef.current); // 🧩 apply fix before capture
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    let yPosition = 20;
 
-  const canvas = await html2canvas(cardRef.current, {
-    useCORS: true,
-    allowTaint: true,
-    scale: 3,
-    backgroundColor: "#ffffff",
-  });
+    // Simple header
+    doc.setTextColor(60, 60, 60);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(20);
+    doc.text("RESIDENT INFORMATION", pageWidth / 2, yPosition, { align: "center" });
+    yPosition += 8;
+    doc.setFontSize(16);
+    doc.text("SUMMARY", pageWidth / 2, yPosition, { align: "center" });
+    yPosition += 10;
 
-  const link = document.createElement("a");
-  link.download = `${resident.first_name}-${resident.last_name}-DigitalID.png`;
-  link.href = canvas.toDataURL("image/png");
-  link.click();
-};
+    // divider line
+    doc.setDrawColor(200, 200, 200);
+    doc.setLineWidth(0.5);
+    doc.line(15, yPosition, pageWidth - 15, yPosition);
 
-// 🖨️ print the card
-const handlePrint = async () => {
-  if (!cardRef.current || !resident) return;
+    yPosition += 15;
 
-  sanitizeOklchColors(cardRef.current); // 🧩 apply fix before capture
+    // Personal Information 
+    doc.setFillColor(250, 250, 250);
+    doc.roundedRect(15, yPosition, pageWidth - 30, 75, 3, 3, "F");
+    doc.setDrawColor(220, 220, 220);
+    doc.setLineWidth(0.3);
+    doc.roundedRect(15, yPosition, pageWidth - 30, 75, 3, 3, "S");
 
-  const canvas = await html2canvas(cardRef.current, {
-    useCORS: true,
-    allowTaint: true,
-    scale: 3,
-    backgroundColor: "#ffffff",
-  });
+    // resident photo
+    if (resident.photo_url) {
+      try {
+        doc.addImage(resident.photo_url, "JPEG", 20, yPosition + 5, 35, 35);
+        // Photo border
+        doc.setDrawColor(200, 200, 200);
+        doc.setLineWidth(0.5);
+        doc.roundedRect(20, yPosition + 5, 35, 35, 2, 2, "S");
+      } catch (e) {
+        console.error("Could not add photo:", e);
+      }
+    }
 
-  const dataUrl = canvas.toDataURL("image/png");
-  const printWindow = window.open("", "_blank");
-  if (printWindow) {
-    printWindow.document.write(`
-      <html>
-        <head><title>${resident.first_name} ${resident.last_name} - Digital ID</title></head>
-        <body style="margin:0;display:flex;justify-content:center;align-items:center;height:100vh;background:#f9f9f9;">
-          <img src="${dataUrl}" style="width:550px;border-radius:12px;box-shadow:0 0 10px rgba(0,0,0,0.2);" />
-        </body>
-      </html>
-    `);
-    printWindow.document.close();
-    printWindow.focus();
-    printWindow.print();
-  }
-};
+    // QR Code
+    if (resident.qr_code) {
+      try {
+        doc.addImage(resident.qr_code, "PNG", 20, yPosition + 45, 25, 25);
+      } catch (e) {
+        console.error("Could not add QR code:", e);
+      }
+    }
 
-  const features = [
-    { name: "home", label: "Home", icon: HomeIcon },
-    { name: "resident", label: "Manage Profile", icon: UserIcon },
-    { name: "digital-id", label: "Digital ID", icon: CreditCardIcon },
-    { name: "certificate-request", label: "Certificates", icon: ClipboardDocumentIcon },
-    { name: "feedback", label: "Feedback / Complain", icon: ChatBubbleLeftEllipsisIcon },
-    { name: "notifications", label: "Notifications", icon: BellIcon },
-  ];
+    // Personal details
+    const detailsX = 65;
+    let detailY = yPosition + 10;
 
-  if (loadingResident) return <p className="text-center mt-20">Loading digital ID...</p>;
-  if (errorResident) {
-    return (
-      <div className="text-center mt-20 text-red-500">
-        <p>{errorResident}</p>
-        <p className="mt-4">
-          Please go to{" "}
-          <Link href="/dash-front/resident" className="text-blue-600 underline">
-            Manage Profile
-          </Link>{" "}
-          to verify your information.
-        </p>
-      </div>
+    doc.setTextColor(80, 80, 80);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(13);
+    doc.text("Personal Information", detailsX, detailY);
+    detailY += 10;
+
+    doc.setTextColor(60, 60, 60);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+
+    const details = [
+      { label: "Name:", value: `${resident.first_name} ${resident.last_name}` },
+      { label: "ID Number:", value: resident.id_number },
+      { label: "Address:", value: resident.address || "N/A" },
+      { label: "Birthdate:", value: resident.birthdate || "N/A" },
+      { label: "Issued:", value: resident.issued_at || "N/A" },
+      { label: "Issued By:", value: resident.issued_by || "N/A" },
+    ];
+
+    details.forEach((detail) => {
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(100, 100, 100);
+      doc.text(detail.label, detailsX, detailY);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(60, 60, 60);
+      doc.text(detail.value, detailsX + 25, detailY);
+      detailY += 7;
+    });
+
+    yPosition += 85;
+
+    // Household Information 
+    doc.setTextColor(80, 80, 80);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(13);
+    doc.text("Household Information", 15, yPosition);
+    yPosition += 8;
+
+    // Registered Household Number
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.setTextColor(100, 100, 100);
+    doc.text("Household ID:", 15, yPosition);
+    doc.setTextColor(60, 60, 60);
+    doc.setFont("helvetica", "bold");
+    doc.text(
+      resident.household_id ? resident.household_id.toString() : "",
+      50,
+      yPosition
+    );    
+    yPosition += 10;
+
+    if (household && household.length > 0) {
+      // Table header
+      doc.setFillColor(240, 240, 240);
+      doc.roundedRect(15, yPosition - 2, pageWidth - 30, 10, 2, 2, "F");
+      
+      doc.setTextColor(60, 60, 60);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10);
+      doc.text("Name", 20, yPosition + 5);
+      doc.text("Role", 80, yPosition + 5);
+      doc.text("Relationship", 110, yPosition + 5);
+      doc.text("Birthdate", 155, yPosition + 5);
+      yPosition += 12;
+
+      // Table rows
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      
+      household.forEach((member, index) => {
+        if (yPosition > 270) {
+          doc.addPage();
+          yPosition = 20;
+        }
+
+        // Alternating row colors
+        if (index % 2 === 0) {
+          doc.setFillColor(252, 252, 252);
+        } else {
+          doc.setFillColor(255, 255, 255);
+        }
+        doc.rect(15, yPosition - 5, pageWidth - 30, 10, "F");
+
+        // Row border
+        doc.setDrawColor(240, 240, 240);
+        doc.setLineWidth(0.1);
+        doc.line(15, yPosition + 5, pageWidth - 15, yPosition + 5);
+
+        doc.setTextColor(60, 60, 60);
+        doc.text(
+          `${member.first_name || ""} ${member.last_name || ""}`,
+          20,
+          yPosition + 2
+        );
+        doc.text(member.role || "N/A", 80, yPosition + 2);
+        doc.text(member.relationship || "N/A", 110, yPosition + 2);
+        doc.text(member.birthdate || "N/A", 155, yPosition + 2);
+        yPosition += 10;
+      });
+    } else {
+      doc.setFont("helvetica", "italic");
+      doc.setFontSize(10);
+      doc.setTextColor(150, 150, 150);
+      doc.text("No household members found.", 20, yPosition + 5);
+    }
+
+    // Footer
+    const footerY = pageHeight - 20;
+    doc.setDrawColor(220, 220, 220);
+    doc.setLineWidth(0.3);
+    doc.line(15, footerY, pageWidth - 15, footerY);
+
+    doc.setFont("helvetica", "italic");
+    doc.setFontSize(9);
+    doc.setTextColor(140, 140, 140);
+    doc.text(
+      `Generated on: ${new Date().toLocaleString()}`,
+      pageWidth / 2,
+      footerY + 5,
+      { align: "center" }
     );
-  }
 
+    doc.setFontSize(8);
+    doc.text("Republic of the Philippines - Barangay Niugan Digital ID System", pageWidth / 2, footerY + 10, {
+      align: "center",
+    });
+
+    doc.save(`${resident.first_name}_${resident.last_name}_Record.pdf`);
+  };
+
+  // Print only the ID card
+  const handlePrint = () => {
+    if (!cardRef.current) return;
+    const printWindow = window.open("", "_blank");
+    if (printWindow) {
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>Print Digital ID</title>
+            <style>
+              * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+              }
+              body {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                min-height: 100vh;
+                background: #f0f0f0;
+                font-family: Arial, sans-serif;
+                padding: 20px;
+              }
+              .id-card {
+                position: relative;
+                width: 550px;
+                height: 300px;
+                background: white;
+                border-radius: 12px;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                border: 1px solid #d1d5db;
+                overflow: hidden;
+                display: flex;
+              }
+              .gradient-bar {
+                width: 20px;
+                height: 100%;
+                background: linear-gradient(to bottom, #d90429 0%, #ffffff 50%, #003f88 100%);
+                flex-shrink: 0;
+              }
+              .card-content {
+                display: flex;
+                padding: 24px;
+                width: 100%;
+                gap: 24px;
+              }
+              .left-section {
+                display: flex;
+                flex-direction: column;
+                justify-content: space-between;
+                min-width: 112px;
+              }
+              .profile-photo {
+                width: 112px;
+                height: 112px;
+                border-radius: 6px;
+                border: 1px solid #d1d5db;
+                object-fit: cover;
+                display: block;
+              }
+              .issued-info {
+                font-size: 14px;
+                margin-top: 8px;
+                line-height: 1.4;
+              }
+              .issued-info p {
+                margin: 2px 0;
+              }
+              .right-section {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                justify-content: space-between;
+              }
+              .top-content {
+                flex: 1;
+              }
+              .header-text {
+                font-size: 12px;
+                color: #6b7280;
+                margin-bottom: 2px;
+              }
+              .title {
+                font-size: 18px;
+                font-weight: bold;
+                line-height: 1.3;
+                margin-bottom: 4px;
+              }
+              .id-number-row {
+                display: flex;
+                justify-content: space-between;
+                font-size: 12px;
+                margin-top: 4px;
+                margin-bottom: 16px;
+              }
+              .id-number-row p:first-child {
+                font-weight: 600;
+              }
+              .resident-name {
+                font-size: 16px;
+                font-weight: 600;
+                margin-bottom: 4px;
+              }
+              .address {
+                font-size: 14px;
+                color: #374151;
+              }
+              .qr-section {
+                display: flex;
+                justify-content: flex-end;
+                align-items: flex-end;
+              }
+              .qr-code {
+                width: 90px;
+                height: 90px;
+                object-fit: contain;
+                display: block;
+              }
+              .qr-placeholder {
+                font-size: 12px;
+                color: #6b7280;
+              }
+              @media print {
+                @page {
+                  margin: 0.5in;
+                }
+                body {
+                  background: white;
+                }
+                .id-card {
+                  box-shadow: none;
+                  page-break-inside: avoid;
+                }
+              }
+            </style>
+          </head>
+          <body>
+            <div class="id-card">
+              <div class="gradient-bar"></div>
+              <div class="card-content">
+                <div class="left-section">
+                  <img 
+                    src="${resident.photo_url || "/default-profile.png"}" 
+                    alt="Profile" 
+                    class="profile-photo"
+                    crossorigin="anonymous"
+                  />
+                  <div class="issued-info">
+                    <p>Issued: ${resident.issued_at || "N/A"}</p>
+                    <p>Issued by: ${resident.issued_by || "N/A"}</p>
+                  </div>
+                </div>
+                <div class="right-section">
+                  <div class="top-content">
+                    <p class="header-text">REPUBLIC OF THE PHILIPPINES</p>
+                    <h2 class="title">BARANGAY DIGITAL ID</h2>
+                    <div class="id-number-row">
+                      <p>ID No.</p>
+                      <p>${resident.id_number}</p>
+                    </div>
+                    <p class="resident-name">${resident.first_name} ${resident.last_name}</p>
+                    <p class="address">${resident.address || "N/A"}</p>
+                  </div>
+                  <div class="qr-section">
+                    ${
+                      resident.qr_code
+                        ? `<img src="${resident.qr_code}" alt="QR Code" class="qr-code" crossorigin="anonymous" />`
+                        : '<p class="qr-placeholder">QR not available</p>'
+                    }
+                  </div>
+                </div>
+              </div>
+            </div>
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
+      setTimeout(() => {
+        printWindow.print();
+      }, 500);
+    }
+  };
+
+  if (loadingResident)
+    return <p className="text-center mt-20">Loading digital ID...</p>;
+  if (errorResident)
+    return <p className="text-center mt-20 text-red-500">{errorResident}</p>;
   if (!resident)
-    return <p className="text-center mt-20 text-red-500">Digital ID not found</p>;
+    return <p className="text-center mt-20 text-red-500">No data found</p>;
 
   return (
-    <div className="min-h-screen bg-gray-200 p-4 flex gap-4">
+    <div className="flex h-screen bg-gray-100 p-4 gap-4">
       {/* Sidebar */}
       <div
         className={`${
@@ -229,33 +484,70 @@ const handlePrint = async () => {
         } bg-gray-50 shadow-lg rounded-xl transition-all duration-300 flex flex-col`}
       >
         <div className="p-4 flex items-center justify-between">
-          <img src="/logo.png" alt="Logo" className="w-10 h-10 rounded-full object-cover" />
-          <button onClick={() => setSidebarOpen(!sidebarOpen)} className="md:hidden">
-            <XMarkIcon className="w-6 h-6" />
+          <h2
+            className={`text-xl font-bold text-black ${
+              !sidebarOpen && "hidden"
+            }`}
+          >
+            Menu
+          </h2>
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="text-black hover:text-red-700"
+          >
+            {sidebarOpen ? (
+              <XMarkIcon className="w-6 h-6" />
+            ) : (
+              <Bars3Icon className="w-6 h-6" />
+            )}
           </button>
         </div>
+
         <nav className="flex-1 mt-6">
           <ul>
-            {features.map(({ name, label, icon: Icon }) => {
-              const href = `/dash-front/${name}`;
-              const isActive = name === "digital-id";
-              return (
-                <li key={name} className="mb-2">
-                  <Link href={href}>
-                    <span
-                      className={`flex items-center px-4 py-2 ${
-                        isActive ? "text-red-700" : "text-black"
-                      }`}
-                    >
-                      <Icon className="w-6 h-6 mr-2" />
-                      {sidebarOpen && label}
-                    </span>
-                  </Link>
-                </li>
-              );
-            })}
+            <li className="mb-2">
+              <Link href="/dash-front">
+                <span className="flex items-center px-4 py-2 text-gray-700 hover:text-red-700 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer">
+                  <HomeIcon className="w-6 h-6 mr-2" />
+                  {sidebarOpen && "Dashboard"}
+                </span>
+              </Link>
+            </li>
+            <li className="mb-2">
+              <Link href="/dash-front/profile">
+                <span className="flex items-center px-4 py-2 text-gray-700 hover:text-red-700 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer">
+                  <UserIcon className="w-6 h-6 mr-2" />
+                  {sidebarOpen && "Profile"}
+                </span>
+              </Link>
+            </li>
+            <li className="mb-2">
+              <Link href="/dash-front/digital-id">
+                <span className="flex items-center px-4 py-2 text-red-700 bg-red-50 rounded-lg">
+                  <CreditCardIcon className="w-6 h-6 mr-2" />
+                  {sidebarOpen && "Digital ID"}
+                </span>
+              </Link>
+            </li>
+            <li className="mb-2">
+              <Link href="/dash-front/documents">
+                <span className="flex items-center px-4 py-2 text-gray-700 hover:text-red-700 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer">
+                  <ClipboardDocumentIcon className="w-6 h-6 mr-2" />
+                  {sidebarOpen && "Documents"}
+                </span>
+              </Link>
+            </li>
+            <li className="mb-2">
+              <Link href="/dash-front/feedback">
+                <span className="flex items-center px-4 py-2 text-gray-700 hover:text-red-700 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer">
+                  <ChatBubbleLeftEllipsisIcon className="w-6 h-6 mr-2" />
+                  {sidebarOpen && "Feedback"}
+                </span>
+              </Link>
+            </li>
           </ul>
         </nav>
+
         <div className="p-4">
           <button className="flex items-center gap-3 text-black hover:text-red-700 w-full">
             <ArrowRightOnRectangleIcon className="w-6 h-6" />
@@ -267,10 +559,9 @@ const handlePrint = async () => {
       {/* Main Section */}
       <div className="flex-1 flex flex-col gap-4">
         <header className="bg-gray-50 shadow-sm p-4 flex justify-between items-center rounded-xl">
-          <button onClick={() => setSidebarOpen(!sidebarOpen)} className="md:hidden">
-            <Bars3Icon className="w-6 h-6" />
-          </button>
-          <h1 className="text-xl font-semibold text-black">Barangay Digital ID</h1>
+          <h1 className="text-xl font-semibold text-black">
+            Barangay Digital ID
+          </h1>
           <div className="flex items-center space-x-4">
             <NotificationDropdown notifications={notifications} />
             <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center shadow-sm">
@@ -279,19 +570,26 @@ const handlePrint = async () => {
           </div>
         </header>
 
-        {/* ID Card */}
         <main className="flex flex-col items-center justify-center bg-gray-50 rounded-xl p-8 shadow-md">
           <div
             ref={cardRef}
-            className="relative w-[550px] h-[300px] bg-white rounded-xl shadow-md border border-gray-300 overflow-hidden"
+            className="relative w-[550px] h-[300px] bg-white rounded-xl shadow-md border border-gray-300 overflow-hidden flex"
           >
-            <div className="absolute left-0 top-0 h-full w-[15px] bg-gradient-to-b from-red-700 via-white to-blue-700" />
-            <div className="flex h-full p-6 pl-10">
+            {/* Left gradient bar */}
+            <div
+              className="w-[20px] h-full"
+              style={{
+                background:
+                  "linear-gradient(to bottom, rgb(217, 4, 41) 0%, rgb(255, 255, 255) 50%, rgb(0, 63, 136) 100%)",
+              }}
+            ></div>
+
+            {/* Card Content */}
+            <div className="flex h-full p-6 w-full">
               <div className="flex flex-col justify-between">
                 <img
                   src={resident.photo_url || "/default-profile.png"}
                   alt="Profile"
-                  crossOrigin="anonymous"
                   className="w-28 h-28 rounded-md border border-gray-300 object-cover"
                 />
                 <div className="text-sm mt-2">
@@ -301,8 +599,12 @@ const handlePrint = async () => {
               </div>
               <div className="flex-1 pl-6 flex flex-col justify-between">
                 <div>
-                  <p className="text-xs text-gray-500">REPUBLIC OF THE PHILIPPINES</p>
-                  <h2 className="text-lg font-bold leading-tight">BARANGAY DIGITAL ID</h2>
+                  <p className="text-xs text-gray-500">
+                    REPUBLIC OF THE PHILIPPINES
+                  </p>
+                  <h2 className="text-lg font-bold leading-tight">
+                    BARANGAY DIGITAL ID
+                  </h2>
                   <div className="flex justify-between">
                     <p className="text-xs font-semibold mt-1">ID No.</p>
                     <p className="text-xs mt-1">{resident.id_number}</p>
@@ -317,7 +619,6 @@ const handlePrint = async () => {
                     <img
                       src={resident.qr_code}
                       alt="QR Code"
-                      crossOrigin="anonymous"
                       className="w-[90px] h-[90px] object-contain"
                     />
                   ) : (
@@ -342,7 +643,7 @@ const handlePrint = async () => {
               className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg shadow hover:bg-red-700 transition"
             >
               <ArrowDownTrayIcon className="w-5 h-5" />
-              Download
+              Download Record
             </button>
           </div>
         </main>
