@@ -6,11 +6,9 @@ import { useRouter } from "next/navigation";
 export default function RegisterAdminPage() {
   const router = useRouter();
 
-  // Step 1: Secret gate
   const [authorized, setAuthorized] = useState(false);
   const [devKey, setDevKey] = useState("");
 
-  // Step 2: Form fields
   const [formData, setFormData] = useState({
     first_name: "",
     last_name: "",
@@ -24,7 +22,7 @@ export default function RegisterAdminPage() {
 
   const handleDevKeySubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // 🧠 Only you devs know this key (same as ADMIN_REGISTER_KEY in .env)
+   
     if (devKey === process.env.NEXT_PUBLIC_DEV_ADMIN_KEY) {
       setAuthorized(true);
       setMessage("");

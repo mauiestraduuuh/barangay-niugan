@@ -47,9 +47,9 @@ export async function POST(req: NextRequest) {
       userInfo = { ...userInfo, resident_id, first_name, last_name, birthdate, address, contact_no, photo_url };
       redirectUrl = "/dash-front/the-dash-resident";
     } else if (user.role === "STAFF") {
-      redirectUrl = "/api/staff/the-dash-staff"; 
+      redirectUrl = "/staff-front/the-dash-staff"; 
     } else if (user.role === "ADMIN") {
-      redirectUrl = "/api/admin/the-dash-admin"; 
+      redirectUrl = "/admin-front/the-dash-admin"; 
     }
 
     return NextResponse.json({
