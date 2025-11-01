@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/../lib/prisma";
 
+//GET summarized statistics for reports page
 export async function GET() {
   try {
     const stats = {
