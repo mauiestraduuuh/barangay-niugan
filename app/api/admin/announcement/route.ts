@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/../lib/prisma";
 
+//GET all announcements
 export async function GET() {
   try {
     const announcements = await prisma.announcement.findMany({
@@ -13,6 +14,7 @@ export async function GET() {
   }
 }
 
+//POST create a new announcement
 export async function POST(req: NextRequest) {
   try {
     const { title, content, posted_by, is_public } = await req.json();
@@ -28,6 +30,7 @@ export async function POST(req: NextRequest) {
   }
 }
 
+//PUT update an existing announcement
 export async function PUT(req: NextRequest) {
   try {
     const { id, title, content, is_public } = await req.json();
@@ -44,6 +47,7 @@ export async function PUT(req: NextRequest) {
   }
 }
 
+//DELETE an announcement
 export async function DELETE(req: NextRequest) {
   try {
     const { id } = await req.json();
