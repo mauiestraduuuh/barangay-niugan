@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/../lib/prisma";
 
+//GET all staff data
 export async function GET() {
   try {
     const staff = await prisma.staff.findMany({
@@ -14,6 +15,7 @@ export async function GET() {
   }
 }
 
+//DELETE a staff record by ID
 export async function DELETE(req: NextRequest) {
   try {
     const { staffId } = await req.json();
