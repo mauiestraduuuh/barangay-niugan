@@ -1,8 +1,10 @@
+//dashboard template
+
 "use client";
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter } from "next/navigation"; //add for logout
 import NotificationDropdown from "../../components/NotificationDropdown";
 import {
   BellIcon,
@@ -18,17 +20,17 @@ import {
   ArrowRightOnRectangleIcon,
 } from "@heroicons/react/24/outline";
 
-// Add this interface definition
+// Add this interface definition for notification
 interface Notification {
   notification_id: number;
-  type: string; // e.g., 'certificate_request', 'complaint', 'announcement'
+  type: string; 
   message: string;
   is_read: boolean;
   created_at: string;
 }
 
 export default function Dashboard() {
-  const router = useRouter();
+  const router = useRouter();//add for logout
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeItem, setActiveItem] = useState("the-dash-resident");
   const [notifications, setNotifications] = useState<Notification[]>([]);// add this too
@@ -65,14 +67,15 @@ export default function Dashboard() {
       localStorage.removeItem("token");
       router.push("/auth-front/login");
     }
-  };
+  }; // add for logout 
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to bg-slate-50 p-4 flex gap-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to bg-slate-50 p-4 flex gap-4"> {/*gradient bg*/}
       {/* Sidebar */}
       <div
         className={`${
           sidebarOpen ? "w-64" : "w-16"
-        } bg-gray-50 shadow-lg rounded-xl transition-all duration-300 ease-in-out flex flex-col
+        } bg-gray-50 shadow-lg rounded-xl transition-all duration-300 ease-in-out flex flex-col 
         ${sidebarOpen ? "fixed inset-y-0 left-0 z-50 md:static md:translate-x-0" : "hidden md:flex"}`}
       >
         {/* Logo + Close */}
@@ -131,7 +134,7 @@ export default function Dashboard() {
           </ul>
         </nav>
 
-      {/* Logout Button */}
+      {/* Functional Logout Button */}
     <div className="p-4">
       <button
         onClick={handleLogout}

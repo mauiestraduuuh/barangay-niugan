@@ -52,7 +52,7 @@ export default function AdminFeedbackPage() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
   const features = [
-    { name: "dashboard", label: "Home", icon: HomeIcon },
+    { name: "the-dash-admin", label: "Home", icon: HomeIcon },
     { name: "admin-profile", label: "Manage Profile", icon: UserIcon },
     { name: "registration-request", label: "Registration Requests", icon: ClipboardDocumentIcon },
     { name: "certificate-request", label: "Certificate Requests", icon: ClipboardDocumentIcon },
