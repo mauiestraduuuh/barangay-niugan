@@ -17,6 +17,8 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   XMarkIcon,
+  ArrowRightOnRectangleIcon,
+  LockClosedIcon,
 } from "@heroicons/react/24/outline";
 
 interface AdminProfile {
@@ -25,6 +27,13 @@ interface AdminProfile {
   role: string;
   created_at: string;
   updated_at: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  contact_info: string;
+  birthday: string;
+  gender: string;
+  address: string;
 }
 
 export default function AdminProfilePage() {
@@ -37,6 +46,13 @@ export default function AdminProfilePage() {
     role: "",
     created_at: "",
     updated_at: "",
+    first_name: "",
+    last_name: "",
+    email: "",
+    contact_info: "",
+    birthday: "",
+    gender: "",
+    address: "",
   });
 
   const [passwords, setPasswords] = useState({
@@ -68,7 +84,7 @@ export default function AdminProfilePage() {
     }
   };
 
-  const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     setProfile({ ...profile, [e.target.name]: e.target.value });
   };
 
@@ -82,13 +98,23 @@ export default function AdminProfilePage() {
     try {
       await axios.put(
         "/api/admin/admin-profile",
-        { username: profile.username },
+        {
+          username: profile.username,
+          first_name: profile.first_name,
+          last_name: profile.last_name,
+          email: profile.email,
+          contact_info: profile.contact_info,
+          birthday: profile.birthday,
+          gender: profile.gender,
+          address: profile.address,
+        },
         {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
       setMessage("Profile updated successfully");
       setActiveSection("overview");
+      fetchProfile(); // Refresh to get updated data
     } catch (err) {
       console.error(err);
       setMessage("Failed to update profile");
@@ -119,6 +145,14 @@ export default function AdminProfilePage() {
     setLoading(false);
   };
 
+  const handleLogout = () => {
+    const confirmed = window.confirm("Are you sure you want to log out?");
+    if (confirmed) {
+      localStorage.removeItem("token");
+      router.push("/auth-front/login");
+    }
+  };
+
   const features = [
     { name: "dashboard", label: "Home", icon: HomeIcon },
     { name: "admin-profile", label: "Manage Profile", icon: UserIcon },
@@ -133,7 +167,7 @@ export default function AdminProfilePage() {
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
   return (
-    <div className="min-h-screen bg-gray-200 p-4 flex gap-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to-black p-4 flex gap-4 ">
       {/* Sidebar */}
       <div
         className={`${
@@ -144,11 +178,19 @@ export default function AdminProfilePage() {
           sidebarOpen ? "fixed inset-y-0 left-0 z-50 md:static md:translate-x-0" : ""
         }`}
       >
-        <div className="p-4 flex items-center justify-between">
-          <img src="/logo.png" alt="Logo" className="w-10 h-10 rounded-full object-cover" />
+        {/* Logo + Close */}
+        <div className="p-4 flex items-center justify-center">
+          <img
+            src="/niugan-logo.png"
+            alt="Company Logo"
+            className={`rounded-full object-cover transition-all duration-300 ${
+              sidebarOpen ? "w-30 h-30" : "w-8.5 h-8.5"
+            }`}
+          />
+
           <button
             onClick={toggleSidebar}
-            className="block md:hidden text-black hover:text-red-700 focus:outline-none"
+            className="absolute top-3 right-3 text-black hover:text-red-700 focus:outline-none md:hidden"
           >
             <XMarkIcon className="w-6 h-6" />
           </button>
@@ -160,43 +202,57 @@ export default function AdminProfilePage() {
             {features.map(({ name, label, icon: Icon }) => (
               <li key={name} className="mb-2">
                 <Link
-                  href={`/admin-front/${name}`}
-                  className={`relative flex items-center w-full px-4 py-2 text-left group transition-colors duration-200 ${
-                    activeItem === name ? "text-red-700" : "text-black hover:text-red-700"
-                  }`}
+                  href={`/dash-front/${name}`}
                   onClick={() => setActiveItem(name)}
+                  className={`relative flex items-center w-full px-4 py-2 text-left group transition-colors duration-200 ${
+                    activeItem === name
+                      ? "text-red-700 font-semibold"
+                      : "text-black hover:text-red-700"
+                  }`}
                 >
-                  <div
-                    className={`absolute left-0 top-0 bottom-0 w-1 bg-red-700 rounded-r-full ${
-                      activeItem === name ? "block" : "hidden"
+                  {activeItem === name && (
+                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-700 rounded-r-full" />
+                  )}
+                  <Icon
+                    className={`w-6 h-6 mr-2 ${
+                      activeItem === name
+                        ? "text-red-700"
+                        : "text-gray-600 group-hover:text-red-700"
                     }`}
                   />
-                  <Icon className="w-6 h-6 mr-2 group-hover:text-red-700" />
-                  {sidebarOpen && <span className="group-hover:text-red-700">{label}</span>}
+                  {sidebarOpen && (
+                    <span
+                      className={`${
+                        activeItem === name
+                          ? "text-red-700"
+                          : "group-hover:text-red-700"
+                      }`}
+                    >
+                      {label}
+                    </span>
+                  )}
                 </Link>
               </li>
             ))}
           </ul>
         </nav>
 
-        {/* Logout */}
+        {/* Logout Button */}
         <div className="p-4">
           <button
-            onClick={() => {
-              localStorage.removeItem("token");
-              router.push("/auth-front/login");
-            }}
-            className="flex items-center gap-3 text-red-500 hover:text-red-700 transition w-full text-left"
+            onClick={handleLogout}
+            className="flex items-center gap-3 text-black hover:text-red-700 transition w-full text-left"
           >
-            Log Out
+            <ArrowRightOnRectangleIcon className="w-6 h-6" />
+            {sidebarOpen && <span>Log Out</span>}
           </button>
         </div>
 
-        {/* Collapse Toggle */}
+        {/* Sidebar Toggle (desktop only) */}
         <div className="p-4 flex justify-center hidden md:flex">
           <button
             onClick={toggleSidebar}
-            className="w-10 h-10 bg-white hover:bg-red-50 rounded-full flex items-center justify-center shadow-sm"
+            className="w-10 h-10 bg-white hover:bg-red-50 rounded-full flex items-center justify-center focus:outline-none transition-colors duration-200 shadow-sm"
           >
             {sidebarOpen ? (
               <ChevronLeftIcon className="w-5 h-5 text-black" />
@@ -236,102 +292,244 @@ export default function AdminProfilePage() {
         {/* Body */}
         <main className="bg-gray-50 rounded-xl p-6 shadow-sm overflow-auto">
           {message && (
-            <p className="text-center text-white bg-gray-900 p-2 rounded mb-4">{message}</p>
+            <p className={`text-center p-2 rounded mb-4 ${message.includes("success") ? "text-green-800 bg-green-100" : "text-red-800 bg-red-100"}`}>
+              {message}
+            </p>
           )}
 
-          {activeSection === "overview" && (
-            <div className="text-center space-y-4">
-              <img
-                src="/default-profile.png"
-                alt="Profile"
-                className="w-32 h-32 rounded-full mx-auto border object-cover"
-              />
-              <h2 className="text-2xl font-bold text-gray-800">{profile.username}</h2>
-              <p className="text-gray-600">Role: {profile.role}</p>
-              <div className="flex justify-center gap-4 mt-6">
-                <button
-                  onClick={() => setActiveSection("edit")}
-                  className="bg-red-500 hover:bg-red-600 text-white font-semibold px-6 py-3 rounded-lg transition"
-                >
-                  Edit Username
-                </button>
-                <button
-                  onClick={() => setActiveSection("password")}
-                  className="bg-gray-900 hover:bg-gray-800 text-white font-semibold px-6 py-3 rounded-lg transition"
-                >
-                  Change Password
-                </button>
-              </div>
-            </div>
-          )}
+{activeSection === "overview" && (
+  <div className="space-y-8">
+    {/* Header with photo and basic info */}
+    <div className="flex flex-col md:flex-row items-center md:items-start bg-white shadow-lg rounded-2xl p-8 border border-gray-100 gap-6">
+      {/* Profile Image */}
+      <div className="flex-shrink-0 relative">
+        <img
+          src="/default-profile.png"
+          alt="Profile"
+          className="w-36 h-36 rounded-full object-cover border-4 border-red-500 shadow-md"
+        />
+      </div>
 
-          {activeSection === "edit" && (
-            <div className="space-y-6">
-              <h2 className="text-2xl font-semibold mb-4">Edit Username</h2>
-              <input
-                type="text"
-                name="username"
-                value={profile.username}
-                onChange={handleProfileChange}
-                placeholder="Username"
-                className="border border-gray-300 p-3 rounded-md focus:ring-2 focus:ring-red-500 w-full"
-              />
-              <div className="flex gap-3">
-                <button
-                  onClick={updateProfile}
-                  disabled={loading}
-                  className="bg-red-500 hover:bg-red-600 text-white py-3 px-6 rounded-md transition"
-                >
-                  {loading ? "Saving..." : "Save Changes"}
-                </button>
-                <button
-                  onClick={() => setActiveSection("overview")}
-                  className="bg-gray-300 hover:bg-gray-400 text-black py-3 px-6 rounded-md transition"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          )}
+      {/* Basic Info */}
+      <div className="flex-1 text-center md:text-left">
+        <h2 className="text-3xl font-bold text-gray-800">
+          {profile.first_name} {profile.last_name}
+        </h2>
+        <p className="text-gray-500 text-sm mt-1">Role: {profile.role}</p>
+        <p className="text-gray-600 mt-2">
+          <span className="font-semibold">Username:</span> {profile.username}
+        </p>
+        <p className="text-gray-600">
+          <span className="font-semibold">Email:</span> {profile.email}
+        </p>
+        <p className="text-gray-600">
+          <span className="font-semibold">Contact:</span> {profile.contact_info || "N/A"}
+        </p>
+        <div className="mt-4 flex flex-wrap gap-3 justify-center md:justify-start">
+          <button
+            onClick={() => setActiveSection("edit")}
+            className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white font-semibold px-5 py-2 rounded-full shadow-sm transition"
+          >
+            <UserIcon className="w-5 h-5" />
+            Edit Profile
+          </button>
+          <button
+            onClick={() => setActiveSection("password")}
+            className="flex items-center gap-2 bg-gray-900 hover:bg-gray-800 text-white font-semibold px-5 py-2 rounded-full shadow-sm transition"
+          >
+            <LockClosedIcon className="w-5 h-5" />
+            Change Password
+          </button>
+        </div>
+      </div>
+    </div>
 
-          {activeSection === "password" && (
-            <div className="space-y-6">
-              <h2 className="text-2xl font-semibold mb-4">Change Password</h2>
-              <div className="space-y-4">
-                <input
-                  type="password"
-                  name="new_password"
-                  value={passwords.new_password}
-                  onChange={handlePasswordChange}
-                  placeholder="New Password"
-                  className="border border-gray-300 p-3 rounded-md focus:ring-2 focus:ring-red-500 w-full"
-                />
-                <input
-                  type="password"
-                  name="confirm_password"
-                  value={passwords.confirm_password}
-                  onChange={handlePasswordChange}
-                  placeholder="Confirm New Password"
-                  className="border border-gray-300 p-3 rounded-md focus:ring-2 focus:ring-red-500 w-full"
-                />
-              </div>
-              <div className="flex gap-3">
-                <button
-                  onClick={changePassword}
-                  disabled={loading}
-                  className="bg-red-500 hover:bg-red-600 text-white py-3 px-6 rounded-md transition"
-                >
-                  {loading ? "Updating..." : "Change Password"}
-                </button>
-                <button
-                  onClick={() => setActiveSection("overview")}
-                  className="bg-gray-300 hover:bg-gray-400 text-black py-3 px-6 rounded-md transition"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          )}
+    {/* Detailed Info Grid */}
+    <div className="bg-white shadow-lg rounded-2xl p-8 border border-gray-100">
+      <h3 className="text-xl font-semibold text-gray-800 mb-6">Personal Details</h3>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {[
+          { label: "Birthday", value: profile.birthday ? new Date(profile.birthday).toLocaleDateString() : "N/A" },
+          { label: "Gender", value: profile.gender || "N/A" },
+          { label: "Address", value: profile.address || "N/A" },
+          { label: "User ID", value: profile.user_id },
+          { label: "Created At", value: new Date(profile.created_at).toLocaleDateString() },
+          { label: "Updated At", value: new Date(profile.updated_at).toLocaleDateString() },
+        ].map(({ label, value }) => (
+          <div
+            key={label}
+            className="p-4 bg-gray-50 hover:bg-gray-100 rounded-lg transition border border-gray-200"
+          >
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{label}</p>
+            <p className="text-gray-800 mt-1">{value}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+)}
+
+
+{activeSection === "edit" && (
+  <div className="bg-white shadow-lg rounded-2xl p-8 border border-gray-100">
+    <h2 className="text-2xl font-semibold mb-6 text-gray-800">Edit Profile</h2>
+
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">First Name</label>
+        <input
+          type="text"
+          name="first_name"
+          value={profile.first_name}
+          onChange={handleProfileChange}
+          placeholder="First Name"
+          className="border border-gray-300 p-3 rounded-md focus:ring-2 focus:ring-red-500 w-full transition"
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Last Name</label>
+        <input
+          type="text"
+          name="last_name"
+          value={profile.last_name}
+          onChange={handleProfileChange}
+          placeholder="Last Name"
+          className="border border-gray-300 p-3 rounded-md focus:ring-2 focus:ring-red-500 w-full transition"
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+        <input
+          type="email"
+          name="email"
+          value={profile.email}
+          onChange={handleProfileChange}
+          placeholder="Email"
+          className="border border-gray-300 p-3 rounded-md focus:ring-2 focus:ring-red-500 w-full transition"
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Contact Info</label>
+        <input
+          type="text"
+          name="contact_info"
+          value={profile.contact_info}
+          onChange={handleProfileChange}
+          placeholder="Contact Info"
+          className="border border-gray-300 p-3 rounded-md focus:ring-2 focus:ring-red-500 w-full transition"
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Birthday</label>
+        <input
+          type="date"
+          name="birthday"
+          value={profile.birthday}
+          onChange={handleProfileChange}
+          className="border border-gray-300 p-3 rounded-md focus:ring-2 focus:ring-red-500 w-full transition"
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Gender</label>
+        <select
+          name="gender"
+          value={profile.gender}
+          onChange={handleProfileChange}
+          className="border border-gray-300 p-3 rounded-md focus:ring-2 focus:ring-red-500 w-full transition"
+        >
+          <option value="">Select Gender</option>
+          <option value="Male">Male</option>
+          <option value="Female">Female</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+
+      <div className="md:col-span-2">
+        <label className="block text-sm font-medium text-gray-700 mb-2">Address</label>
+        <textarea
+          name="address"
+          value={profile.address}
+          onChange={handleProfileChange}
+          placeholder="Address"
+          rows={3}
+          className="border border-gray-300 p-3 rounded-md focus:ring-2 focus:ring-red-500 w-full transition"
+        />
+      </div>
+    </div>
+
+    <div className="flex flex-wrap justify-end gap-4 mt-8">
+      <button
+        onClick={() => {
+          setActiveSection("overview");
+          fetchProfile(); // Reset to original
+        }}
+        className="bg-gray-300 hover:bg-gray-400 text-black font-medium py-3 px-6 rounded-full transition"
+      >
+        Cancel
+      </button>
+      <button
+        onClick={updateProfile}
+        disabled={loading}
+        className="bg-red-600 hover:bg-red-700 text-white font-semibold py-3 px-6 rounded-full shadow-sm transition"
+      >
+        {loading ? "Saving..." : "Save Changes"}
+      </button>
+    </div>
+  </div>
+)}
+
+{activeSection === "password" && (
+  <div className="bg-white shadow-lg rounded-2xl p-8 border border-gray-100">
+    <h2 className="text-2xl font-semibold mb-6 text-gray-800">Change Password</h2>
+
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">New Password</label>
+        <input
+          type="password"
+          name="new_password"
+          value={passwords.new_password}
+          onChange={handlePasswordChange}
+          placeholder="Enter new password"
+          className="border border-gray-300 p-3 rounded-md focus:ring-2 focus:ring-red-500 w-full transition"
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Confirm New Password</label>
+        <input
+          type="password"
+          name="confirm_password"
+          value={passwords.confirm_password}
+          onChange={handlePasswordChange}
+          placeholder="Confirm new password"
+          className="border border-gray-300 p-3 rounded-md focus:ring-2 focus:ring-red-500 w-full transition"
+        />
+      </div>
+    </div>
+
+    <div className="flex flex-wrap justify-end gap-4 mt-8">
+      <button
+        onClick={() => setActiveSection("overview")}
+        className="bg-gray-300 hover:bg-gray-400 text-black font-medium py-3 px-6 rounded-full transition"
+      >
+        Cancel
+      </button>
+      <button
+        onClick={changePassword}
+        disabled={loading}
+        className="bg-red-600 hover:bg-red-700 text-white font-semibold py-3 px-6 rounded-full shadow-sm transition"
+      >
+        {loading ? "Updating..." : "Change Password"}
+      </button>
+    </div>
+  </div>
+)}
         </main>
       </div>
     </div>

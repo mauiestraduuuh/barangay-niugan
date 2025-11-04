@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import NotificationDropdown from "../../components/NotificationDropdown";
 import {
   BellIcon,
@@ -27,9 +28,10 @@ interface Notification {
 }
 
 export default function Dashboard() {
+  const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeItem, setActiveItem] = useState("the-dash-resident");
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);// add this too
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
@@ -55,10 +57,17 @@ export default function Dashboard() {
     } catch (error) {
       console.error(error);
     }
-  };
+  }; // add if ur gonna import the notifs dropdwon
 
+      const handleLogout = () => {
+    const confirmed = window.confirm("Are you sure you want to log out?");
+    if (confirmed) {
+      localStorage.removeItem("token");
+      router.push("/auth-front/login");
+    }
+  };
   return (
-    <div className="min-h-screen bg-gray-200 p-4 flex gap-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to bg-slate-50 p-4 flex gap-4">
       {/* Sidebar */}
       <div
         className={`${
@@ -69,7 +78,7 @@ export default function Dashboard() {
         {/* Logo + Close */}
         <div className="p-4 flex items-center justify-between">
           <img
-            src="/logo.png"
+            src="/niugan-logo.png"
             alt="Company Logo"
             className="w-10 h-10 rounded-full object-cover"
           />
@@ -122,13 +131,16 @@ export default function Dashboard() {
           </ul>
         </nav>
 
-        {/* Logout Button */}
-        <div className="p-4">
-          <button className="flex items-center gap-3 text-black hover:text-red-700 transition w-full text-left">
-            <ArrowRightOnRectangleIcon className="w-6 h-6" />
-            {sidebarOpen && <span>Log Out</span>}
-          </button>
-        </div>
+      {/* Logout Button */}
+    <div className="p-4">
+      <button
+        onClick={handleLogout}
+        className="flex items-center gap-3 text-black hover:text-red-700 transition w-full text-left"
+      >
+        <ArrowRightOnRectangleIcon className="w-6 h-6" />
+        {sidebarOpen && <span>Log Out</span>}
+      </button>
+    </div>
 
         {/* Sidebar Toggle (desktop only) */}
         <div className="p-4 flex justify-center hidden md:flex">
@@ -148,7 +160,7 @@ export default function Dashboard() {
       {/* Mobile Overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
+          className="fixed inset-0 bg-white/80 z-40 md:hidden"
           onClick={toggleSidebar}
         ></div>
       )}

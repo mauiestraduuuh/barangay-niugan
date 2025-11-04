@@ -105,7 +105,7 @@ export default function NotificationsPage() {
       <XMarkIcon className="w-6 h-6" />
     </button>
   </div>
-
+{/* Navigation */}
   <nav className="flex-1 mt-6">
     <ul>
       {features.map(({ name, label, icon: Icon }) => {
