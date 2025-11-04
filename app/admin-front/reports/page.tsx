@@ -42,7 +42,7 @@ interface DashboardStats {
 export default function AdminDashboard() {
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [activeItem, setActiveItem] = useState("the-dash-admin");
+  const [activeItem, setActiveItem] = useState("reports");
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [stats, setStats] = useState<DashboardStats>({
     totalUsers: 0,
@@ -68,7 +68,6 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     fetchNotifications();
-    fetchDashboardStats();
   }, []);
 
   const fetchNotifications = async () => {
@@ -82,32 +81,6 @@ export default function AdminDashboard() {
     }
   };
 
-  const fetchDashboardStats = async () => {
-    setLoading(true);
-    try {
-      // Fetch stats from your APIs (adjust endpoints as needed)
-      const [usersRes, regsRes, annRes] = await Promise.all([
-        fetch("/api/admin/users/count"), // change kung ano ung api for user count
-        fetch("/api/auth/approve-registration"), // Get pending registrations
-        fetch("/api/announcements"),
-      ]);
-
-      const usersData = usersRes.ok ? await usersRes.json() : { count: 0 };
-      const regsData = regsRes.ok ? await regsRes.json() : [];
-      const annData = annRes.ok ? await annRes.json() : [];
-
-      setStats({
-        totalUsers: usersData.count || 0,
-        pendingRegistrations: regsData.length || 0,
-        totalAnnouncements: annData.length || 0,
-        recentActivities: 5, // Placeholder, replace with actual recent activities count
-      });
-    } catch (error) {
-      console.error("Failed to fetch dashboard stats:", error);
-    }
-    setLoading(false);
-  };
-
   const handleLogout = () => {
     const confirmed = window.confirm("Are you sure you want to log out?");
     if (confirmed) {
@@ -115,37 +88,6 @@ export default function AdminDashboard() {
       router.push("/auth-front/login");
     }
   };
-
-  const statCards = [
-    {
-      title: "Total Users",
-      value: stats.totalUsers,
-      icon: UserGroupIcon,
-      color: "bg-blue-500",
-      link: "/admin-front/manage-users",
-    },
-    {
-      title: "Pending Registrations",
-      value: stats.pendingRegistrations,
-      icon: ExclamationCircleIcon,
-      color: "bg-yellow-500",
-      link: "/admin-front/registration-requests",
-    },
-    {
-      title: "Announcements",
-      value: stats.totalAnnouncements,
-      icon: DocumentTextIcon,
-      color: "bg-green-500",
-      link: "/admin-front/manage-announcements",
-    },
-    {
-      title: "Recent Activities",
-      value: stats.recentActivities,
-      icon: ChartBarIcon,
-      color: "bg-purple-500",
-      link: "/admin-front/reports",
-    },
-  ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to-slate-50 p-4 flex gap-4">
@@ -177,7 +119,7 @@ export default function AdminDashboard() {
             <ul>
             {features.map(({ name, label, icon: Icon }) => {
                 const href = `/admin-front/${name}`;
-                const isActive = name === "the-dash-admin";
+                const isActive = name === "reports";
                 return (
                 <li key={name} className="mb-2">
                     <Link href={href}>
@@ -257,7 +199,7 @@ export default function AdminDashboard() {
           >
             <Bars3Icon className="w-6 h-6" />
           </button>
-          <h1 className="text-xl font-semibold text-black">Admin Dashboard</h1>
+          <h1 className="text-xl font-semibold text-black">Reports</h1>
           <div className="flex items-center space-x-4">
             <NotificationDropdown notifications={notifications} />
             <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center shadow-sm">
@@ -267,58 +209,7 @@ export default function AdminDashboard() {
         </header>
 
         {/* Main Content */}
-        <main className="flex-1 bg-gray-50 rounded-xl p-6 shadow-sm overflow-auto">
-          <div className="mb-6">
-            <h2 className="text-2xl font-semibold text-gray-800">Welcome, Admin!</h2>
-            <p className="text-gray-600">Here's an overview of your system.</p>
-          </div>
 
-          {loading ? (
-            <div className="text-center py-10">Loading dashboard...</div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {statCards.map((card, index) => (
-                <Link key={index} href={card.link} className="block">
-                  <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:-translate-y-1">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className={`p-3 rounded-full ${card.color}`}>
-                        <card.icon className="w-6 h-6 text-white" />
-                      </div>
-                      <span className="text-2xl font-bold text-gray-800">{card.value}</span>
-                    </div>
-                    <h3 className="text-lg font-semibold text-gray-700">{card.title}</h3>
-                    <p className="text-sm text-gray-500 mt-1">Click to view details</p>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          )}
-
-          {/* Quick Actions */}
-          <div className="mt-8">
-            <h3 className="text-xl font-semibold text-gray-800 mb-4">Quick Actions</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              <Link href="/admin-front/registration-request">
-                <div className="bg-red-50 border border-red-200 p-4 rounded-lg hover:bg-red-100 transition cursor-pointer">
-                  <h4 className="font-semibold text-red-800">Review Registrations</h4>
-                  <p className="text-sm text-red-600">Approve or reject pending user registrations</p>
-                </div>
-              </Link>
-              <Link href="/admin-front/manage-announcement">
-                <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg hover:bg-blue-100 transition cursor-pointer">
-                  <h4 className="font-semibold text-blue-800">Manage Announcements</h4>
-                  <p className="text-sm text-blue-600">Create, edit, or delete system announcements</p>
-                </div>
-              </Link>
-              <Link href="/admin-front/reports">
-                <div className="bg-green-50 border border-green-200 p-4 rounded-lg hover:bg-green-100 transition cursor-pointer">
-                  <h4 className="font-semibold text-green-800">View Reports</h4>
-                  <p className="text-sm text-green-600">Access detailed system reports and analytics</p>
-                </div>
-              </Link>
-            </div>
-          </div>
-        </main>
       </div>
     </div>
   );

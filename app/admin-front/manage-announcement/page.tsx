@@ -45,7 +45,7 @@ interface Announcement {
 export default function ManageAnnouncements() {
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [activeItem, setActiveItem] = useState("manage-announcements");
+  const [activeItem, setActiveItem] = useState("manage-announcement"); 
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(false);
@@ -57,6 +57,7 @@ export default function ManageAnnouncements() {
     content: "",
     is_public: true,
   });
+  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null; // Added token retrieval
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
@@ -78,7 +79,9 @@ export default function ManageAnnouncements() {
 
   const fetchNotifications = async () => {
     try {
-      const res = await fetch("/api/dash/notifications");
+      const res = await fetch("/api/dash/notifications", {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}, // Added auth header
+      });
       if (!res.ok) throw new Error("Failed to fetch notifications");
       const data: Notification[] = await res.json();
       setNotifications(data);
@@ -90,7 +93,9 @@ export default function ManageAnnouncements() {
   const fetchAnnouncements = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/announcements");
+      const res = await fetch("/api/announcement", {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}, // Added auth header
+      });
       if (!res.ok) throw new Error("Failed to fetch announcements");
       const data: Announcement[] = await res.json();
       setAnnouncements(data);
@@ -111,16 +116,23 @@ export default function ManageAnnouncements() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!token) {
+      setMessage("Unauthorized: No token");
+      return;
+    }
     setLoading(true);
     try {
       const method = editingAnnouncement ? "PUT" : "POST";
       const body = editingAnnouncement
         ? { id: editingAnnouncement.announcement_id, ...formData }
-        : { ...formData, posted_by: 1 }; // Replace with actual user ID
+        : { ...formData, posted_by: 1 }; // Assuming posted_by is admin ID, adjust if needed
 
-      const res = await fetch("/api/announcements", {
+      const res = await fetch("/api/announcement", {
         method,
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`, // Added auth header
+        },
         body: JSON.stringify(body),
       });
 
@@ -150,11 +162,18 @@ export default function ManageAnnouncements() {
 
   const handleDelete = async (id: number) => {
     if (!confirm("Are you sure you want to delete this announcement?")) return;
+    if (!token) {
+      setMessage("Unauthorized: No token");
+      return;
+    }
     setLoading(true);
     try {
-      const res = await fetch("/api/announcements", {
+      const res = await fetch("/api/announcement", {
         method: "DELETE",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`, // Added auth header
+        },
         body: JSON.stringify({ id }),
       });
 
@@ -203,45 +222,45 @@ export default function ManageAnnouncements() {
         </div>
 
         {/* Navigation */}
-         <nav className="flex-1 mt-6">
-                <ul>
-                {features.map(({ name, label, icon: Icon }) => {
-                    const href = `/admin-front/${name}`;
-                    const isActive = name === "manage-announcement";
-                    return (
-                    <li key={name} className="mb-2">
-                        <Link href={href}>
+        <nav className="flex-1 mt-6">
+          <ul>
+            {features.map(({ name, label, icon: Icon }) => {
+              const href = `/admin-front/${name}`;
+              const isActive = name === "manage-announcement";
+              return (
+                <li key={name} className="mb-2">
+                  <Link href={href}>
+                    <span
+                      className={`relative flex items-center w-full px-4 py-2 text-left group transition-colors duration-200 ${
+                        isActive
+                          ? "text-red-700 "
+                          : "text-black hover:text-red-700"
+                      }`}
+                    >
+                      {isActive && (
+                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-700 rounded-r-full" />
+                      )}
+                      <Icon
+                        className={`w-6 h-6 mr-2 ${
+                          isActive ? "text-red-700" : "text-gray-600 group-hover:text-red-700"
+                        }`}
+                      />
+                      {sidebarOpen && (
                         <span
-                            className={`relative flex items-center w-full px-4 py-2 text-left group transition-colors duration-200 ${
-                            isActive
-                                ? "text-red-700 "
-                                : "text-black hover:text-red-700"
-                            }`}
+                          className={`${
+                            isActive ? "text-red-700" : "group-hover:text-red-700"
+                          }`}
                         >
-                            {isActive && (
-                            <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-700 rounded-r-full" />
-                            )}
-                            <Icon
-                            className={`w-6 h-6 mr-2 ${
-                                isActive ? "text-red-700" : "text-gray-600 group-hover:text-red-700"
-                            }`}
-                            />
-                            {sidebarOpen && (
-                            <span
-                                className={`${
-                                isActive ? "text-red-700" : "group-hover:text-red-700"
-                                }`}
-                            >
-                                {label}
-                            </span>
-                            )}
+                          {label}
                         </span>
-                        </Link>
-                    </li>
-                    );
-                })}
-                </ul>
-            </nav>
+                      )}
+                    </span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </nav>
 
         {/* Logout Button */}
         <div className="p-4">
