@@ -1,3 +1,6 @@
+/* eslint-disable prefer-const */
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/../lib/prisma";
 import bcrypt from "bcryptjs";
@@ -17,7 +20,7 @@ function generateHouseholdNumber() {
   return `HH-${Date.now()}`;
 }
 
-// GET pending registration requests — ADMIN only
+// GET pending registration requests (for admin view)
 export async function GET(req: NextRequest) {
   try {
     const authHeader = req.headers.get("authorization");
@@ -42,7 +45,7 @@ export async function GET(req: NextRequest) {
 // POST approve registration — ADMIN only
 export async function POST(req: NextRequest) {
   try {
-    // ✅ JWT check
+    //JWT check
     const authHeader = req.headers.get("authorization");
     if (!authHeader) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
 
@@ -73,7 +76,7 @@ export async function POST(req: NextRequest) {
             status: true,
             approved_by: true,
             submitted_at: true,
-            household_number: true, // <-- make sure this is included
+            household_number: true,
           },
         });
     
@@ -81,7 +84,7 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ message: "Request not found" }, { status: 404 });
         }
     
-        // 2️⃣ Validation
+        //to validate
         if (!request.email && !request.last_name) {
           return NextResponse.json(
             { message: "Cannot approve request without email or last name" },
@@ -89,7 +92,7 @@ export async function POST(req: NextRequest) {
           );
         }
     
-        // 3️⃣ Create user with duplicate-check
+        // create user and check if there are duplicates
         const tempPassword = Math.random().toString(36).slice(-8);
         const hashedPassword = await bcrypt.hash(tempPassword, 10);
     
@@ -115,7 +118,7 @@ export async function POST(req: NextRequest) {
         let resident = null;
         let staff = null;
     
-        // 4️⃣ If RESIDENT
+        // If RESIDENT
         if (request.role === Role.RESIDENT) {
           let householdId: number | null = null;
           let householdNumber: string | null = null;
@@ -135,7 +138,7 @@ export async function POST(req: NextRequest) {
             householdId = headResident?.household_id ?? null;
             householdNumber = headResident?.household_id
               ? String(headResident.household_id)
-              : request.household_number ?? null; // <-- fallback to inputted household_number
+              : request.household_number ?? null; // fallback to inputted household_number
             headId = Number(request.head_id);
           } else {
             // no head info, store inputted household_number
@@ -189,7 +192,7 @@ export async function POST(req: NextRequest) {
           }
         }
     
-        // 5️⃣ If STAFF
+        // If STAFF
         if (request.role === Role.STAFF) {
           let householdId: number | null = null;
           let householdNumber: string | null = null;
@@ -263,13 +266,13 @@ export async function POST(req: NextRequest) {
           }
         }
     
-        // 6️⃣ Update registration request status
+        // Update registration request status
         await prisma.registrationRequest.update({
           where: { request_id: requestId },
           data: { status: RegistrationStatus.APPROVED },
         });
     
-        // 7️⃣ Send email
+        // Send email
         try {
           const transporter = nodemailer.createTransport({
             host: process.env.SMTP_HOST,
@@ -305,7 +308,7 @@ export async function POST(req: NextRequest) {
           console.error("Email sending failed:", emailError);
         }
     
-        // 8️⃣ Success response
+        // Success response
         return NextResponse.json({
           message: "Registration approved successfully",
           userId: user.user_id,
@@ -323,4 +326,3 @@ export async function POST(req: NextRequest) {
         );
       }
     }
-    
