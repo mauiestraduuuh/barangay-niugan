@@ -22,7 +22,7 @@ import {
 
 interface Notification {
   notification_id: number;
-  type: string; // e.g., 'certificate_request', 'complaint', 'announcement'
+  type: string;
   message: string;
   is_read: boolean;
   created_at: string;
@@ -34,8 +34,19 @@ interface Feedback {
   message: string;
   status: "PENDING" | "IN_PROGRESS" | "RESOLVED";
   response?: string;
-  resident: { first_name: string; last_name: string; contact_no?: string };
+  submitted_at?: string;
+  resident: {
+    first_name: string;
+    last_name: string;
+    contact_no?: string;
+  };
+  respondedBy?: {
+    first_name: string;
+    last_name: string;
+  } | null;
   responded_by?: string | null;
+  comment?: string;
+  notes?: string;
 }
 
 export default function AdminFeedbackPage() {
@@ -58,12 +69,13 @@ export default function AdminFeedbackPage() {
     { name: "certificate-request", label: "Certificate Requests", icon: ClipboardDocumentIcon },
     { name: "feedback", label: "Feedback", icon: ChatBubbleLeftEllipsisIcon },
     { name: "staff", label: "Staff Accounts", icon: UsersIcon },
-    { name: "announcement", label: "Announcements", icon: MegaphoneIcon },
+    { name: "manage-announcement", label: "Announcements", icon: MegaphoneIcon },
     { name: "reports", label: "Reports", icon: ChartBarIcon },
   ];
 
   useEffect(() => {
     fetchFeedbacks();
+    fetchNotifications();
   }, []);
 
   const fetchFeedbacks = async () => {
@@ -73,28 +85,28 @@ export default function AdminFeedbackPage() {
       const res = await axios.get("/api/admin/feedback", {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setFeedbacks(res.data.feedbacks);
+      setFeedbacks(res.data.feedback || []);
     } catch (err) {
       console.error(err);
       setMessage("Failed to fetch feedbacks");
+      setFeedbacks([]);
     }
     setLoading(false);
   };
 
-    useEffect(() => {
-      fetchNotifications();
-    }, []);
-  
-    const fetchNotifications = async () => {
-      try {
-        const res = await fetch("/api/dash/notifications");
-        if (!res.ok) throw new Error("Failed to fetch notifications");
-        const data: Notification[] = await res.json();
-        setNotifications(data);
-      } catch (error) {
-        console.error(error);
-      }
-    };
+  const fetchNotifications = async () => {
+    try {
+      const res = await fetch("/api/admin/notifications", {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) throw new Error("Failed to fetch notifications");
+      const data: Notification[] = await res.json();
+      setNotifications(data || []);
+    } catch (error) {
+      console.error(error);
+      setNotifications([]);
+    }
+  };
 
   const updateStatus = async (feedbackId: string, status: string) => {
     if (!token) return setMessage("Unauthorized");
@@ -109,6 +121,38 @@ export default function AdminFeedbackPage() {
     } catch (err) {
       console.error(err);
       setMessage("Failed to update status");
+    }
+  };
+
+  const updateComment = async (feedbackId: string, comment: string) => {
+    if (!token) return setMessage("Unauthorized");
+    try {
+      await axios.put(
+        "/api/admin/feedback",
+        { feedbackId, comment },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      fetchFeedbacks();
+      setMessage("Comment updated");
+    } catch (err) {
+      console.error(err);
+      setMessage("Failed to update comment");
+    }
+  };
+
+  const updateNotes = async (feedbackId: string, notes: string) => {
+    if (!token) return setMessage("Unauthorized");
+    try {
+      await axios.put(
+        "/api/admin/feedback",
+        { feedbackId, notes },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      fetchFeedbacks();
+      setMessage("Notes updated");
+    } catch (err) {
+      console.error(err);
+      setMessage("Failed to update notes");
     }
   };
 
@@ -145,16 +189,15 @@ export default function AdminFeedbackPage() {
   };
 
   return (
-    <div className="min-h-screen flex gap-4 bg-gray-200 p-4">
-
-    {/* Sidebar */}
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to-slate-50 p-4 flex gap-4">
+      {/* Sidebar */}
       <div
         className={`${
           sidebarOpen ? "w-64" : "w-16"
-        } bg-gray-50 shadow-lg rounded-xl transition-all duration-300 ease-in-out flex flex-col
-        ${sidebarOpen ? "fixed inset-y-0 left-0 z-50 md:static md:translate-x-0" : "hidden md:flex"}`}
+        } bg-gray-50 shadow-lg rounded-xl transition-all duration-300 ease-in-out flex flex-col ${
+          sidebarOpen ? "fixed inset-y-0 left-0 z-50 md:static md:translate-x-0" : "hidden md:flex"
+        }`}
       >
-        
         {/* Logo + Close */}
         <div className="p-4 flex items-center justify-between">
           <img
@@ -176,7 +219,7 @@ export default function AdminFeedbackPage() {
             {features.map(({ name, label, icon: Icon }) => (
               <li key={name} className="mb-2">
                 <Link
-                  href={`/dash-front/${name}`}
+                  href={`/admin-front/${name}`}
                   onClick={() => setActiveItem(name)}
                   className={`relative flex items-center w-full px-4 py-2 text-left group transition-colors duration-200 ${
                     activeItem === name
@@ -197,9 +240,7 @@ export default function AdminFeedbackPage() {
                   {sidebarOpen && (
                     <span
                       className={`${
-                        activeItem === name
-                          ? "text-red-700"
-                          : "group-hover:text-red-700"
+                        activeItem === name ? "text-red-700" : "group-hover:text-red-700"
                       }`}
                     >
                       {label}
@@ -211,17 +252,18 @@ export default function AdminFeedbackPage() {
           </ul>
         </nav>
 
-    {/* Logout Button */}
-            <div className="p-4">
-              <button
-                onClick={handleLogout}
-                className="flex items-center gap-3 text-black hover:text-red-700 transition w-full text-left"
-              >
-                <ArrowRightOnRectangleIcon className="w-6 h-6" />
-                {sidebarOpen && <span>Log Out</span>}
-              </button>
-            </div>
-                {/* Sidebar Toggle (desktop only) */}
+        {/* Logout Button */}
+        <div className="p-4">
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-3 text-black hover:text-red-700 transition w-full text-left"
+          >
+            <ArrowRightOnRectangleIcon className="w-6 h-6" />
+            {sidebarOpen && <span>Log Out</span>}
+          </button>
+        </div>
+
+        {/* Sidebar Toggle (desktop only) */}
         <div className="p-4 flex justify-center hidden md:flex">
           <button
             onClick={toggleSidebar}
@@ -244,164 +286,242 @@ export default function AdminFeedbackPage() {
         ></div>
       )}
 
-
       {/* Main content */}
       <div className="flex-1 flex flex-col gap-4">
         {/* Header */}
-         <header className="bg-gray-50 shadow-sm p-4 flex justify-between items-center rounded-xl">
-            <button
-              onClick={toggleSidebar}
-              className="block md:hidden text-black hover:text-red-700 focus:outline-none"
-             >
+        <header className="bg-gray-50 shadow-sm p-4 flex justify-between items-center rounded-xl">
+          <button
+            onClick={toggleSidebar}
+            className="block md:hidden text-black hover:text-red-700 focus:outline-none"
+          >
             <Bars3Icon className="w-6 h-6" />
-            </button>
-            <h1 className="text-xl font-semibold text-black">Feedback Management</h1>
-            <div className="flex items-center space-x-4">
+          </button>
+          <h1 className="text-xl font-semibold text-black">Feedback Management</h1>
+          <div className="flex items-center space-x-4">
             <NotificationDropdown notifications={notifications} />
-              <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center shadow-sm">
+            <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center shadow-sm">
               <UserIcon className="w-5 h-5 text-black" />
-              </div>
             </div>
-          </header>
+          </div>
+        </header>
 
+        {/* Main */}
         <main className="bg-white rounded-2xl shadow-lg p-6 transition-all duration-300">
-  <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-3">
-    <h2 className="text-2xl font-semibold text-gray-800">Resident Feedbacks</h2>
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-3">
+            <h2 className="text-2xl font-semibold text-gray-800">Resident Feedbacks</h2>
 
-    <div className="flex items-center gap-2">
-      <label className="text-sm text-gray-600 font-medium">Filter by Status:</label>
-      <select
-        value={statusFilter}
-        onChange={(e) => setStatusFilter(e.target.value)}
-        className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
-      >
-        <option value="">All</option>
-        <option value="PENDING">Pending</option>
-        <option value="IN_PROGRESS">In Progress</option>
-        <option value="RESOLVED">Resolved</option>
-      </select>
-    </div>
-  </div>
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-gray-600 font-medium">Filter by Status:</label>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+              >
+                <option value="">All</option>
+                <option value="PENDING">Pending</option>
+                <option value="IN_PROGRESS">In Progress</option>
+                <option value="RESOLVED">Resolved</option>
+              </select>
+            </div>
+          </div>
 
-  {message && (
-    <div className="bg-green-100 text-green-700 px-4 py-2 rounded-lg mb-4 text-center font-medium">
-      {message}
-    </div>
-  )}
+          {message && (
+            <div className="bg-green-100 text-green-700 px-4 py-2 rounded-lg mb-4 text-center font-medium">
+              {message}
+            </div>
+          )}
 
-  {loading ? (
-    <p className="text-center text-gray-500">Loading feedbacks...</p>
-  ) : filteredFeedbacks.length === 0 ? (
-    <p className="text-center text-gray-500">No feedback available.</p>
-  ) : (
-    <div className="overflow-x-auto">
-      <table className="min-w-full border border-gray-200 rounded-lg overflow-hidden">
-        <thead className="bg-gray-100 text-gray-700 text-sm uppercase font-semibold">
-          <tr>
-            <th className="px-4 py-3 text-left">Resident</th>
-            <th className="px-4 py-3 text-left">Message</th>
-            <th className="px-4 py-3 text-left">Status</th>
-            <th className="px-4 py-3 text-left">Comment</th>
-            <th className="px-4 py-3 text-left">Notes</th>
-            <th className="px-4 py-3 text-center">Actions</th>
-          </tr>
-        </thead>
-        <tbody className="text-sm text-gray-700 divide-y divide-gray-200">
-          {filteredFeedbacks.map((f) => (
-            <tr key={f.feedback_id} className="hover:bg-gray-50 transition">
-              <td className="px-4 py-3 font-medium text-gray-800 whitespace-nowrap">
-                {f.resident.first_name} {f.resident.last_name}
-              </td>
-              <td className="px-4 py-3 max-w-xs truncate">{f.message}</td>
-              <td className="px-4 py-3">
-                <select
-                  value={f.status}
-                  onChange={(e) => updateStatus(f.feedback_id, e.target.value)}
-                  className={`border rounded-md px-2 py-1 text-xs font-medium focus:outline-none focus:ring-1 ${
-                    f.status === "PENDING"
-                      ? "bg-yellow-100 text-yellow-800 border-yellow-300"
-                      : f.status === "IN_PROGRESS"
-                      ? "bg-blue-100 text-blue-800 border-blue-300"
-                      : "bg-green-100 text-green-800 border-green-300"
-                  }`}
-                >
-                  <option value="PENDING">Pending</option>
-                  <option value="IN_PROGRESS">In Progress</option>
-                  <option value="RESOLVED">Resolved</option>
-                </select>
-              </td>
-              <td className="px-4 py-3">
-                <textarea
-                  placeholder="Add a comment..."
-                  className="w-full border border-gray-300 rounded-md p-2 text-xs focus:outline-none focus:ring-1 focus:ring-red-500 resize-none"
-                  rows={2}
-                ></textarea>
-              </td>
-              <td className="px-4 py-3">
-                <textarea
-                  placeholder="Add a note..."
-                  className="w-full border border-gray-300 rounded-md p-2 text-xs focus:outline-none focus:ring-1 focus:ring-red-500 resize-none"
-                  rows={2}
-                ></textarea>
-              </td>
-              <td className="px-4 py-3 text-center">
-                <button
-                  className="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-md text-sm transition"
-                  onClick={() => setSelectedFeedback(f)}
-                >
-                  Reply
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  )}
-</main>
+          {loading ? (
+            <p className="text-center text-gray-500">Loading feedbacks...</p>
+          ) : filteredFeedbacks.length === 0 ? (
+            <p className="text-center text-gray-500">No feedback available.</p>
+          ) : (
+            <>
+              {/* Desktop Table */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="min-w-full border border-gray-200 rounded-lg overflow-hidden">
+                  <thead className="bg-gray-100 text-gray-700 text-sm uppercase font-semibold">
+                    <tr>
+                      <th className="px-4 py-3 text-left">Resident Name</th>
+                      <th className="px-4 py-3 text-left">Message / Concern</th>
+                      <th className="px-4 py-3 text-left">Status</th>
+                      <th className="px-4 py-3 text-left">Date Submitted</th>
+                      <th className="px-4 py-3 text-left">Responded By</th>
+                      <th className="px-4 py-3 text-center">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="text-sm text-gray-700 divide-y divide-gray-200">
+                    {filteredFeedbacks.map((f) => (
+                      <tr key={f.feedback_id} className="hover:bg-gray-50 transition">
+                        <td className="px-4 py-3 font-medium text-gray-800 whitespace-nowrap">
+                          {f.resident?.first_name} {f.resident?.last_name}
+                        </td>
+                        <td className="px-4 py-3 max-w-xs truncate">{f.message}</td>
+                        <td className="px-4 py-3">
+                          <select
+                            value={f.status}
+                            onChange={(e) => updateStatus(f.feedback_id, e.target.value)}
+                            className={`border rounded-md px-2 py-1 text-xs font-medium focus:outline-none focus:ring-1 ${
+                              f.status === "PENDING"
+                                ? "bg-yellow-100 text-yellow-800 border-yellow-300"
+                                : f.status === "IN_PROGRESS"
+                                ? "bg-blue-100 text-blue-800 border-blue-300"
+                                : "bg-green-100 text-green-800 border-green-300"
+                            }`}
+                          >
+                            <option value="PENDING">Pending</option>
+                            <option value="IN_PROGRESS">In Progress</option>
+                            <option value="RESOLVED">Resolved</option>
+                          </select>
+                        </td>
+                        <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                          {f.submitted_at
+                            ? new Date(f.submitted_at).toLocaleDateString("en-US", {
+                                month: "short",
+                                day: "numeric",
+                                year: "numeric",
+                              })
+                            : "—"}
+                        </td>
+                        <td className="px-4 py-3 text-gray-700">
+                          {f.respondedBy
+                            ? `${f.respondedBy.first_name} ${f.respondedBy.last_name}`
+                            : "—"}
+                        </td>
+                        <td className="px-4 py-3 text-center space-x-2">
+                          <button
+                            className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-3 py-1 rounded-md text-sm transition"
+                            onClick={() => alert(`Viewing feedback from ${f.resident.first_name}`)}
+                          >
+                            View
+                          </button>
+                          <button
+                            className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-md text-sm transition"
+                            onClick={() => updateStatus(f.feedback_id, "IN_PROGRESS")}
+                          >
+                            Assign
+                          </button>
+                          <button
+                            className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-md text-sm transition"
+                            onClick={() => setSelectedFeedback(f)}
+                          >
+                            Reply
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile Card View */}
+              <div className="md:hidden space-y-4">
+                {filteredFeedbacks.map((f) => (
+                  <div key={f.feedback_id} className="bg-gray-50 p-4 rounded-lg shadow-sm border">
+                    <div className="flex justify-between items-start mb-2">
+                      <h3 className="font-semibold text-gray-800">
+                        {f.resident?.first_name} {f.resident?.last_name}
+                      </h3>
+                      <select
+                        value={f.status}
+                        onChange={(e) => updateStatus(f.feedback_id, e.target.value)}
+                        className={`border rounded-md px-2 py-1 text-xs font-medium focus:outline-none focus:ring-1 ${
+                          f.status === "PENDING"
+                            ? "bg-yellow-100 text-yellow-800 border-yellow-300"
+                            : f.status === "IN_PROGRESS"
+                            ? "bg-blue-100 text-blue-800 border-blue-300"
+                            : "bg-green-100 text-green-800 border-green-300"
+                        }`}
+                      >
+                        <option value="PENDING">Pending</option>
+                        <option value="IN_PROGRESS">In Progress</option>
+                        <option value="RESOLVED">Resolved</option>
+                      </select>
+                    </div>
+                    <p className="text-sm text-gray-600 mb-2">{f.message}</p>
+                    <p className="text-xs text-gray-500 mb-2">
+                      Submitted: {f.submitted_at
+                        ? new Date(f.submitted_at).toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                          })
+                        : "—"}
+                    </p>
+                    <p className="text-xs text-gray-500 mb-4">
+                      Responded By: {f.respondedBy
+                        ? `${f.respondedBy.first_name} ${f.respondedBy.last_name}`
+                        : "—"}
+                    </p>
+                    <div className="flex gap-2">
+                      <button
+                        className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-3 py-1 rounded-md text-sm flex-1"
+                        onClick={() => alert(`Viewing feedback from ${f.resident.first_name}`)}
+                      >
+                        View
+                      </button>
+                      <button
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-md text-sm flex-1"
+                        onClick={() => updateStatus(f.feedback_id, "IN_PROGRESS")}
+                      >
+                        Assign
+                      </button>
+                      <button
+                        className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-md text-sm flex-1"
+                        onClick={() => setSelectedFeedback(f)}
+                      >
+                        Reply
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </main>
       </div>
 
- {/* Reply Modal */}
-{selectedFeedback && (
-  <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 backdrop-blur-sm">
-    <div className="bg-white w-full max-w-md rounded-2xl shadow-xl p-6">
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="text-lg font-semibold text-gray-800">
-          Reply to {selectedFeedback.resident.first_name} {selectedFeedback.resident.last_name}
-        </h3>
-        <button
-          onClick={() => setSelectedFeedback(null)}
-          className="text-gray-500 hover:text-gray-700 transition"
-        >
-          <XMarkIcon className="w-5 h-5" />
-        </button>
-      </div>
+      {/* Reply Modal */}
+      {selectedFeedback && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 backdrop-blur-sm">
+          <div className="bg-white w-full max-w-md rounded-2xl shadow-xl p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-800">
+                Reply to {selectedFeedback.resident.first_name} {selectedFeedback.resident.last_name}
+              </h3>
+              <button
+                onClick={() => setSelectedFeedback(null)}
+                className="text-gray-500 hover:text-gray-700 transition"
+              >
+                <XMarkIcon className="w-5 h-5" />
+              </button>
+            </div>
 
-      <textarea
-        value={replyText}
-        onChange={(e) => setReplyText(e.target.value)}
-        placeholder="Type your response..."
-        className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 resize-none mb-4"
-        rows={4}
-      />
+            <textarea
+              value={replyText}
+              onChange={(e) => setReplyText(e.target.value)}
+              placeholder="Type your response..."
+              className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 resize-none mb-4"
+              rows={4}
+            />
 
-      <div className="flex justify-end gap-2">
-        <button
-          onClick={() => setSelectedFeedback(null)}
-          className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
-        >
-          Cancel
-        </button>
-        <button
-          onClick={replyFeedback}
-          className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
-        >
-          Send Reply
-        </button>
-      </div>
-    </div>
-  </div>
-)}
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setSelectedFeedback(null)}
+                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={replyFeedback}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
+              >
+                Send Reply
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
