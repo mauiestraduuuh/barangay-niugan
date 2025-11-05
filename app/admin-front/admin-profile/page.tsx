@@ -29,31 +29,27 @@ interface AdminProfile {
   updated_at: string;
   first_name: string;
   last_name: string;
-  email: string;
-  contact_info: string;
-  birthday: string;
-  gender: string;
-  address: string;
+  email: string | null;
+  contact_no: string | null;
 }
+
 
 export default function AdminProfilePage() {
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeItem, setActiveItem] = useState("admin-profile");
   const [profile, setProfile] = useState<AdminProfile>({
-    user_id: 0,
-    username: "",
-    role: "",
-    created_at: "",
-    updated_at: "",
-    first_name: "",
-    last_name: "",
-    email: "",
-    contact_info: "",
-    birthday: "",
-    gender: "",
-    address: "",
-  });
+  user_id: 0,
+  username: "",
+  role: "",
+  created_at: "",
+  updated_at: "",
+  first_name: "",
+  last_name: "",
+  email: null,
+  contact_no: null,
+});
+
 
   const [passwords, setPasswords] = useState({
     current_password: "",
@@ -72,17 +68,29 @@ export default function AdminProfilePage() {
   }, []);
 
   const fetchProfile = async () => {
-    if (!token) return setMessage("Unauthorized: No token found");
-    try {
-      const res = await axios.get("/api/admin/admin-profile", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setProfile(res.data.admin);
-    } catch (err) {
-      console.error(err);
-      setMessage("Failed to fetch profile");
+  if (!token) return setMessage("Unauthorized: No token found");
+
+  try {
+    const res = await axios.get("/api/admin/admin-profile", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (res.data.admin) {
+      const adminData = {
+        ...res.data.admin,
+        email: res.data.admin.email ?? "",
+        contact_no: res.data.admin.contact_no ?? "",
+      };
+      setProfile(adminData);
+    } else {
+      setMessage("Admin data not found");
     }
-  };
+  } catch (err) {
+    console.error(err);
+    setMessage("Failed to fetch profile");
+  }
+};
+
 
   const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     setProfile({ ...profile, [e.target.name]: e.target.value });
@@ -97,21 +105,17 @@ export default function AdminProfilePage() {
     setLoading(true);
     try {
       await axios.put(
-        "/api/admin/admin-profile",
-        {
-          username: profile.username,
-          first_name: profile.first_name,
-          last_name: profile.last_name,
-          email: profile.email,
-          contact_info: profile.contact_info,
-          birthday: profile.birthday,
-          gender: profile.gender,
-          address: profile.address,
-        },
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+  "/api/admin/admin-profile",
+  {
+    username: profile.username,
+    first_name: profile.first_name,
+    last_name: profile.last_name,
+    email: profile.email,
+    contact_no: profile.contact_no,
+  },
+  { headers: { Authorization: `Bearer ${token}` } }
+);
+
       setMessage("Profile updated successfully");
       setActiveSection("overview");
       fetchProfile(); // Refresh to get updated data
@@ -319,11 +323,12 @@ export default function AdminProfilePage() {
           <span className="font-semibold">Username:</span> {profile.username}
         </p>
         <p className="text-gray-600">
-          <span className="font-semibold">Email:</span> {profile.email}
-        </p>
-        <p className="text-gray-600">
-          <span className="font-semibold">Contact:</span> {profile.contact_info || "N/A"}
-        </p>
+  <span className="font-semibold">Email:</span> {profile.email ?? "N/A"}
+</p>
+<p className="text-gray-600">
+  <span className="font-semibold">Contact:</span> {profile.contact_no ?? "N/A"}
+</p>
+
         <div className="mt-4 flex flex-wrap gap-3 justify-center md:justify-start">
           <button
             onClick={() => setActiveSection("edit")}
@@ -348,9 +353,6 @@ export default function AdminProfilePage() {
       <h3 className="text-xl font-semibold text-gray-800 mb-6">Personal Details</h3>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {[
-          { label: "Birthday", value: profile.birthday ? new Date(profile.birthday).toLocaleDateString() : "N/A" },
-          { label: "Gender", value: profile.gender || "N/A" },
-          { label: "Address", value: profile.address || "N/A" },
           { label: "User ID", value: profile.user_id },
           { label: "Created At", value: new Date(profile.created_at).toLocaleDateString() },
           { label: "Updated At", value: new Date(profile.updated_at).toLocaleDateString() },
@@ -399,63 +401,13 @@ export default function AdminProfilePage() {
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
-        <input
-          type="email"
-          name="email"
-          value={profile.email}
-          onChange={handleProfileChange}
-          placeholder="Email"
-          className="border border-gray-300 p-3 rounded-md focus:ring-2 focus:ring-red-500 w-full transition"
-        />
-      </div>
-
-      <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">Contact Info</label>
         <input
           type="text"
-          name="contact_info"
-          value={profile.contact_info}
+          name="contact_no"
+          value={profile.contact_no?? ""}
           onChange={handleProfileChange}
           placeholder="Contact Info"
-          className="border border-gray-300 p-3 rounded-md focus:ring-2 focus:ring-red-500 w-full transition"
-        />
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Birthday</label>
-        <input
-          type="date"
-          name="birthday"
-          value={profile.birthday}
-          onChange={handleProfileChange}
-          className="border border-gray-300 p-3 rounded-md focus:ring-2 focus:ring-red-500 w-full transition"
-        />
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Gender</label>
-        <select
-          name="gender"
-          value={profile.gender}
-          onChange={handleProfileChange}
-          className="border border-gray-300 p-3 rounded-md focus:ring-2 focus:ring-red-500 w-full transition"
-        >
-          <option value="">Select Gender</option>
-          <option value="Male">Male</option>
-          <option value="Female">Female</option>
-          <option value="Other">Other</option>
-        </select>
-      </div>
-
-      <div className="md:col-span-2">
-        <label className="block text-sm font-medium text-gray-700 mb-2">Address</label>
-        <textarea
-          name="address"
-          value={profile.address}
-          onChange={handleProfileChange}
-          placeholder="Address"
-          rows={3}
           className="border border-gray-300 p-3 rounded-md focus:ring-2 focus:ring-red-500 w-full transition"
         />
       </div>
