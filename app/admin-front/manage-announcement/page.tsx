@@ -67,7 +67,7 @@ export default function ManageAnnouncements() {
     { name: "registration-request", label: "Registration Requests", icon: ClipboardDocumentIcon },
     { name: "certificate-request", label: "Certificate Requests", icon: ClipboardDocumentIcon },
     { name: "feedback", label: "Feedback", icon: ChatBubbleLeftEllipsisIcon },
-    { name: "staff", label: "Staff Accounts", icon: UsersIcon },
+    { name: "staff-acc", label: "Staff Accounts", icon: UsersIcon },
     { name: "manage-announcement", label: "Announcements", icon: MegaphoneIcon },
     { name: "reports", label: "Reports", icon: ChartBarIcon },
   ];
@@ -93,8 +93,8 @@ export default function ManageAnnouncements() {
   const fetchAnnouncements = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/announcement", {
-        headers: token ? { Authorization: `Bearer ${token}` } : {}, // Added auth header
+      const res = await fetch("/api/admin/announcement", {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}, 
       });
       if (!res.ok) throw new Error("Failed to fetch announcements");
       const data: Announcement[] = await res.json();
@@ -125,13 +125,13 @@ export default function ManageAnnouncements() {
       const method = editingAnnouncement ? "PUT" : "POST";
       const body = editingAnnouncement
         ? { id: editingAnnouncement.announcement_id, ...formData }
-        : { ...formData, posted_by: 1 }; // Assuming posted_by is admin ID, adjust if needed
+        : { ...formData, posted_by: 1 }; 
 
-      const res = await fetch("/api/announcement", {
+      const res = await fetch("/api/admin/announcement", {
         method,
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`, // Added auth header
+          Authorization: `Bearer ${token}`, 
         },
         body: JSON.stringify(body),
       });
@@ -168,11 +168,11 @@ export default function ManageAnnouncements() {
     }
     setLoading(true);
     try {
-      const res = await fetch("/api/announcement", {
+      const res = await fetch("/api/admin/announcement", {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`, // Added auth header
+          Authorization: `Bearer ${token}`, 
         },
         body: JSON.stringify({ id }),
       });

@@ -17,13 +17,12 @@ import {
   ChevronRightIcon,
   XMarkIcon,
   ArrowRightOnRectangleIcon,
-  UserGroupIcon,
-  DocumentTextIcon,
-  ExclamationCircleIcon,
   ChatBubbleLeftEllipsisIcon,
+  TrashIcon,
+  StarIcon,
 } from "@heroicons/react/24/outline";
 
-// Add this interface definition for notification
+// Interfaces
 interface Notification {
   notification_id: number;
   type: string;
@@ -32,25 +31,25 @@ interface Notification {
   created_at: string;
 }
 
-interface DashboardStats {
-  totalUsers: number;
-  pendingRegistrations: number;
-  totalAnnouncements: number;
-  recentActivities: number;
+interface Staff {
+  staff_id: number;
+  position: string;
+  role: string;
+  status: string;
+  user: {
+    name: string;
+  };
 }
 
-export default function AdminDashboard() {
+export default function StaffAccounts() {
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [activeItem, setActiveItem] = useState("staff-acc");
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [stats, setStats] = useState<DashboardStats>({
-    totalUsers: 0,
-    pendingRegistrations: 0,
-    totalAnnouncements: 0,
-    recentActivities: 0,
-  });
+  const [staffList, setStaffList] = useState<Staff[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedStaff, setSelectedStaff] = useState<Staff | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [ratings, setRatings] = useState<{ [key: number]: number }>({});
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
@@ -65,20 +64,60 @@ export default function AdminDashboard() {
     { name: "reports", label: "Reports", icon: ChartBarIcon },
   ];
 
-
   useEffect(() => {
     fetchNotifications();
+    fetchStaff();
   }, []);
 
   const fetchNotifications = async () => {
     try {
       const res = await fetch("/api/dash/notifications");
-      if (!res.ok) throw new Error("Failed to fetch notifications");
-      const data: Notification[] = await res.json();
-      setNotifications(data);
+      if (res.ok) {
+        const data = await res.json();
+        setNotifications(data);
+      }
     } catch (error) {
-      console.error(error);
+      console.error("Notification fetch failed:", error);
     }
+  };
+
+  const fetchStaff = async () => {
+    try {
+      const res = await fetch("/api/admin/staff");
+      if (!res.ok) throw new Error("Failed to fetch staff");
+      const data = await res.json();
+      setStaffList(data);
+    } catch (error) {
+      console.error("Fetch staff failed:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!selectedStaff) return;
+
+    try {
+      const res = await fetch("/api/admin/staff", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ staffId: selectedStaff.staff_id }),
+      });
+
+      if (res.ok) {
+        setStaffList(staffList.filter((s) => s.staff_id !== selectedStaff.staff_id));
+        setShowDeleteModal(false);
+        setSelectedStaff(null);
+      } else {
+        alert("Failed to delete staff.");
+      }
+    } catch (error) {
+      console.error("Delete failed:", error);
+    }
+  };
+
+  const handleRating = (staffId: number, rating: number) => {
+    setRatings((prev) => ({ ...prev, [staffId]: rating }));
   };
 
   const handleLogout = () => {
@@ -103,7 +142,7 @@ export default function AdminDashboard() {
         <div className="p-4 flex items-center justify-between">
           <img
             src="/niugan-logo.png"
-            alt="Company Logo"
+            alt="Barangay Logo"
             className="w-10 h-10 rounded-full object-cover"
           />
           <button
@@ -116,43 +155,45 @@ export default function AdminDashboard() {
 
         {/* Navigation */}
         <nav className="flex-1 mt-6">
-            <ul>
+          <ul>
             {features.map(({ name, label, icon: Icon }) => {
-                const href = `/admin-front/${name}`;
-                const isActive = name === "staff-acc";
-                return (
+              const href = `/admin-front/${name}`;
+              const isActive = name === "staff-acc";
+              return (
                 <li key={name} className="mb-2">
-                    <Link href={href}>
+                  <Link href={href}>
                     <span
-                        className={`relative flex items-center w-full px-4 py-2 text-left group transition-colors duration-200 ${
+                      className={`relative flex items-center w-full px-4 py-2 text-left group transition-colors duration-200 ${
                         isActive
-                            ? "text-red-700 "
-                            : "text-black hover:text-red-700"
-                        }`}
+                          ? "text-red-700 font-semibold"
+                          : "text-black hover:text-red-700"
+                      }`}
                     >
-                        {isActive && (
+                      {isActive && (
                         <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-700 rounded-r-full" />
-                        )}
-                        <Icon
+                      )}
+                      <Icon
                         className={`w-6 h-6 mr-2 ${
-                            isActive ? "text-red-700" : "text-gray-600 group-hover:text-red-700"
+                          isActive
+                            ? "text-red-700"
+                            : "text-gray-600 group-hover:text-red-700"
                         }`}
-                        />
-                        {sidebarOpen && (
+                      />
+                      {sidebarOpen && (
                         <span
-                            className={`${
+                          className={`${
                             isActive ? "text-red-700" : "group-hover:text-red-700"
-                            }`}
+                          }`}
                         >
-                            {label}
+                          {label}
                         </span>
-                        )}
+                      )}
                     </span>
-                    </Link>
+                  </Link>
                 </li>
-                );
+              );
             })}
-            </ul>
+          </ul>
         </nav>
 
         {/* Logout Button */}
@@ -166,7 +207,7 @@ export default function AdminDashboard() {
           </button>
         </div>
 
-        {/* Sidebar Toggle (desktop only) */}
+        {/* Sidebar Toggle */}
         <div className="p-4 flex justify-center hidden md:flex">
           <button
             onClick={toggleSidebar}
@@ -209,7 +250,105 @@ export default function AdminDashboard() {
         </header>
 
         {/* Main Content */}
+        <main className="bg-gray-50 p-6 rounded-xl shadow-md overflow-x-auto">
+          {loading ? (
+            <p className="text-center text-gray-600">Loading staff data...</p>
+          ) : (
+            <table className="w-full table-auto border-collapse text-left">
+              <thead>
+                <tr className="border-b border-gray-300 text-gray-700">
+                  <th className="py-3 px-4">Staff ID</th>
+                  <th className="py-3 px-4">Name</th>
+                  <th className="py-3 px-4">Role</th>
+                  <th className="py-3 px-4">Position</th>
+                  <th className="py-3 px-4">Status</th>
+                  <th className="py-3 px-4 text-center">Performance</th>
+                  <th className="py-3 px-4 text-center">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {staffList.map((staff) => (
+                  <tr
+                    key={staff.staff_id}
+                    className="hover:bg-gray-100 transition"
+                  >
+                    <td className="py-3 px-4">{staff.staff_id}</td>
+                    <td className="py-3 px-4">{staff.user?.name}</td>
+                    <td className="py-3 px-4">{staff.role}</td>
+                    <td className="py-3 px-4">{staff.position}</td>
+                    <td className="py-3 px-4">
+                      <span
+                        className={`px-3 py-1 text-sm font-medium rounded-full ${
+                          staff.status === "Active"
+                            ? "bg-green-100 text-green-700"
+                            : "bg-gray-200 text-gray-600"
+                        }`}
+                      >
+                        {staff.status}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 text-center">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <StarIcon
+                          key={star}
+                          onClick={() => handleRating(staff.staff_id, star)}
+                          className={`inline-block w-5 h-5 cursor-pointer transition ${
+                            star <= (ratings[staff.staff_id] || 0)
+                              ? "fill-yellow-400 text-yellow-400"
+                              : "text-gray-300"
+                          }`}
+                        />
+                      ))}
+                    </td>
+                    <td className="py-3 px-4 text-center">
+                      <button
+                        onClick={() => {
+                          setSelectedStaff(staff);
+                          setShowDeleteModal(true);
+                        }}
+                        className="text-red-600 hover:text-red-800 transition"
+                      >
+                        <TrashIcon className="w-5 h-5 inline" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </main>
 
+        {/* Delete Modal */}
+        {showDeleteModal && selectedStaff && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white p-6 rounded-xl shadow-lg max-w-sm w-full">
+              <h2 className="text-lg font-semibold mb-2 text-gray-800">
+                Confirm Deletion
+              </h2>
+              <p className="text-gray-600 mb-4">
+                Are you sure you want to delete{" "}
+                <span className="font-semibold">
+                  {selectedStaff.user?.name}
+                </span>
+                ?
+              </p>
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => setShowDeleteModal(false)}
+                  className="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDelete}
+                  className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
