@@ -3,27 +3,27 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import axios from "axios";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import NotificationDropdown from "../../components/NotificationDropdown";
 import {
   BellIcon,
   UserIcon,
   HomeIcon,
-  UsersIcon,
   ClipboardDocumentIcon,
-  MegaphoneIcon,
   ChartBarIcon,
+  ChatBubbleLeftEllipsisIcon,
+  DocumentTextIcon,
+  MegaphoneIcon,
   Bars3Icon,
   ChevronLeftIcon,
   ChevronRightIcon,
   XMarkIcon,
   ArrowRightOnRectangleIcon,
-  UserGroupIcon,
-  DocumentTextIcon,
-  ExclamationCircleIcon,
-  ChatBubbleLeftEllipsisIcon,
+  UsersIcon,
 } from "@heroicons/react/24/outline";
 
-// Add this interface definition for notification
 interface Notification {
   notification_id: number;
   type: string;
@@ -32,25 +32,29 @@ interface Notification {
   created_at: string;
 }
 
-interface DashboardStats {
-  totalUsers: number;
-  pendingRegistrations: number;
-  totalAnnouncements: number;
-  recentActivities: number;
-}
-
-export default function AdminDashboard() {
+export default function ReportsSection() {
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeItem, setActiveItem] = useState("reports");
+  const [view, setView] = useState<"table" | "chart">("table");
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [stats, setStats] = useState<DashboardStats>({
-    totalUsers: 0,
-    pendingRegistrations: 0,
-    totalAnnouncements: 0,
-    recentActivities: 0,
-  });
   const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState("");
+  const [details, setDetails] = useState<any[]>([]);
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [dateRange, setDateRange] = useState({ from: "", to: "" });
+
+  // Make all stats numbers to satisfy TypeScript
+  const [stats, setStats] = useState<Record<string, number>>({
+    totalResidents: 0,
+    totalStaff: 0,
+    totalCertificates: 0,
+    totalFeedback: 0,
+    totalAnnouncements: 0,
+  });
+
+  const token =
+    typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
@@ -65,20 +69,97 @@ export default function AdminDashboard() {
     { name: "reports", label: "Reports", icon: ChartBarIcon },
   ];
 
-
   useEffect(() => {
+    // Fetch notifications
+    const fetchNotifications = async () => {
+      try {
+        const res = await fetch("/api/dash/notifications");
+        if (!res.ok) throw new Error("Failed to fetch notifications");
+        const data: Notification[] = await res.json();
+        setNotifications(data);
+      } catch (error) {
+        console.error(error);
+      }
+    };
     fetchNotifications();
   }, []);
 
-  const fetchNotifications = async () => {
+  const fetchStats = async () => {
+    setLoading(true);
     try {
-      const res = await fetch("/api/dash/notifications");
-      if (!res.ok) throw new Error("Failed to fetch notifications");
-      const data: Notification[] = await res.json();
-      setNotifications(data);
+      const res = await axios.get("/api/admin/reports", {
+        headers: { Authorization: `Bearer ${token}` },
+        params: { from: dateRange.from, to: dateRange.to },
+      });
+      setStats(res.data.stats);
     } catch (error) {
       console.error(error);
+      setMessage("Failed to fetch reports");
+    } finally {
+      setLoading(false);
     }
+  };
+
+  const fetchDetails = async (category: string) => {
+    setActiveCategory(category);
+    setDetails([]);
+    try {
+      const res = await axios.get(`/api/admin/reports?category=${category}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const flattenedDetails = res.data.details.map((item: any) => {
+        if (item.resident) return { ...item, ...item.resident, resident: undefined };
+        if (item.headResident) {
+          return {
+            ...item,
+            head_resident_first_name: item.headResident.first_name,
+            head_resident_last_name: item.headResident.last_name,
+            headResident: undefined,
+          };
+        }
+        if (item.headStaff) {
+          return {
+            ...item,
+            head_staff_first_name: item.headStaff.first_name,
+            head_staff_last_name: item.headStaff.last_name,
+            headStaff: undefined,
+          };
+        }
+        return item;
+      });
+      setDetails(flattenedDetails);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleExportPDF = () => {
+    const doc = new jsPDF();
+    doc.text("Barangay Report Summary", 14, 16);
+    autoTable(doc, {
+      startY: 25,
+      head: [["Category", "Count"]],
+      body: Object.entries(stats)
+        .filter(([_, value]) => typeof value === "number")
+        .map(([key, value]) => [key.replace(/^total/i, ""), value]),
+    });
+    doc.save("barangay_report.pdf");
+  };
+
+  const handleExportCSV = () => {
+    const csv = Object.entries(stats)
+      .filter(([_, value]) => typeof value === "number")
+      .map(([key, value]) => [key.replace(/^total/i, ""), value])
+      .map((e) => e.join(","))
+      .join("\n");
+
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "barangay_report.csv";
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const handleLogout = () => {
@@ -90,72 +171,51 @@ export default function AdminDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to-slate-50 p-4 flex gap-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to-slate-50 p-2 sm:p-4 flex flex-col md:flex-row gap-4">
       {/* Sidebar */}
       <div
         className={`${
           sidebarOpen ? "w-64" : "w-16"
-        } bg-gray-50 shadow-lg rounded-xl transition-all duration-300 ease-in-out flex flex-col ${
-          sidebarOpen ? "fixed inset-y-0 left-0 z-50 md:static md:translate-x-0" : "hidden md:flex"
-        }`}
+        } bg-gray-50 shadow-lg rounded-xl transition-all duration-300 flex flex-col 
+        ${sidebarOpen ? "fixed inset-y-0 left-0 z-50 md:static md:translate-x-0" : "hidden md:flex"}`}
       >
-        {/* Logo + Close */}
         <div className="p-4 flex items-center justify-between">
-          <img
-            src="/niugan-logo.png"
-            alt="Company Logo"
-            className="w-10 h-10 rounded-full object-cover"
-          />
-          <button
-            onClick={toggleSidebar}
-            className="block md:hidden text-black hover:text-red-700 focus:outline-none"
-          >
+          <img src="/niugan-logo.png" alt="Logo" className="w-10 h-10 rounded-full" />
+          <button onClick={toggleSidebar} className="block md:hidden text-black hover:text-red-700">
             <XMarkIcon className="w-6 h-6" />
           </button>
         </div>
 
-        {/* Navigation */}
         <nav className="flex-1 mt-6">
-            <ul>
-            {features.map(({ name, label, icon: Icon }) => {
-                const href = `/admin-front/${name}`;
-                const isActive = name === "reports";
-                return (
-                <li key={name} className="mb-2">
-                    <Link href={href}>
-                    <span
-                        className={`relative flex items-center w-full px-4 py-2 text-left group transition-colors duration-200 ${
-                        isActive
-                            ? "text-red-700 "
-                            : "text-black hover:text-red-700"
-                        }`}
-                    >
-                        {isActive && (
-                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-700 rounded-r-full" />
-                        )}
-                        <Icon
-                        className={`w-6 h-6 mr-2 ${
-                            isActive ? "text-red-700" : "text-gray-600 group-hover:text-red-700"
-                        }`}
-                        />
-                        {sidebarOpen && (
-                        <span
-                            className={`${
-                            isActive ? "text-red-700" : "group-hover:text-red-700"
-                            }`}
-                        >
-                            {label}
-                        </span>
-                        )}
-                    </span>
-                    </Link>
-                </li>
-                );
-            })}
-            </ul>
+          <ul>
+            {features.map(({ name, label, icon: Icon }) => (
+              <li key={name} className="mb-2">
+                <Link
+                  href={`/admin-front/${name}`}
+                  onClick={() => setActiveItem(name)}
+                  className={`relative flex items-center px-4 py-2 transition-all duration-200 ${
+                    activeItem === name
+                      ? "text-red-700 font-semibold"
+                      : "text-black hover:text-red-700"
+                  }`}
+                >
+                  {activeItem === name && (
+                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-700 rounded-r-full" />
+                  )}
+                  <Icon
+                    className={`w-6 h-6 mr-2 ${
+                      activeItem === name
+                        ? "text-red-700"
+                        : "text-gray-600 group-hover:text-red-700"
+                    }`}
+                  />
+                  {sidebarOpen && <span>{label}</span>}
+                </Link>
+              </li>
+            ))}
+          </ul>
         </nav>
 
-        {/* Logout Button */}
         <div className="p-4">
           <button
             onClick={handleLogout}
@@ -166,11 +226,10 @@ export default function AdminDashboard() {
           </button>
         </div>
 
-        {/* Sidebar Toggle (desktop only) */}
         <div className="p-4 flex justify-center hidden md:flex">
           <button
             onClick={toggleSidebar}
-            className="w-10 h-10 bg-white hover:bg-red-50 rounded-full flex items-center justify-center focus:outline-none transition-colors duration-200 shadow-sm"
+            className="w-10 h-10 bg-white hover:bg-red-50 rounded-full flex items-center justify-center shadow-sm"
           >
             {sidebarOpen ? (
               <ChevronLeftIcon className="w-5 h-5 text-black" />
@@ -181,7 +240,6 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Mobile Overlay */}
       {sidebarOpen && (
         <div
           className="fixed inset-0 bg-white/80 z-40 md:hidden"
@@ -191,16 +249,15 @@ export default function AdminDashboard() {
 
       {/* Main Section */}
       <div className="flex-1 flex flex-col gap-4">
-        {/* Header */}
-        <header className="bg-gray-50 shadow-sm p-4 flex justify-between items-center rounded-xl">
+        <header className="bg-gray-50 shadow-sm p-3 sm:p-4 flex justify-between items-center rounded-xl">
           <button
             onClick={toggleSidebar}
-            className="block md:hidden text-black hover:text-red-700 focus:outline-none"
+            className="block md:hidden text-black hover:text-red-700"
           >
             <Bars3Icon className="w-6 h-6" />
           </button>
-          <h1 className="text-xl font-semibold text-black">Reports</h1>
-          <div className="flex items-center space-x-4">
+          <h1 className="text-lg sm:text-xl font-semibold text-black">Admin Reports</h1>
+          <div className="flex items-center gap-2 sm:gap-4">
             <NotificationDropdown notifications={notifications} />
             <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center shadow-sm">
               <UserIcon className="w-5 h-5 text-black" />
@@ -208,9 +265,122 @@ export default function AdminDashboard() {
           </div>
         </header>
 
-        {/* Main Content */}
+        <main className="flex-1 bg-white/80 backdrop-blur-md shadow-md rounded-xl p-4 sm:p-6">
+          {/* Date Form */}
+          <form className="flex flex-col sm:flex-row flex-wrap gap-4 items-start sm:items-end mb-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-600">Start Date</label>
+              <input
+                type="date"
+                className="mt-1 block w-full sm:w-48 rounded-md border border-gray-300 p-2 text-sm focus:border-red-600 focus:ring-red-600"
+                value={dateRange.from}
+                onChange={(e) => setDateRange({ ...dateRange, from: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-600">End Date</label>
+              <input
+                type="date"
+                className="mt-1 block w-full sm:w-48 rounded-md border border-gray-300 p-2 text-sm focus:border-red-600 focus:ring-red-600"
+                value={dateRange.to}
+                onChange={(e) => setDateRange({ ...dateRange, to: e.target.value })}
+              />
+            </div>
+            <button
+              type="button"
+              onClick={fetchStats}
+              className="bg-red-700 hover:bg-red-800 text-white px-4 py-2 rounded-lg shadow-sm transition-all w-full sm:w-auto"
+            >
+              Generate
+            </button>
+          </form>
 
+          {/* Cards / Panels */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {Object.entries(stats)
+              .filter(([_, value]) => typeof value === "number")
+              .map(([key, value]) => (
+                <div
+                  key={key}
+                  onClick={() => fetchDetails(key.replace(/^total/i, "").toLowerCase())}
+                  className="cursor-pointer bg-white shadow-md p-6 rounded-lg hover:bg-red-50 transition flex flex-col items-start"
+                >
+                  <h3 className="text-lg font-semibold text-gray-800">
+                    {key.replace(/^total/i, "")}
+                  </h3>
+                  <p className="text-3xl font-bold text-red-700 mt-2">{value}</p>
+                  <p className="text-sm text-gray-600 mt-1">Click to view details</p>
+                </div>
+              ))}
+          </div>
+
+          {/* Export Buttons */}
+          <div className="flex flex-col sm:flex-row justify-end mt-6 gap-3">
+            <button
+              onClick={handleExportPDF}
+              className="bg-red-700 hover:bg-red-800 text-white px-4 py-2 rounded-lg shadow-md flex items-center justify-center gap-2 transition w-full sm:w-auto"
+            >
+              <DocumentTextIcon className="w-5 h-5" />
+              Export PDF
+            </button>
+            <button
+              onClick={handleExportCSV}
+              className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-lg shadow-md flex items-center justify-center gap-2 transition w-full sm:w-auto"
+            >
+              <ClipboardDocumentIcon className="w-5 h-5" />
+              Export CSV
+            </button>
+          </div>
+        </main>
       </div>
+
+      {/* Modal for Details */}
+      {activeCategory && (
+        <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50">
+          <div className="bg-white rounded-xl w-11/12 md:w-2/3 lg:w-1/2 p-6 relative">
+            <button
+              onClick={() => setActiveCategory(null)}
+              className="absolute top-3 right-3 text-gray-600 hover:text-red-700"
+            >
+              <XMarkIcon className="w-6 h-6" />
+            </button>
+            <h2 className="text-xl font-semibold text-black mb-4 capitalize">
+              {activeCategory} Details
+            </h2>
+
+            {details.length === 0 ? (
+              <p className="text-center text-gray-500 py-6">No records found.</p>
+            ) : (
+              <div className="overflow-x-auto max-h-80">
+                <table className="min-w-full border border-gray-200 rounded-lg">
+                  <thead className="bg-red-700 text-white">
+                    <tr>
+                      {Object.keys(details[0]).map((key) => (
+                        <th key={key} className="px-4 py-2 text-left capitalize">
+                          {key.replaceAll("_", " ")}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {details.map((item, i) => (
+                      <tr key={i} className="border-t hover:bg-red-50 transition">
+                        {Object.entries(item).map(([key, val], j) => (
+                          <td key={j} className="px-4 py-2 text-sm text-gray-700">
+                            {["created_at","requested_at","approved_at","submitted_at","responded_at"].includes(key)
+                              ? new Date(val as string).toLocaleDateString()
+                              : String(val)}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
