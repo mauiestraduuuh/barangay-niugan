@@ -75,7 +75,7 @@ export default function AdminCertificateRequestsPage() {
       const res = await axios.get("/api/admin/certificate-request", {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setRequests(res.data.requests);
+      setRequests(res.data);  // Changed from res.data.requests to res.data since route.ts returns the array directly
     } catch (err) {
       console.error(err);
       setMessage("Failed to fetch certificate requests");

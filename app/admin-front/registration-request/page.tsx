@@ -12,7 +12,6 @@ import {
   MegaphoneIcon,
   ChartBarIcon,
   BellIcon,
-  Bars3Icon,
   XMarkIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -29,6 +28,7 @@ interface RegistrationRequest {
   birthdate?: string;
   role: "RESIDENT" | "STAFF";
   submitted_at: string;
+  status: string;
 }
 
 export default function AdminRegistrationRequestsPage() {
@@ -36,10 +36,11 @@ export default function AdminRegistrationRequestsPage() {
   const [requests, setRequests] = useState<RegistrationRequest[]>([]);
   const [loading, setLoading] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [activeItem, setActiveItem] = useState("registration-requests");
+  const [activeItem, setActiveItem] = useState("registration-request");
   const [message, setMessage] = useState("");
 
-  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+  const token =
+    typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
   useEffect(() => {
     fetchRequests();
@@ -52,7 +53,7 @@ export default function AdminRegistrationRequestsPage() {
       const res = await axios.get("/api/admin/registration-request", {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setRequests(res.data.pendingRequests);
+      setRequests(res.data.pendingRequests || []);
     } catch (err) {
       console.error(err);
       setMessage("Failed to fetch registration requests");
@@ -68,7 +69,9 @@ export default function AdminRegistrationRequestsPage() {
         { request_id: requestId, approve },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      setRequests((prev) => prev.filter((r) => r.request_id !== requestId));
+      setRequests((prev) =>
+        prev.filter((r) => r.request_id !== requestId)
+      );
       setMessage(approve ? "Request approved" : "Request rejected");
     } catch (err) {
       console.error(err);
@@ -98,10 +101,11 @@ export default function AdminRegistrationRequestsPage() {
         } bg-gray-50 shadow-lg rounded-xl transition-all duration-300 ease-in-out flex flex-col ${
           sidebarOpen ? "block" : "hidden"
         } md:block md:relative md:translate-x-0 ${
-          sidebarOpen ? "fixed inset-y-0 left-0 z-50 md:static md:translate-x-0" : ""
+          sidebarOpen
+            ? "fixed inset-y-0 left-0 z-50 md:static md:translate-x-0"
+            : ""
         }`}
       >
-        {/* Top Section */}
         <div className="p-4 flex items-center justify-between">
           <img src="/logo.png" alt="Logo" className="w-10 h-10 rounded-full object-cover" />
           <button
@@ -112,7 +116,6 @@ export default function AdminRegistrationRequestsPage() {
           </button>
         </div>
 
-        {/* Navigation */}
         <nav className="flex-1 mt-6">
           <ul>
             {features.map(({ name, label, icon: Icon }) => (
@@ -120,7 +123,9 @@ export default function AdminRegistrationRequestsPage() {
                 <Link
                   href={`/admin-front/${name}`}
                   className={`relative flex items-center w-full px-4 py-2 text-left group transition-colors duration-200 ${
-                    activeItem === name ? "text-red-700" : "text-black hover:text-red-700"
+                    activeItem === name
+                      ? "text-red-700"
+                      : "text-black hover:text-red-700"
                   }`}
                   onClick={() => setActiveItem(name)}
                 >
@@ -137,14 +142,12 @@ export default function AdminRegistrationRequestsPage() {
           </ul>
         </nav>
 
-        {/* Logout */}
         <div className="p-4">
           <button className="flex items-center gap-3 text-red-500 hover:text-red-700 transition w-full text-left">
             Log Out
           </button>
         </div>
 
-        {/* Toggle Button */}
         <div className="p-4 flex justify-center hidden md:flex">
           <button
             onClick={toggleSidebar}
@@ -159,7 +162,6 @@ export default function AdminRegistrationRequestsPage() {
         </div>
       </div>
 
-      {/* Overlay for Mobile */}
       {sidebarOpen && (
         <div
           className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
@@ -171,13 +173,15 @@ export default function AdminRegistrationRequestsPage() {
       <div className="flex-1 flex flex-col gap-4">
         <header className="bg-gray-50 shadow-sm p-4 rounded-xl flex justify-between items-center">
           <h1 className="text-xl font-semibold text-black">Registration Requests</h1>
-          <div className="flex items-center gap-4">
-            <BellIcon className="w-6 h-6 text-black" />
-          </div>
+          <BellIcon className="w-6 h-6 text-black" />
         </header>
 
         <main className="bg-gray-50 p-6 rounded-xl shadow-sm overflow-auto">
-          {message && <p className="text-center text-white bg-gray-900 p-2 rounded mb-4">{message}</p>}
+          {message && (
+            <p className="text-center text-white bg-gray-900 p-2 rounded mb-4">
+              {message}
+            </p>
+          )}
 
           {loading ? (
             <p className="text-center">Loading...</p>
@@ -186,12 +190,19 @@ export default function AdminRegistrationRequestsPage() {
           ) : (
             <div className="grid gap-4">
               {requests.map((req) => (
-                <div key={req.request_id} className="bg-white p-4 rounded-lg shadow flex justify-between items-center">
+                <div
+                  key={req.request_id}
+                  className="bg-white p-4 rounded-lg shadow flex justify-between items-center"
+                >
                   <div>
-                    <p className="font-bold">{req.first_name} {req.last_name}</p>
+                    <p className="font-bold">
+                      {req.first_name} {req.last_name}
+                    </p>
                     <p className="text-sm text-gray-600">{req.email}</p>
                     <p className="text-sm text-gray-600">{req.role}</p>
-                    <p className="text-sm text-gray-500">{new Date(req.submitted_at).toLocaleDateString()}</p>
+                    <p className="text-sm text-gray-500">
+                      {new Date(req.submitted_at).toLocaleDateString()}
+                    </p>
                   </div>
                   <div className="flex gap-2">
                     <button
