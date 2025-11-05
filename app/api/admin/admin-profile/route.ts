@@ -96,7 +96,6 @@ if (body.password) {
   );
 }
 
-
   // -------------------- PROFILE UPDATE --------------------
   if (!username && !first_name && !last_name && !email && !contact_no) {
     return NextResponse.json(
