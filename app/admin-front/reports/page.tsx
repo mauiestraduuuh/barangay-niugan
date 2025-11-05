@@ -197,7 +197,7 @@ export default function ReportsSection() {
             {features.map(({ name, label, icon: Icon }) => (
               <li key={name} className="mb-2">
                 <Link
-                  href={`/dash-front/${name}`}
+                  href={`/admin-front/${name}`}
                   onClick={() => setActiveItem(name)}
                   className={`relative flex items-center px-4 py-2 transition-all duration-200 ${
                     activeItem === name
