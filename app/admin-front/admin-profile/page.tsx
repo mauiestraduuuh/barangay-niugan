@@ -68,29 +68,43 @@ export default function AdminProfilePage() {
   }, []);
 
   const fetchProfile = async () => {
-  if (!token) return setMessage("Unauthorized: No token found");
+  if (!token) {
+    setMessage("Unauthorized: No token found");
+    return;
+  }
 
   try {
     const res = await axios.get("/api/admin/admin-profile", {
       headers: { Authorization: `Bearer ${token}` },
     });
 
-    if (res.data.admin) {
-      const adminData = {
-        ...res.data.admin,
-        email: res.data.admin.email ?? "",
-        contact_no: res.data.admin.contact_no ?? "",
-      };
-      setProfile(adminData);
-    } else {
+    const admin = res.data.admin;
+
+    if (!admin) {
       setMessage("Admin data not found");
+      return;
     }
-  } catch (err) {
-    console.error(err);
-    setMessage("Failed to fetch profile");
+
+    // Flatten nested admin object
+    const safeAdmin: AdminProfile = {
+      user_id: admin.user_id,
+      username: admin.username,
+      role: admin.role,
+      created_at: admin.created_at,
+      updated_at: admin.updated_at,
+      first_name: admin.admin?.first_name ?? "",
+      last_name: admin.admin?.last_name ?? "",
+      email: admin.admin?.email ?? "",
+      contact_no: admin.admin?.contact_no ?? "",
+    };
+
+    setProfile(safeAdmin);
+    setMessage(""); // Clear previous messages
+  } catch (err: any) {
+    console.error("Fetch profile error:", err);
+    setMessage(err.response?.data?.message || "Failed to fetch profile");
   }
 };
-
 
   const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     setProfile({ ...profile, [e.target.name]: e.target.value });
@@ -101,30 +115,36 @@ export default function AdminProfilePage() {
   };
 
   const updateProfile = async () => {
-    if (!token) return setMessage("Unauthorized");
-    setLoading(true);
-    try {
-      await axios.put(
-  "/api/admin/admin-profile",
-  {
-    username: profile.username,
-    first_name: profile.first_name,
-    last_name: profile.last_name,
-    email: profile.email,
-    contact_no: profile.contact_no,
-  },
-  { headers: { Authorization: `Bearer ${token}` } }
-);
+  if (!token) {
+    setMessage("Unauthorized");
+    return;
+  }
 
-      setMessage("Profile updated successfully");
-      setActiveSection("overview");
-      fetchProfile(); // Refresh to get updated data
-    } catch (err) {
-      console.error(err);
-      setMessage("Failed to update profile");
-    }
-    setLoading(false);
-  };
+  setLoading(true);
+
+  try {
+    await axios.put(
+      "/api/admin/admin-profile",
+      {
+        username: profile.username || undefined,
+        first_name: profile.first_name || undefined,
+        last_name: profile.last_name || undefined,
+        email: profile.email || undefined,
+        contact_no: profile.contact_no || undefined,
+      },
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+
+    setMessage("Profile updated successfully");
+    setActiveSection("overview");
+    fetchProfile(); // Refresh to get updated data
+  } catch (err: any) {
+    console.error("Update profile error:", err);
+    setMessage(err.response?.data?.message || "Failed to update profile");
+  }
+
+  setLoading(false);
+};
 
   const changePassword = async () => {
     if (passwords.new_password !== passwords.confirm_password) {
