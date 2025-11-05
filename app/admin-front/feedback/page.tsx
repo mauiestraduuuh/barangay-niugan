@@ -13,11 +13,12 @@ import {
   MegaphoneIcon,
   ChartBarIcon,
   BellIcon,
+  Bars3Icon,
   ChevronLeftIcon,
   ChevronRightIcon,
-  Bars3Icon,
   XMarkIcon,
   ArrowRightOnRectangleIcon,
+  LockClosedIcon,
 } from "@heroicons/react/24/outline";
 
 interface Notification {
@@ -41,13 +42,10 @@ interface Feedback {
     contact_no?: string;
   };
   respondedBy?: {
-    first_name: string;
-    last_name: string;
+    id: string | number;
   } | null;
-  responded_by?: string | null;
-  comment?: string;
-  notes?: string;
 }
+
 
 export default function AdminFeedbackPage() {
   const router = useRouter();
@@ -56,11 +54,11 @@ export default function AdminFeedbackPage() {
   const [message, setMessage] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [activeItem, setActiveItem] = useState("feedback");
   const [selectedFeedback, setSelectedFeedback] = useState<Feedback | null>(null);
+  const [viewFeedback, setViewFeedback] = useState<Feedback | null>(null);
   const [replyText, setReplyText] = useState("");
-  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
   const features = [
     { name: "the-dash-admin", label: "Home", icon: HomeIcon },
@@ -79,20 +77,29 @@ export default function AdminFeedbackPage() {
   }, []);
 
   const fetchFeedbacks = async () => {
-    if (!token) return setMessage("Unauthorized: No token");
-    setLoading(true);
-    try {
-      const res = await axios.get("/api/admin/feedback", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setFeedbacks(res.data.feedback || []);
-    } catch (err) {
-      console.error(err);
-      setMessage("Failed to fetch feedbacks");
-      setFeedbacks([]);
-    }
-    setLoading(false);
-  };
+  if (!token) return setMessage("Unauthorized: No token");
+  setLoading(true);
+  try {
+    const res = await axios.get("/api/admin/feedback", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    const mappedFeedbacks: Feedback[] = (res.data.feedback || []).map((f: any) => ({
+  ...f,
+  // Use just the ID for display
+  respondedBy: f.responded_by ? { id: f.responded_by } : null,
+}));
+
+
+    setFeedbacks(mappedFeedbacks);
+  } catch (err) {
+    console.error(err);
+    setMessage("Failed to fetch feedbacks");
+    setFeedbacks([]);
+  }
+  setLoading(false);
+};
+
 
   const fetchNotifications = async () => {
     try {
@@ -108,56 +115,8 @@ export default function AdminFeedbackPage() {
     }
   };
 
-  const updateStatus = async (feedbackId: string, status: string) => {
-    if (!token) return setMessage("Unauthorized");
-    try {
-      await axios.put(
-        "/api/admin/feedback",
-        { feedbackId, status },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      fetchFeedbacks();
-      setMessage("Status updated");
-    } catch (err) {
-      console.error(err);
-      setMessage("Failed to update status");
-    }
-  };
-
-  const updateComment = async (feedbackId: string, comment: string) => {
-    if (!token) return setMessage("Unauthorized");
-    try {
-      await axios.put(
-        "/api/admin/feedback",
-        { feedbackId, comment },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      fetchFeedbacks();
-      setMessage("Comment updated");
-    } catch (err) {
-      console.error(err);
-      setMessage("Failed to update comment");
-    }
-  };
-
-  const updateNotes = async (feedbackId: string, notes: string) => {
-    if (!token) return setMessage("Unauthorized");
-    try {
-      await axios.put(
-        "/api/admin/feedback",
-        { feedbackId, notes },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      fetchFeedbacks();
-      setMessage("Notes updated");
-    } catch (err) {
-      console.error(err);
-      setMessage("Failed to update notes");
-    }
-  };
-
   const replyFeedback = async () => {
-    if (!selectedFeedback || !token) return;
+    if (!selectedFeedback || !token) return setMessage("Unauthorized");
     try {
       await axios.post(
         "/api/admin/feedback",
@@ -167,10 +126,26 @@ export default function AdminFeedbackPage() {
       setSelectedFeedback(null);
       setReplyText("");
       fetchFeedbacks();
-      setMessage("Reply sent");
+      setMessage("Reply sent successfully");
     } catch (err) {
       console.error(err);
       setMessage("Failed to send reply");
+    }
+  };
+
+  const updateStatus = async (feedbackId: string, status: string) => {
+    if (!token) return setMessage("Unauthorized");
+    try {
+      await axios.put(
+        "/api/admin/feedback",
+        { feedbackId, status },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      fetchFeedbacks();
+      setMessage("Status updated successfully");
+    } catch (err) {
+      console.error(err);
+      setMessage("Failed to update status");
     }
   };
 
@@ -178,79 +153,83 @@ export default function AdminFeedbackPage() {
     ? feedbacks.filter((f) => f.status === statusFilter)
     : feedbacks;
 
-  const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
-
   const handleLogout = () => {
-    const confirmed = window.confirm("Are you sure you want to log out?");
-    if (confirmed) {
+    if (window.confirm("Are you sure you want to log out?")) {
       localStorage.removeItem("token");
       router.push("/auth-front/login");
     }
   };
+const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to-slate-50 p-4 flex gap-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to-black p-4 flex gap-4 ">
       {/* Sidebar */}
       <div
         className={`${
           sidebarOpen ? "w-64" : "w-16"
         } bg-gray-50 shadow-lg rounded-xl transition-all duration-300 ease-in-out flex flex-col ${
-          sidebarOpen ? "fixed inset-y-0 left-0 z-50 md:static md:translate-x-0" : "hidden md:flex"
+          sidebarOpen ? "block" : "hidden"
+        } md:block md:relative md:translate-x-0 ${
+          sidebarOpen ? "fixed inset-y-0 left-0 z-50 md:static md:translate-x-0" : ""
         }`}
       >
         {/* Logo + Close */}
-        <div className="p-4 flex items-center justify-between">
+        <div className="p-4 flex items-center justify-center">
           <img
             src="/niugan-logo.png"
             alt="Company Logo"
-            className="w-10 h-10 rounded-full object-cover"
+            className={`rounded-full object-cover transition-all duration-300 ${
+              sidebarOpen ? "w-30 h-30" : "w-8.5 h-8.5"
+            }`}
           />
+
           <button
             onClick={toggleSidebar}
-            className="block md:hidden text-black hover:text-red-700 focus:outline-none"
+            className="absolute top-3 right-3 text-black hover:text-red-700 focus:outline-none md:hidden"
           >
             <XMarkIcon className="w-6 h-6" />
           </button>
         </div>
-
-        {/* Navigation */}
-        <nav className="flex-1 mt-6">
-          <ul>
-            {features.map(({ name, label, icon: Icon }) => (
-              <li key={name} className="mb-2">
-                <Link
-                  href={`/admin-front/${name}`}
-                  onClick={() => setActiveItem(name)}
-                  className={`relative flex items-center w-full px-4 py-2 text-left group transition-colors duration-200 ${
-                    activeItem === name
-                      ? "text-red-700 font-semibold"
-                      : "text-black hover:text-red-700"
+{/* Navigation */}
+ <nav className="flex-1 mt-6">
+    <ul>
+      {features.map(({ name, label, icon: Icon }) => {
+        const href = `/admin-front/${name}`;
+        const isActive = name === "admin-profile";
+        return (
+          <li key={name} className="mb-2">
+            <Link href={href}>
+              <span
+                className={`relative flex items-center w-full px-4 py-2 text-left group transition-colors duration-200 ${
+                  isActive
+                    ? "text-red-700 "
+                    : "text-black hover:text-red-700"
+                }`}
+              >
+                {isActive && (
+                  <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-700 rounded-r-full" />
+                )}
+                <Icon
+                  className={`w-6 h-6 mr-2 ${
+                    isActive ? "text-red-700" : "text-gray-600 group-hover:text-red-700"
                   }`}
-                >
-                  {activeItem === name && (
-                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-700 rounded-r-full" />
-                  )}
-                  <Icon
-                    className={`w-6 h-6 mr-2 ${
-                      activeItem === name
-                        ? "text-red-700"
-                        : "text-gray-600 group-hover:text-red-700"
+                />
+                {sidebarOpen && (
+                  <span
+                    className={`${
+                      isActive ? "text-red-700" : "group-hover:text-red-700"
                     }`}
-                  />
-                  {sidebarOpen && (
-                    <span
-                      className={`${
-                        activeItem === name ? "text-red-700" : "group-hover:text-red-700"
-                      }`}
-                    >
-                      {label}
-                    </span>
-                  )}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </nav>
+                  >
+                    {label}
+                  </span>
+                )}
+              </span>
+            </Link>
+          </li>
+        );
+      })}
+    </ul>
+  </nav>
 
         {/* Logout Button */}
         <div className="p-4">
@@ -278,17 +257,11 @@ export default function AdminFeedbackPage() {
         </div>
       </div>
 
-      {/* Mobile Overlay */}
+      {/* Overlay (Mobile) */}
       {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-white/80 z-40 md:hidden"
-          onClick={toggleSidebar}
-        ></div>
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden" onClick={toggleSidebar}></div>
       )}
-
-      {/* Main content */}
       <div className="flex-1 flex flex-col gap-4">
-        {/* Header */}
         <header className="bg-gray-50 shadow-sm p-4 flex justify-between items-center rounded-xl">
           <button
             onClick={toggleSidebar}
@@ -305,11 +278,9 @@ export default function AdminFeedbackPage() {
           </div>
         </header>
 
-        {/* Main */}
         <main className="bg-white rounded-2xl shadow-lg p-6 transition-all duration-300">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-3">
             <h2 className="text-2xl font-semibold text-gray-800">Resident Feedbacks</h2>
-
             <div className="flex items-center gap-2">
               <label className="text-sm text-gray-600 font-medium">Filter by Status:</label>
               <select
@@ -361,13 +332,14 @@ export default function AdminFeedbackPage() {
                           <select
                             value={f.status}
                             onChange={(e) => updateStatus(f.feedback_id, e.target.value)}
+                            disabled={f.status === "RESOLVED"}
                             className={`border rounded-md px-2 py-1 text-xs font-medium focus:outline-none focus:ring-1 ${
                               f.status === "PENDING"
                                 ? "bg-yellow-100 text-yellow-800 border-yellow-300"
                                 : f.status === "IN_PROGRESS"
                                 ? "bg-blue-100 text-blue-800 border-blue-300"
                                 : "bg-green-100 text-green-800 border-green-300"
-                            }`}
+                            } ${f.status === "RESOLVED" ? "cursor-not-allowed opacity-60" : ""}`}
                           >
                             <option value="PENDING">Pending</option>
                             <option value="IN_PROGRESS">In Progress</option>
@@ -384,29 +356,27 @@ export default function AdminFeedbackPage() {
                             : "—"}
                         </td>
                         <td className="px-4 py-3 text-gray-700">
-                          {f.respondedBy
-                            ? `${f.respondedBy.first_name} ${f.respondedBy.last_name}`
-                            : "—"}
+                           {f.respondedBy ? `Admin #${f.respondedBy.id}` : "—"}
+
                         </td>
                         <td className="px-4 py-3 text-center space-x-2">
                           <button
-                            className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-3 py-1 rounded-md text-sm transition"
-                            onClick={() => alert(`Viewing feedback from ${f.resident.first_name}`)}
+                            className="bg-gray-500 hover:bg-gray-600 text-white px-3 py-1 rounded-md text-sm transition"
+                            onClick={() => setViewFeedback(f)}
                           >
                             View
                           </button>
-                          <button
-                            className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-md text-sm transition"
-                            onClick={() => updateStatus(f.feedback_id, "IN_PROGRESS")}
-                          >
-                            Assign
-                          </button>
-                          <button
-                            className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-md text-sm transition"
-                            onClick={() => setSelectedFeedback(f)}
-                          >
-                            Reply
-                          </button>
+                          {f.status !== "RESOLVED" && (
+                            <button
+                              className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-md text-sm transition"
+                              onClick={() => {
+                                setSelectedFeedback(f);
+                                setReplyText(f.response || "");
+                              }}
+                            >
+                              Reply
+                            </button>
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -414,7 +384,7 @@ export default function AdminFeedbackPage() {
                 </table>
               </div>
 
-              {/* Mobile Card View */}
+              {/* Mobile Cards */}
               <div className="md:hidden space-y-4">
                 {filteredFeedbacks.map((f) => (
                   <div key={f.feedback_id} className="bg-gray-50 p-4 rounded-lg shadow-sm border">
@@ -425,13 +395,14 @@ export default function AdminFeedbackPage() {
                       <select
                         value={f.status}
                         onChange={(e) => updateStatus(f.feedback_id, e.target.value)}
+                        disabled={f.status === "RESOLVED"}
                         className={`border rounded-md px-2 py-1 text-xs font-medium focus:outline-none focus:ring-1 ${
                           f.status === "PENDING"
                             ? "bg-yellow-100 text-yellow-800 border-yellow-300"
                             : f.status === "IN_PROGRESS"
                             ? "bg-blue-100 text-blue-800 border-blue-300"
                             : "bg-green-100 text-green-800 border-green-300"
-                        }`}
+                        } ${f.status === "RESOLVED" ? "cursor-not-allowed opacity-60" : ""}`}
                       >
                         <option value="PENDING">Pending</option>
                         <option value="IN_PROGRESS">In Progress</option>
@@ -449,29 +420,26 @@ export default function AdminFeedbackPage() {
                         : "—"}
                     </p>
                     <p className="text-xs text-gray-500 mb-4">
-                      Responded By: {f.respondedBy
-                        ? `${f.respondedBy.first_name} ${f.respondedBy.last_name}`
-                        : "—"}
+                     {f.respondedBy ? `Admin #${f.respondedBy.id}` : "—"}
                     </p>
                     <div className="flex gap-2">
                       <button
-                        className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-3 py-1 rounded-md text-sm flex-1"
-                        onClick={() => alert(`Viewing feedback from ${f.resident.first_name}`)}
+                        className="bg-gray-500 hover:bg-gray-600 text-white px-3 py-1 rounded-md text-sm flex-1"
+                        onClick={() => setViewFeedback(f)}
                       >
                         View
                       </button>
-                      <button
-                        className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-md text-sm flex-1"
-                        onClick={() => updateStatus(f.feedback_id, "IN_PROGRESS")}
-                      >
-                        Assign
-                      </button>
-                      <button
-                        className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-md text-sm flex-1"
-                        onClick={() => setSelectedFeedback(f)}
-                      >
-                        Reply
-                      </button>
+                      {f.status !== "RESOLVED" && (
+                        <button
+                          className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-md text-sm flex-1"
+                          onClick={() => {
+                            setSelectedFeedback(f);
+                            setReplyText(f.response || "");
+                          }}
+                        >
+                          Reply
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -483,19 +451,34 @@ export default function AdminFeedbackPage() {
 
       {/* Reply Modal */}
       {selectedFeedback && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 backdrop-blur-sm">
-          <div className="bg-white w-full max-w-md rounded-2xl shadow-xl p-6">
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg w-full max-w-md">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold text-gray-800">
+              <h3 className="font-semibold text-lg">
                 Reply to {selectedFeedback.resident.first_name} {selectedFeedback.resident.last_name}
               </h3>
-              <button
-                onClick={() => setSelectedFeedback(null)}
-                className="text-gray-500 hover:text-gray-700 transition"
-              >
+              <button onClick={() => setSelectedFeedback(null)} className="text-gray-500 hover:text-gray-700">
                 <XMarkIcon className="w-5 h-5" />
               </button>
             </div>
+
+            <p className="text-sm text-gray-600 mb-4">{selectedFeedback.message}</p>
+            <p className="text-xs text-gray-500 mb-4">
+              Submitted: {selectedFeedback.submitted_at
+                ? new Date(selectedFeedback.submitted_at).toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  })
+                : "—"}
+            </p>
+
+            {selectedFeedback.response && (
+              <div className="bg-gray-50 border border-gray-300 rounded-lg p-3 mb-4">
+                <p className="text-sm text-gray-700 font-medium">Existing Response:</p>
+                <p className="text-sm text-gray-600">{selectedFeedback.response}</p>
+              </div>
+            )}
 
             <textarea
               value={replyText}
@@ -516,7 +499,50 @@ export default function AdminFeedbackPage() {
                 onClick={replyFeedback}
                 className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
               >
-                Send Reply
+                {selectedFeedback.response ? "Update Reply" : "Send Reply"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* View Modal */}
+      {viewFeedback && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg w-full max-w-md">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="font-semibold text-lg">
+                Feedback from {viewFeedback.resident.first_name} {viewFeedback.resident.last_name}
+              </h3>
+              <button onClick={() => setViewFeedback(null)} className="text-gray-500 hover:text-gray-700">
+                <XMarkIcon className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-sm text-gray-600 mb-4">{viewFeedback.message}</p>
+            <p className="text-xs text-gray-500 mb-4">
+              Submitted: {viewFeedback.submitted_at
+                ? new Date(viewFeedback.submitted_at).toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  })
+                : "—"}
+            </p>
+
+            {viewFeedback.response && (
+              <div className="bg-gray-50 border border-gray-300 rounded-lg p-3 mb-4">
+                <p className="text-sm text-gray-700 font-medium">Response:</p>
+                <p className="text-sm text-gray-600">{viewFeedback.response}</p>
+              </div>
+            )}
+
+            <div className="flex justify-end">
+              <button
+                onClick={() => setViewFeedback(null)}
+                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
+              >
+                Close
               </button>
             </div>
           </div>
