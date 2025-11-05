@@ -1,4 +1,5 @@
 "use client";
+
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import axios from "axios";
@@ -12,8 +13,8 @@ import {
   MegaphoneIcon,
   ChartBarIcon,
   BellIcon,
-  Bars3Icon,
   XMarkIcon,
+  ArrowRightOnRectangleIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   CheckIcon,
@@ -43,6 +44,7 @@ interface CertificateRequest {
 export default function AdminCertificateRequestsPage() {
   const router = useRouter();
   const [requests, setRequests] = useState<CertificateRequest[]>([]);
+  const [filteredRequests, setFilteredRequests] = useState<CertificateRequest[]>([]);
   const [loading, setLoading] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeItem, setActiveItem] = useState("certificate-request");
@@ -51,10 +53,12 @@ export default function AdminCertificateRequestsPage() {
   const [selectedRequest, setSelectedRequest] = useState<CertificateRequest | null>(null);
   const [remarks, setRemarks] = useState("");
   const [file, setFile] = useState<File | null>(null);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"" | "PENDING" | "APPROVED" | "REJECTED">("");
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
   const features = [
-    { name: "dashboard", label: "Home", icon: HomeIcon },
+    { name: "the-dash-admin", label: "Home", icon: HomeIcon },
     { name: "admin-profile", label: "Manage Profile", icon: UserIcon },
     { name: "registration-request", label: "Registration Requests", icon: ClipboardDocumentIcon },
     { name: "certificate-request", label: "Certificate Requests", icon: ClipboardDocumentIcon },
@@ -64,9 +68,29 @@ export default function AdminCertificateRequestsPage() {
     { name: "reports", label: "Reports", icon: ChartBarIcon },
   ];
 
+  // Auto-clear messages after 3 seconds
+  useEffect(() => {
+    if (message) {
+      const timer = setTimeout(() => setMessage(""), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [message]);
+
   useEffect(() => {
     fetchRequests();
   }, []);
+
+  useEffect(() => {
+    filterRequests();
+  }, [search, statusFilter, requests]);
+
+  const handleLogout = () => {
+    const confirmed = window.confirm("Are you sure you want to log out?");
+    if (confirmed) {
+      localStorage.removeItem("token");
+      router.push("/auth-front/login");
+    }
+  };
 
   const fetchRequests = async () => {
     if (!token) return setMessage("Unauthorized: No token");
@@ -75,12 +99,33 @@ export default function AdminCertificateRequestsPage() {
       const res = await axios.get("/api/admin/certificate-request", {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setRequests(res.data);  // Changed from res.data.requests to res.data since route.ts returns the array directly
+      setRequests(res.data);
     } catch (err) {
       console.error(err);
       setMessage("Failed to fetch certificate requests");
     }
     setLoading(false);
+  };
+
+  const filterRequests = () => {
+    let filtered = [...requests];
+
+    if (search.trim() !== "") {
+      const query = search.toLowerCase();
+      filtered = filtered.filter(
+        (req) =>
+          req.resident.first_name.toLowerCase().includes(query) ||
+          req.resident.last_name.toLowerCase().includes(query) ||
+          req.resident.resident_id.toLowerCase().includes(query) ||
+          req.request_id.toLowerCase().includes(query)
+      );
+    }
+
+    if (statusFilter !== "") {
+      filtered = filtered.filter((req) => req.status === statusFilter);
+    }
+
+    setFilteredRequests(filtered);
   };
 
   const handleApproveReject = async (requestId: string, approve: boolean) => {
@@ -102,7 +147,15 @@ export default function AdminCertificateRequestsPage() {
   const openModal = (request: CertificateRequest) => {
     setSelectedRequest(request);
     setRemarks(request.purpose || "");
+    setFile(null);
     setModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setModalOpen(false);
+    setSelectedRequest(null);
+    setRemarks("");
+    setFile(null);
   };
 
   const handleFileSubmit = async () => {
@@ -112,14 +165,13 @@ export default function AdminCertificateRequestsPage() {
     const formData = new FormData();
     formData.append("requestId", selectedRequest.request_id);
     if (file) formData.append("file", file);
+    if (remarks) formData.append("remarks", remarks);
 
     try {
       await axios.post("/api/admin/certificate-request", formData, {
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "multipart/form-data" },
       });
-      setModalOpen(false);
-      setFile(null);
-      setSelectedRequest(null);
+      closeModal();
       fetchRequests();
       setMessage("File attached successfully");
     } catch (err) {
@@ -131,7 +183,7 @@ export default function AdminCertificateRequestsPage() {
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
   return (
-    <div className="min-h-screen bg-gray-200 p-4 flex gap-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to-black p-4 flex gap-4 ">
       {/* Sidebar */}
       <div
         className={`${
@@ -142,43 +194,76 @@ export default function AdminCertificateRequestsPage() {
           sidebarOpen ? "fixed inset-y-0 left-0 z-50 md:static md:translate-x-0" : ""
         }`}
       >
-        <div className="p-4 flex items-center justify-between">
-          <img src="/logo.png" alt="Logo" className="w-10 h-10 rounded-full object-cover" />
-          <button onClick={toggleSidebar} className="block md:hidden text-black hover:text-red-700">
+        {/* Logo + Close */}
+        <div className="p-4 flex items-center justify-center">
+          <img
+            src="/niugan-logo.png"
+            alt="Company Logo"
+            className={`rounded-full object-cover transition-all duration-300 ${
+              sidebarOpen ? "w-30 h-30" : "w-8.5 h-8.5"
+            }`}
+          />
+
+          <button
+            onClick={toggleSidebar}
+            className="absolute top-3 right-3 text-black hover:text-red-700 focus:outline-none md:hidden"
+          >
             <XMarkIcon className="w-6 h-6" />
           </button>
         </div>
-
-        <nav className="flex-1 mt-6">
-          <ul>
-            {features.map(({ name, label, icon: Icon }) => (
-              <li key={name} className="mb-2">
-                <Link
-                  href={`/admin-front/${name}`}
-                  className={`relative flex items-center w-full px-4 py-2 text-left group transition-colors duration-200 ${
-                    activeItem === name ? "text-red-700" : "text-black hover:text-red-700"
+{/* Navigation */}
+ <nav className="flex-1 mt-6">
+    <ul>
+      {features.map(({ name, label, icon: Icon }) => {
+        const href = `/admin-front/${name}`;
+        const isActive = name === "admin-profile";
+        return (
+          <li key={name} className="mb-2">
+            <Link href={href}>
+              <span
+                className={`relative flex items-center w-full px-4 py-2 text-left group transition-colors duration-200 ${
+                  isActive
+                    ? "text-red-700 "
+                    : "text-black hover:text-red-700"
+                }`}
+              >
+                {isActive && (
+                  <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-700 rounded-r-full" />
+                )}
+                <Icon
+                  className={`w-6 h-6 mr-2 ${
+                    isActive ? "text-red-700" : "text-gray-600 group-hover:text-red-700"
                   }`}
-                  onClick={() => setActiveItem(name)}
-                >
-                  <div
-                    className={`absolute left-0 top-0 bottom-0 w-1 bg-red-700 rounded-r-full ${
-                      activeItem === name ? "block" : "hidden"
+                />
+                {sidebarOpen && (
+                  <span
+                    className={`${
+                      isActive ? "text-red-700" : "group-hover:text-red-700"
                     }`}
-                  />
-                  <Icon className="w-6 h-6 mr-2 group-hover:text-red-700" />
-                  {sidebarOpen && <span>{label}</span>}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </nav>
+                  >
+                    {label}
+                  </span>
+                )}
+              </span>
+            </Link>
+          </li>
+        );
+      })}
+    </ul>
+  </nav>
 
+        {/* Logout Button */}
         <div className="p-4">
-          <button className="flex items-center gap-3 text-red-500 hover:text-red-700 transition w-full text-left">
-            Log Out
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-3 text-black hover:text-red-700 transition w-full text-left"
+          >
+            <ArrowRightOnRectangleIcon className="w-6 h-6" />
+            {sidebarOpen && <span>Log Out</span>}
           </button>
         </div>
 
+        {/* Sidebar Toggle (desktop only) */}
         <div className="p-4 flex justify-center hidden md:flex">
           <button
             onClick={toggleSidebar}
@@ -193,7 +278,7 @@ export default function AdminCertificateRequestsPage() {
         </div>
       </div>
 
-      {/* Overlay */}
+      {/* Overlay (Mobile) */}
       {sidebarOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden" onClick={toggleSidebar}></div>
       )}
@@ -208,33 +293,58 @@ export default function AdminCertificateRequestsPage() {
         <main className="bg-gray-50 p-6 rounded-xl shadow-sm overflow-auto">
           {message && <p className="text-center text-white bg-gray-900 p-2 rounded mb-4">{message}</p>}
 
+          {/* Filter/Search */}
+          <div className="flex flex-col md:flex-row gap-2 mb-4">
+            <input
+              type="text"
+              placeholder="Search by name, ID, or request ID"
+              className="border p-2 rounded flex-1"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            <select
+              className="border p-2 rounded"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as any)}
+            >
+              <option value="">All Statuses</option>
+              <option value="PENDING">Pending</option>
+              <option value="APPROVED">Approved</option>
+              <option value="REJECTED">Rejected</option>
+            </select>
+          </div>
+
           {loading ? (
             <p className="text-center">Loading...</p>
-          ) : requests.length === 0 ? (
-            <p className="text-center">No certificate requests</p>
+          ) : filteredRequests.length === 0 ? (
+            <p className="text-center">No certificate requests found</p>
           ) : (
             <div className="grid gap-4">
-              {requests.map((req) => (
+              {filteredRequests.map((req) => (
                 <div key={req.request_id} className="bg-white p-4 rounded-lg shadow flex justify-between items-center">
                   <div>
                     <p className="font-bold">{req.resident.first_name} {req.resident.last_name}</p>
                     <p className="text-sm text-gray-600">{req.certificate_type}</p>
                     <p className="text-sm text-gray-500">{req.status}</p>
-                    <p className="text-sm text-gray-500">{new Date(req.requested_at).toLocaleDateString()}</p>
+                    <p className="text-sm text-gray-500">{new Date(req.requested_at).toLocaleString()}</p>
                   </div>
                   <div className="flex gap-2">
-                    <button
-                      onClick={() => handleApproveReject(req.request_id, true)}
-                      className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded flex items-center gap-1"
-                    >
-                      <CheckIcon className="w-4 h-4" /> Approve
-                    </button>
-                    <button
-                      onClick={() => handleApproveReject(req.request_id, false)}
-                      className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded flex items-center gap-1"
-                    >
-                      <XCircleIcon className="w-4 h-4" /> Reject
-                    </button>
+                    {req.status === "PENDING" && (
+                      <>
+                        <button
+                          onClick={() => handleApproveReject(req.request_id, true)}
+                          className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded flex items-center gap-1"
+                        >
+                          <CheckIcon className="w-4 h-4" /> Approve
+                        </button>
+                        <button
+                          onClick={() => handleApproveReject(req.request_id, false)}
+                          className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded flex items-center gap-1"
+                        >
+                          <XCircleIcon className="w-4 h-4" /> Reject
+                        </button>
+                      </>
+                    )}
                     <button
                       onClick={() => openModal(req)}
                       className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded flex items-center gap-1"
@@ -254,17 +364,21 @@ export default function AdminCertificateRequestsPage() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-xl w-96">
             <h2 className="text-lg font-bold mb-4">Attach File / Add Remarks</h2>
-            <p className="mb-2">{selectedRequest.resident.first_name} {selectedRequest.resident.last_name}</p>
+            <p className="mb-2 font-semibold">{selectedRequest.resident.first_name} {selectedRequest.resident.last_name}</p>
             <textarea
               className="w-full border p-2 rounded mb-2"
               placeholder="Remarks"
               value={remarks}
               onChange={(e) => setRemarks(e.target.value)}
             />
-            <input type="file" onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="mb-4" />
+            <input
+              type="file"
+              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+              className="mb-4"
+            />
             <div className="flex justify-end gap-2">
               <button
-                onClick={() => setModalOpen(false)}
+                onClick={closeModal}
                 className="px-4 py-2 rounded bg-gray-300 hover:bg-gray-400"
               >
                 Cancel
@@ -272,6 +386,7 @@ export default function AdminCertificateRequestsPage() {
               <button
                 onClick={handleFileSubmit}
                 className="px-4 py-2 rounded bg-blue-500 hover:bg-blue-600 text-white"
+                disabled={!file && !remarks.trim()}
               >
                 Submit
               </button>
