@@ -1,8 +1,9 @@
 "use client";
-import Link from "next/link";
+
 import { useEffect, useState } from "react";
-import axios from "axios";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import axios from "axios";
 import {
   HomeIcon,
   UserIcon,
@@ -13,6 +14,7 @@ import {
   ChartBarIcon,
   BellIcon,
   XMarkIcon,
+  ArrowRightOnRectangleIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   CheckIcon,
@@ -29,6 +31,11 @@ interface RegistrationRequest {
   role: "RESIDENT" | "STAFF";
   submitted_at: string;
   status: string;
+  approvedBy?: { user_id: number; username: string } | null;
+  address?: string;
+  gender?: string;
+  photo_url?: string;
+  is_head_of_family?: boolean;
 }
 
 export default function AdminRegistrationRequestsPage() {
@@ -38,16 +45,29 @@ export default function AdminRegistrationRequestsPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeItem, setActiveItem] = useState("registration-request");
   const [message, setMessage] = useState("");
+  const [viewRequest, setViewRequest] = useState<RegistrationRequest | null>(null);
 
-  const token =
-    typeof window !== "undefined" ? localStorage.getItem("token") : null;
+  // Fetch token and admin_id from localStorage
+  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+  const adminId = typeof window !== "undefined" ? Number(localStorage.getItem("admin_id")) : null;
 
   useEffect(() => {
     fetchRequests();
   }, []);
 
+  const handleLogout = () => {
+    const confirmed = window.confirm("Are you sure you want to log out?");
+    if (confirmed) {
+      localStorage.removeItem("token");
+      router.push("/auth-front/login");
+    }
+  };
+
   const fetchRequests = async () => {
-    if (!token) return setMessage("Unauthorized: No token");
+    if (!token || !adminId) {
+      setMessage("Unauthorized: Please login as admin");
+      return;
+    }
     setLoading(true);
     try {
       const res = await axios.get("/api/admin/registration-request", {
@@ -62,27 +82,38 @@ export default function AdminRegistrationRequestsPage() {
   };
 
   const handleApproveReject = async (requestId: number, approve: boolean) => {
-    if (!token) return setMessage("Unauthorized");
-    try {
-      await axios.post(
-        "/api/admin/registration-request",
-        { request_id: requestId, approve },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setRequests((prev) =>
-        prev.filter((r) => r.request_id !== requestId)
-      );
-      setMessage(approve ? "Request approved" : "Request rejected");
-    } catch (err) {
-      console.error(err);
-      setMessage("Action failed");
-    }
-  };
+  if (!token || !adminId) {
+    setMessage("Unauthorized");
+    return;
+  }
+
+  setLoading(true);
+  try {
+    const url = "/api/admin/registration-request"; // single backend route
+    const payload = approve
+      ? { request_id: requestId, approve: true, admin_id: adminId }
+      : { request_id: requestId, approve: false, admin_id: adminId };
+
+    await axios.post(url, payload, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    setRequests((prev) => prev.filter((r) => r.request_id !== requestId));
+    setMessage(approve ? "Request approved" : "Request rejected");
+    setTimeout(() => setMessage(""), 3000);
+  } catch (err: any) {
+    console.error(err);
+    setMessage(err.response?.data?.message || "Action failed");
+    setTimeout(() => setMessage(""), 3000);
+  }
+  setLoading(false);
+};
+
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
   const features = [
-    { name: "dashboard", label: "Home", icon: HomeIcon },
+    { name: "the-dash-admin", label: "Home", icon: HomeIcon },
     { name: "admin-profile", label: "Manage Profile", icon: UserIcon },
     { name: "registration-request", label: "Registration Requests", icon: ClipboardDocumentIcon },
     { name: "certificate-request", label: "Certificate Requests", icon: ClipboardDocumentIcon },
@@ -93,7 +124,7 @@ export default function AdminRegistrationRequestsPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-200 p-4 flex gap-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to-black p-4 flex gap-4 ">
       {/* Sidebar */}
       <div
         className={`${
@@ -101,53 +132,79 @@ export default function AdminRegistrationRequestsPage() {
         } bg-gray-50 shadow-lg rounded-xl transition-all duration-300 ease-in-out flex flex-col ${
           sidebarOpen ? "block" : "hidden"
         } md:block md:relative md:translate-x-0 ${
-          sidebarOpen
-            ? "fixed inset-y-0 left-0 z-50 md:static md:translate-x-0"
-            : ""
+          sidebarOpen ? "fixed inset-y-0 left-0 z-50 md:static md:translate-x-0" : ""
         }`}
       >
-        <div className="p-4 flex items-center justify-between">
-          <img src="/logo.png" alt="Logo" className="w-10 h-10 rounded-full object-cover" />
+        {/* Logo + Close */}
+        <div className="p-4 flex items-center justify-center">
+          <img
+            src="/niugan-logo.png"
+            alt="Company Logo"
+            className={`rounded-full object-cover transition-all duration-300 ${
+              sidebarOpen ? "w-30 h-30" : "w-8.5 h-8.5"
+            }`}
+          />
+
           <button
             onClick={toggleSidebar}
-            className="block md:hidden text-black hover:text-red-700 focus:outline-none"
+            className="absolute top-3 right-3 text-black hover:text-red-700 focus:outline-none md:hidden"
           >
             <XMarkIcon className="w-6 h-6" />
           </button>
         </div>
-
-        <nav className="flex-1 mt-6">
-          <ul>
-            {features.map(({ name, label, icon: Icon }) => (
-              <li key={name} className="mb-2">
-                <Link
-                  href={`/admin-front/${name}`}
-                  className={`relative flex items-center w-full px-4 py-2 text-left group transition-colors duration-200 ${
-                    activeItem === name
-                      ? "text-red-700"
-                      : "text-black hover:text-red-700"
+{/* Navigation */}
+ <nav className="flex-1 mt-6">
+    <ul>
+      {features.map(({ name, label, icon: Icon }) => {
+        const href = `/admin-front/${name}`;
+        const isActive = name === "admin-profile";
+        return (
+          <li key={name} className="mb-2">
+            <Link href={href}>
+              <span
+                className={`relative flex items-center w-full px-4 py-2 text-left group transition-colors duration-200 ${
+                  isActive
+                    ? "text-red-700 "
+                    : "text-black hover:text-red-700"
+                }`}
+              >
+                {isActive && (
+                  <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-700 rounded-r-full" />
+                )}
+                <Icon
+                  className={`w-6 h-6 mr-2 ${
+                    isActive ? "text-red-700" : "text-gray-600 group-hover:text-red-700"
                   }`}
-                  onClick={() => setActiveItem(name)}
-                >
-                  <div
-                    className={`absolute left-0 top-0 bottom-0 w-1 bg-red-700 rounded-r-full ${
-                      activeItem === name ? "block" : "hidden"
+                />
+                {sidebarOpen && (
+                  <span
+                    className={`${
+                      isActive ? "text-red-700" : "group-hover:text-red-700"
                     }`}
-                  />
-                  <Icon className="w-6 h-6 mr-2 group-hover:text-red-700" />
-                  {sidebarOpen && <span>{label}</span>}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </nav>
+                  >
+                    {label}
+                  </span>
+                )}
+              </span>
+            </Link>
+          </li>
+        );
+      })}
+    </ul>
+  </nav>
 
+        {/* Logout Button */}
         <div className="p-4">
-          <button className="flex items-center gap-3 text-red-500 hover:text-red-700 transition w-full text-left">
-            Log Out
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-3 text-black hover:text-red-700 transition w-full text-left"
+          >
+            <ArrowRightOnRectangleIcon className="w-6 h-6" />
+            {sidebarOpen && <span>Log Out</span>}
           </button>
         </div>
 
+        {/* Sidebar Toggle (desktop only) */}
         <div className="p-4 flex justify-center hidden md:flex">
           <button
             onClick={toggleSidebar}
@@ -162,11 +219,9 @@ export default function AdminRegistrationRequestsPage() {
         </div>
       </div>
 
+      {/* Overlay (Mobile) */}
       {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
-          onClick={toggleSidebar}
-        ></div>
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden" onClick={toggleSidebar}></div>
       )}
 
       {/* Main Content */}
@@ -177,11 +232,7 @@ export default function AdminRegistrationRequestsPage() {
         </header>
 
         <main className="bg-gray-50 p-6 rounded-xl shadow-sm overflow-auto">
-          {message && (
-            <p className="text-center text-white bg-gray-900 p-2 rounded mb-4">
-              {message}
-            </p>
-          )}
+          {message && <p className="text-center text-white bg-gray-900 p-2 rounded mb-4">{message}</p>}
 
           {loading ? (
             <p className="text-center">Loading...</p>
@@ -190,36 +241,66 @@ export default function AdminRegistrationRequestsPage() {
           ) : (
             <div className="grid gap-4">
               {requests.map((req) => (
-                <div
-                  key={req.request_id}
-                  className="bg-white p-4 rounded-lg shadow flex justify-between items-center"
-                >
+                <div key={req.request_id} className="bg-white p-4 rounded-lg shadow flex justify-between items-center">
                   <div>
-                    <p className="font-bold">
-                      {req.first_name} {req.last_name}
-                    </p>
-                    <p className="text-sm text-gray-600">{req.email}</p>
+                    <p className="font-bold">{req.first_name} {req.last_name}</p>
+                    <p className="text-sm text-gray-600">{req.email || "N/A"}</p>
                     <p className="text-sm text-gray-600">{req.role}</p>
-                    <p className="text-sm text-gray-500">
-                      {new Date(req.submitted_at).toLocaleDateString()}
-                    </p>
+                    <p className="text-sm text-gray-500">{req.birthdate ? new Date(req.birthdate).toLocaleDateString() : "N/A"}</p>
+                    {req.status !== "PENDING" && req.approvedBy && <p className="text-sm text-green-600">Approved by: {req.approvedBy.username}</p>}
                   </div>
                   <div className="flex gap-2">
+                    {req.status === "PENDING" && (
+                      <>
+                        <button
+                          onClick={() => handleApproveReject(req.request_id, true)}
+                          disabled={loading}
+                          className={`bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded flex items-center gap-1 ${loading ? "opacity-50 cursor-not-allowed" : ""}`}
+                        >
+                          <CheckIcon className="w-4 h-4" /> Approve
+                        </button>
+                        <button
+                          onClick={() => handleApproveReject(req.request_id, false)}
+                          disabled={loading}
+                          className={`bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded flex items-center gap-1 ${loading ? "opacity-50 cursor-not-allowed" : ""}`}
+                        >
+                          <XCircleIcon className="w-4 h-4" /> Reject
+                        </button>
+                      </>
+                    )}
                     <button
-                      onClick={() => handleApproveReject(req.request_id, true)}
-                      className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded flex items-center gap-1"
+                      onClick={() => setViewRequest(req)}
+                      className="bg-gray-300 hover:bg-gray-400 text-black px-4 py-2 rounded"
                     >
-                      <CheckIcon className="w-4 h-4" /> Approve
-                    </button>
-                    <button
-                      onClick={() => handleApproveReject(req.request_id, false)}
-                      className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded flex items-center gap-1"
-                    >
-                      <XCircleIcon className="w-4 h-4" /> Reject
+                      View
                     </button>
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* Modal for viewing request details */}
+          {viewRequest && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-white p-6 rounded-xl shadow-lg w-1/2 relative">
+                <button
+                  onClick={() => setViewRequest(null)}
+                  className="absolute top-3 right-3 text-gray-700 hover:text-red-600"
+                >
+                  <XMarkIcon className="w-6 h-6" />
+                </button>
+                <h2 className="text-xl font-semibold mb-4">Request Details</h2>
+                <p><strong>Name:</strong> {viewRequest.first_name} {viewRequest.last_name}</p>
+                <p><strong>Email:</strong> {viewRequest.email || "N/A"}</p>
+                <p><strong>Contact:</strong> {viewRequest.contact_no || "N/A"}</p>
+                <p><strong>Role:</strong> {viewRequest.role}</p>
+                <p><strong>Birthdate:</strong> {viewRequest.birthdate ? new Date(viewRequest.birthdate).toLocaleDateString() : "N/A"}</p>
+                <p><strong>Address:</strong> {viewRequest.address || "N/A"}</p>
+                <p><strong>Gender:</strong> {viewRequest.gender || "N/A"}</p>
+                <p><strong>Head of Family:</strong> {viewRequest.is_head_of_family ? "Yes" : "No"}</p>
+                {viewRequest.photo_url && <img src={viewRequest.photo_url} alt="Photo" className="mt-4 w-32 h-32 object-cover rounded" />}
+              </div>
             </div>
           )}
         </main>
