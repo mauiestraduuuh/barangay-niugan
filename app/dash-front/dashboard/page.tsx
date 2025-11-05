@@ -1,63 +1,66 @@
+//dashboard template
+
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
-import jsPDF from "jspdf";
-import "jspdf-autotable";
-import { BellIcon, Bars3Icon, ChevronLeftIcon, ChevronRightIcon, XMarkIcon, ArrowRightOnRectangleIcon, HomeIcon, UserIcon, CreditCardIcon, ClipboardDocumentIcon, ChatBubbleLeftEllipsisIcon } from "@heroicons/react/24/outline";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation"; //add for logout
 import NotificationDropdown from "../../components/NotificationDropdown";
+import {
+  BellIcon,
+  UserIcon,
+  HomeIcon,
+  CreditCardIcon,
+  ClipboardDocumentIcon,
+  ChatBubbleLeftEllipsisIcon,
+  Bars3Icon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  XMarkIcon,
+  ArrowRightOnRectangleIcon,
+} from "@heroicons/react/24/outline";
 
-interface Stats {
-  totalResidents: number;
-  totalStaff: number;
-  totalCertificates: number;
-  totalFeedback: number;
-  totalAnnouncements: number;
-}
-
+// Add this interface definition for notification
 interface Notification {
   notification_id: number;
-  type: string;
+  type: string; 
   message: string;
   is_read: boolean;
   created_at: string;
 }
 
-export default function ReportsDashboard() {
-  const router = useRouter();
-  const [stats, setStats] = useState<Stats | null>(null);
+export default function Dashboard() {
+  const router = useRouter();//add for logout
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [activeItem, setActiveItem] = useState("reports");
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [activeItem, setActiveItem] = useState("the-dash-resident");
+  const [notifications, setNotifications] = useState<Notification[]>([]);// add this too
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
-  // Sidebar navigation
   const features = [
     { name: "the-dash-resident", label: "Home", icon: HomeIcon },
     { name: "resident", label: "Manage Profile", icon: UserIcon },
     { name: "digital-id", label: "Digital ID", icon: CreditCardIcon },
     { name: "certificate-request", label: "Certificates", icon: ClipboardDocumentIcon },
     { name: "feedback", label: "Feedback / Complain", icon: ChatBubbleLeftEllipsisIcon },
-    { name: "reports", label: "Reports", icon: ClipboardDocumentIcon },
+    { name: "notifications", label: "Notifications", icon: BellIcon },
   ];
 
+  /*for admin
+    const features = [
+    { name: "the-dash-admin", label: "Home", icon: HomeIcon },
+    { name: "admin-profile", label: "Manage Profile", icon: UserIcon },
+    { name: "registration-request", label: "Registration Requests", icon: ClipboardDocumentIcon },
+    { name: "certificate-request", label: "Certificate Requests", icon: ClipboardDocumentIcon },
+    { name: "feedback", label: "Feedback", icon: ChatBubbleLeftEllipsisIcon },
+    { name: "staff-acc", label: "Staff Accounts", icon: UsersIcon },
+    { name: "manage-announcement", label: "Announcements", icon: MegaphoneIcon },
+    { name: "reports", label: "Reports", icon: ChartBarIcon },
+  ];*/
+
   useEffect(() => {
-    fetchStats();
     fetchNotifications();
   }, []);
-
-  const fetchStats = async () => {
-    try {
-      const res = await fetch("/api/reports");
-      if (!res.ok) throw new Error("Failed to fetch data");
-      const data = await res.json();
-      if (data.stats) setStats(data.stats);
-    } catch (err) {
-      console.error("Error loading reports:", err);
-    }
-  };
 
   const fetchNotifications = async () => {
     try {
@@ -68,123 +71,93 @@ export default function ReportsDashboard() {
     } catch (error) {
       console.error(error);
     }
-  };
+  }; // add if ur gonna import the notifs dropdwon
 
-  const handleLogout = () => {
+    const handleLogout = () => {
     const confirmed = window.confirm("Are you sure you want to log out?");
     if (confirmed) {
       localStorage.removeItem("token");
       router.push("/auth-front/login");
     }
-  };
-
-  // Export PDF
-  const exportPDF = () => {
-    if (!stats) return;
-    const doc = new jsPDF();
-    doc.text("Barangay Reports Summary", 14, 20);
-    const tableData = [
-      ["Residents", stats.totalResidents],
-      ["Staff", stats.totalStaff],
-      ["Certificates", stats.totalCertificates],
-      ["Feedback", stats.totalFeedback],
-      ["Announcements", stats.totalAnnouncements],
-    ];
-    (doc as any).autoTable({
-      head: [["Category", "Total Count"]],
-      body: tableData,
-      startY: 30,
-    });
-    doc.save("ReportsSummary.pdf");
-  };
-
-  // Export CSV
-  const exportCSV = () => {
-    if (!stats) return;
-    const csvRows = [
-      ["Category", "Total Count"],
-      ["Residents", stats.totalResidents],
-      ["Staff", stats.totalStaff],
-      ["Certificates", stats.totalCertificates],
-      ["Feedback", stats.totalFeedback],
-      ["Announcements", stats.totalAnnouncements],
-    ];
-    const csvContent = csvRows.map((r) => r.join(",")).join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "ReportsSummary.csv";
-    a.click();
-    URL.revokeObjectURL(url);
-  };
+  }; // add for logout 
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to bg-slate-50 p-4 flex gap-4">
+    <div className="min-h-screen bg-white p-4 flex gap-4"> {/*gradient bg*bg-gradient-to-br from-slate-50 via-red-800 to bg-slate-50/}
       {/* Sidebar */}
       <div
         className={`${
           sidebarOpen ? "w-64" : "w-16"
-        } bg-gray-50 shadow-lg rounded-xl transition-all duration-300 ease-in-out flex flex-col 
+        } bg-neutral-200 shadow-lg rounded-xl transition-all duration-300 ease-in-out flex flex-col 
         ${sidebarOpen ? "fixed inset-y-0 left-0 z-50 md:static md:translate-x-0" : "hidden md:flex"}`}
       >
+        {/* Logo + Close */}
         <div className="p-4 flex items-center justify-between">
-          <img src="/niugan-logo.png" alt="Logo" className="w-10 h-10 rounded-full object-cover" />
-          <button onClick={toggleSidebar} className="block md:hidden text-black hover:text-red-700 focus:outline-none">
+          <img
+            src="/niugan-logo.png"
+            alt="Company Logo"
+            className="w-10 h-10 rounded-full object-cover"
+          />
+          <button
+            onClick={toggleSidebar}
+            className="block md:hidden text-black hover:text-red-700 focus:outline-none"
+          >
             <XMarkIcon className="w-6 h-6" />
           </button>
         </div>
 
-        <nav className="flex-1 mt-6">
-          <ul>
-            {features.map(({ name, label, icon: Icon }) => (
-              <li key={name} className="mb-2">
-                <Link
-                  href={`/dash-front/${name}`}
-                  onClick={() => setActiveItem(name)}
-                  className={`relative flex items-center w-full px-4 py-2 text-left group transition-colors duration-200 ${
-                    activeItem === name
-                      ? "text-red-700 font-semibold"
-                      : "text-black hover:text-red-700"
+        {/* Navigation */}
+    <nav className="flex-1 mt-6">
+    <ul>
+      {features.map(({ name, label, icon: Icon }) => {
+        const href = `/admin-front/${name}`;
+        const isActive = name === ""; /*name ng page */
+        return (
+          <li key={name} className="mb-2">
+            <Link href={href}>
+              <span
+                className={`relative flex items-center w-full px-4 py-2 text-left group transition-colors duration-200 ${
+                  isActive
+                    ? "text-red-700 "
+                    : "text-black hover:text-red-700"
+                }`}
+              >
+                {isActive && (
+                  <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-700 rounded-r-full" />
+                )}
+                <Icon
+                  className={`w-6 h-6 mr-2 ${
+                    isActive ? "text-red-700" : "text-gray-600 group-hover:text-red-700"
                   }`}
-                >
-                  {activeItem === name && (
-                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-700 rounded-r-full" />
-                  )}
-                  <Icon
-                    className={`w-6 h-6 mr-2 ${
-                      activeItem === name
-                        ? "text-red-700"
-                        : "text-gray-600 group-hover:text-red-700"
+                />
+                {sidebarOpen && (
+                  <span
+                    className={`${
+                      isActive ? "text-red-700" : "group-hover:text-red-700"
                     }`}
-                  />
-                  {sidebarOpen && (
-                    <span
-                      className={`${
-                        activeItem === name
-                          ? "text-red-700"
-                          : "group-hover:text-red-700"
-                      }`}
-                    >
-                      {label}
-                    </span>
-                  )}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </nav>
+                  >
+                    {label}
+                  </span>
+                )}
+              </span>
+            </Link>
+          </li>
+        );
+      })}
+    </ul>
+  </nav>
 
-        <div className="p-4">
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-3 text-black hover:text-red-700 transition w-full text-left"
-          >
-            <ArrowRightOnRectangleIcon className="w-6 h-6" />
-            {sidebarOpen && <span>Log Out</span>}
-          </button>
-        </div>
+      {/* Functional Logout Button */}
+    <div className="p-4">
+      <button
+        onClick={handleLogout}
+        className="flex items-center gap-3 text-black hover:text-red-700 transition w-full text-left"
+      >
+        <ArrowRightOnRectangleIcon className="w-6 h-6" />
+        {sidebarOpen && <span>Log Out</span>}
+      </button>
+    </div>
 
+        {/* Sidebar Toggle (desktop only) */}
         <div className="p-4 flex justify-center hidden md:flex">
           <button
             onClick={toggleSidebar}
@@ -199,7 +172,7 @@ export default function ReportsDashboard() {
         </div>
       </div>
 
-      {/* Overlay */}
+      {/* Mobile Overlay */}
       {sidebarOpen && (
         <div
           className="fixed inset-0 bg-white/80 z-40 md:hidden"
@@ -207,67 +180,41 @@ export default function ReportsDashboard() {
         ></div>
       )}
 
-      {/* Main Content */}
+      {/* Main Section */}
       <div className="flex-1 flex flex-col gap-4">
-        <header className="bg-gray-50 shadow-sm p-4 flex justify-between items-center rounded-xl">
+        {/* Header */}
+        <header className="bg shadow-sm p-4 flex justify-between items-center rounded-xl ">
           <button
             onClick={toggleSidebar}
             className="block md:hidden text-black hover:text-red-700 focus:outline-none"
           >
             <Bars3Icon className="w-6 h-6" />
           </button>
-          <h1 className="text-xl font-semibold text-black">Reports Dashboard</h1>
+          <h1 className="text-xl font-semibold text-black">Resident Dashboard</h1>
           <div className="flex items-center space-x-4">
             <NotificationDropdown notifications={notifications} />
+            <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center shadow-sm">
+              <UserIcon className="w-5 h-5 text-black" />
+            </div>
           </div>
         </header>
 
+        {/* Main Content */}
         <main className="flex-1 bg-gray-50 rounded-xl p-6 shadow-sm">
-          <h2 className="text-2xl font-semibold mb-4">Summary Reports</h2>
+          <h2 className="text-2xl font-semibold mb-4">Welcome !</h2>
 
-          {!stats ? (
-            <p className="text-gray-600">No data available.</p>
-          ) : (
-            <>
-              <table className="min-w-full bg-white border border-gray-200 rounded-lg shadow-sm">
-                <thead>
-                  <tr className="bg-red-700 text-white">
-                    <th className="py-3 px-4 text-left">Category</th>
-                    <th className="py-3 px-4 text-left">Total Count</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {[
-                    ["Residents", stats.totalResidents],
-                    ["Staff", stats.totalStaff],
-                    ["Certificates", stats.totalCertificates],
-                    ["Feedback", stats.totalFeedback],
-                    ["Announcements", stats.totalAnnouncements],
-                  ].map(([category, count]) => (
-                    <tr key={category} className="border-b hover:bg-gray-50">
-                      <td className="py-3 px-4">{category}</td>
-                      <td className="py-3 px-4">{count}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-
-              <div className="mt-6 flex gap-4">
-                <button
-                  onClick={exportPDF}
-                  className="bg-red-700 text-white px-4 py-2 rounded-lg shadow hover:bg-red-800 transition"
-                >
-                  Download PDF
-                </button>
-                <button
-                  onClick={exportCSV}
-                  className="bg-gray-200 text-black px-4 py-2 rounded-lg shadow hover:bg-gray-300 transition"
-                >
-                  Download CSV
-                </button>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition">
+                <h3 className="text-lg font-semibold text-black mb-4">
+                  Card {i + 1}
+                </h3>
+                <p className="text-gray-700">
+                  Placeholder content for card {i + 1}.
+                </p>
               </div>
-            </>
-          )}
+            ))}
+          </div>
         </main>
       </div>
     </div>

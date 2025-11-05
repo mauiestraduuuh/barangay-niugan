@@ -68,7 +68,7 @@ export default function AdminFeedbackPage() {
     { name: "registration-request", label: "Registration Requests", icon: ClipboardDocumentIcon },
     { name: "certificate-request", label: "Certificate Requests", icon: ClipboardDocumentIcon },
     { name: "feedback", label: "Feedback", icon: ChatBubbleLeftEllipsisIcon },
-    { name: "staff", label: "Staff Accounts", icon: UsersIcon },
+    { name: "staff-acc", label: "Staff Accounts", icon: UsersIcon },
     { name: "manage-announcement", label: "Announcements", icon: MegaphoneIcon },
     { name: "reports", label: "Reports", icon: ChartBarIcon },
   ];
@@ -306,7 +306,7 @@ export default function AdminFeedbackPage() {
         </header>
 
         {/* Main */}
-        <main className="bg-white rounded-2xl shadow-lg p-6 transition-all duration-300">
+        <main className="bg-white/80 backdrop-blur-md rounded-2xl shadow-lg p-6 transition-all duration-300">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-3">
             <h2 className="text-2xl font-semibold text-gray-800">Resident Feedbacks</h2>
 

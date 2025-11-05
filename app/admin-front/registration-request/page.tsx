@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { useRouter } from "next/navigation";
+import NotificationDropdown from "../../components/NotificationDropdown";
 import {
   HomeIcon,
   UserIcon,
@@ -18,6 +19,7 @@ import {
   ChevronRightIcon,
   CheckIcon,
   XCircleIcon,
+  ArrowRightOnRectangleIcon,
 } from "@heroicons/react/24/outline";
 
 interface RegistrationRequest {
@@ -30,6 +32,13 @@ interface RegistrationRequest {
   role: "RESIDENT" | "STAFF";
   submitted_at: string;
 }
+interface Notification {
+  notification_id: number;
+  type: string; 
+  message: string;
+  is_read: boolean;
+  created_at: string;
+}
 
 export default function AdminRegistrationRequestsPage() {
   const router = useRouter();
@@ -38,6 +47,7 @@ export default function AdminRegistrationRequestsPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeItem, setActiveItem] = useState("registration-requests");
   const [message, setMessage] = useState("");
+  const [notifications, setNotifications] = useState<Notification[]>([]);
 
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
@@ -59,6 +69,20 @@ export default function AdminRegistrationRequestsPage() {
     }
     setLoading(false);
   };
+  useEffect(() => {
+    fetchNotifications();
+  }, []);
+
+  const fetchNotifications = async () => {
+    try {
+      const res = await fetch("/api/dash/notifications");
+      if (!res.ok) throw new Error("Failed to fetch notifications");
+      const data: Notification[] = await res.json();
+      setNotifications(data);
+    } catch (error) {
+      console.error(error);
+    }
+  };
 
   const handleApproveReject = async (requestId: number, approve: boolean) => {
     if (!token) return setMessage("Unauthorized");
@@ -79,31 +103,41 @@ export default function AdminRegistrationRequestsPage() {
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
   const features = [
-    { name: "dashboard", label: "Home", icon: HomeIcon },
+    { name: "the-dash-admin", label: "Home", icon: HomeIcon },
     { name: "admin-profile", label: "Manage Profile", icon: UserIcon },
     { name: "registration-request", label: "Registration Requests", icon: ClipboardDocumentIcon },
     { name: "certificate-request", label: "Certificate Requests", icon: ClipboardDocumentIcon },
     { name: "feedback", label: "Feedback", icon: ChatBubbleLeftEllipsisIcon },
-    { name: "staff", label: "Staff Accounts", icon: UsersIcon },
-    { name: "announcement", label: "Announcements", icon: MegaphoneIcon },
+    { name: "staff-acc", label: "Staff Accounts", icon: UsersIcon },
+    { name: "manage-announcement", label: "Announcements", icon: MegaphoneIcon },
     { name: "reports", label: "Reports", icon: ChartBarIcon },
   ];
 
+    const handleLogout = () => {
+    const confirmed = window.confirm("Are you sure you want to log out?");
+    if (confirmed) {
+      localStorage.removeItem("token");
+      router.push("/auth-front/login");
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-gray-200 p-4 flex gap-4">
-      {/* Sidebar */}
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to-slate-50 p-4 flex gap-4">
+       {/* Sidebar */}
       <div
         className={`${
           sidebarOpen ? "w-64" : "w-16"
         } bg-gray-50 shadow-lg rounded-xl transition-all duration-300 ease-in-out flex flex-col ${
-          sidebarOpen ? "block" : "hidden"
-        } md:block md:relative md:translate-x-0 ${
-          sidebarOpen ? "fixed inset-y-0 left-0 z-50 md:static md:translate-x-0" : ""
+          sidebarOpen ? "fixed inset-y-0 left-0 z-50 md:static md:translate-x-0" : "hidden md:flex"
         }`}
       >
-        {/* Top Section */}
+        {/* Logo + Close */}
         <div className="p-4 flex items-center justify-between">
-          <img src="/logo.png" alt="Logo" className="w-10 h-10 rounded-full object-cover" />
+          <img
+            src="/niugan-logo.png"
+            alt="Company Logo"
+            className="w-10 h-10 rounded-full object-cover"
+          />
           <button
             onClick={toggleSidebar}
             className="block md:hidden text-black hover:text-red-700 focus:outline-none"
@@ -114,37 +148,56 @@ export default function AdminRegistrationRequestsPage() {
 
         {/* Navigation */}
         <nav className="flex-1 mt-6">
-          <ul>
-            {features.map(({ name, label, icon: Icon }) => (
-              <li key={name} className="mb-2">
-                <Link
-                  href={`/admin-front/${name}`}
-                  className={`relative flex items-center w-full px-4 py-2 text-left group transition-colors duration-200 ${
-                    activeItem === name ? "text-red-700" : "text-black hover:text-red-700"
-                  }`}
-                  onClick={() => setActiveItem(name)}
-                >
-                  <div
-                    className={`absolute left-0 top-0 bottom-0 w-1 bg-red-700 rounded-r-full ${
-                      activeItem === name ? "block" : "hidden"
-                    }`}
-                  />
-                  <Icon className="w-6 h-6 mr-2 group-hover:text-red-700" />
-                  {sidebarOpen && <span>{label}</span>}
-                </Link>
-              </li>
-            ))}
-          </ul>
+            <ul>
+            {features.map(({ name, label, icon: Icon }) => {
+                const href = `/admin-front/${name}`;
+                const isActive = name === "registration-request";
+                return (
+                <li key={name} className="mb-2">
+                    <Link href={href}>
+                    <span
+                        className={`relative flex items-center w-full px-4 py-2 text-left group transition-colors duration-200 ${
+                        isActive
+                            ? "text-red-700 "
+                            : "text-black hover:text-red-700"
+                        }`}
+                    >
+                        {isActive && (
+                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-700 rounded-r-full" />
+                        )}
+                        <Icon
+                        className={`w-6 h-6 mr-2 ${
+                            isActive ? "text-red-700" : "text-gray-600 group-hover:text-red-700"
+                        }`}
+                        />
+                        {sidebarOpen && (
+                        <span
+                            className={`${
+                            isActive ? "text-red-700" : "group-hover:text-red-700"
+                            }`}
+                        >
+                            {label}
+                        </span>
+                        )}
+                    </span>
+                    </Link>
+                </li>
+                );
+            })}
+            </ul>
         </nav>
-
-        {/* Logout */}
+        {/* Logout Button */}
         <div className="p-4">
-          <button className="flex items-center gap-3 text-red-500 hover:text-red-700 transition w-full text-left">
-            Log Out
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-3 text-black hover:text-red-700 transition w-full text-left"
+          >
+            <ArrowRightOnRectangleIcon className="w-6 h-6" />
+            {sidebarOpen && <span>Log Out</span>}
           </button>
         </div>
 
-        {/* Toggle Button */}
+        {/* Sidebar Toggle (desktop only) */}
         <div className="p-4 flex justify-center hidden md:flex">
           <button
             onClick={toggleSidebar}
@@ -159,20 +212,30 @@ export default function AdminRegistrationRequestsPage() {
         </div>
       </div>
 
-      {/* Overlay for Mobile */}
+      {/* Mobile Overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
+          className="fixed inset-0 bg-white/80 z-40 md:hidden"
           onClick={toggleSidebar}
         ></div>
       )}
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col gap-4">
-        <header className="bg-gray-50 shadow-sm p-4 rounded-xl flex justify-between items-center">
-          <h1 className="text-xl font-semibold text-black">Registration Requests</h1>
-          <div className="flex items-center gap-4">
-            <BellIcon className="w-6 h-6 text-black" />
+         {/* Header */}
+        <header className="bg-gray-50 shadow-sm p-4 flex justify-between items-center rounded-xl">
+          <button
+            onClick={toggleSidebar}
+            className="block md:hidden text-black hover:text-red-700 focus:outline-none"
+          >
+            <Bars3Icon className="w-6 h-6" />
+          </button>
+          <h1 className="text-xl font-semibold text-black">Registration Management</h1>
+          <div className="flex items-center space-x-4">
+            <NotificationDropdown notifications={notifications} />
+            <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center shadow-sm">
+              <UserIcon className="w-5 h-5 text-black" />
+            </div>
           </div>
         </header>
 

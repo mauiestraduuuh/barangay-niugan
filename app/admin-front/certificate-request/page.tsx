@@ -19,6 +19,7 @@ import {
   CheckIcon,
   XCircleIcon,
   PaperClipIcon,
+  ArrowRightOnRectangleIcon,
 } from "@heroicons/react/24/outline";
 
 interface CertificateRequest {
@@ -68,20 +69,26 @@ export default function AdminCertificateRequestsPage() {
     fetchRequests();
   }, []);
 
-  const fetchRequests = async () => {
-    if (!token) return setMessage("Unauthorized: No token");
-    setLoading(true);
-    try {
-      const res = await axios.get("/api/admin/certificate-request", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setRequests(res.data.requests);
-    } catch (err) {
-      console.error(err);
-      setMessage("Failed to fetch certificate requests");
-    }
-    setLoading(false);
-  };
+const fetchRequests = async () => {
+  if (!token) return setMessage("Unauthorized: No token");
+  setLoading(true);
+  try {
+    const res = await axios.get("/api/admin/certificate-request", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    const fetchedRequests = Array.isArray(res.data.requests)
+      ? res.data.requests
+      : [];
+
+    setRequests(fetchedRequests);
+  } catch (err) {
+    console.error(err);
+    setMessage("Failed to fetch certificate requests");
+    setRequests([]); 
+  }
+  setLoading(false);
+};
 
   const handleApproveReject = async (requestId: string, approve: boolean) => {
     if (!token) return setMessage("Unauthorized");
@@ -173,11 +180,19 @@ export default function AdminCertificateRequestsPage() {
           </ul>
         </nav>
 
-        <div className="p-4">
-          <button className="flex items-center gap-3 text-red-500 hover:text-red-700 transition w-full text-left">
-            Log Out
-          </button>
-        </div>
+          {/* Logout Button */}
+          <div className="p-4">
+            <button
+              onClick={() => {
+                localStorage.removeItem("token");
+                router.push("/auth-front/login");
+              }}
+              className="flex items-center gap-3 text-black hover:text-red-700 transition w-full text-left"
+            >
+              <ArrowRightOnRectangleIcon className="w-6 h-6" />
+              {sidebarOpen && <span>Log Out</span>}
+            </button>
+          </div>
 
         <div className="p-4 flex justify-center hidden md:flex">
           <button
