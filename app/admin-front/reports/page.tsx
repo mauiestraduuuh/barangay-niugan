@@ -3,27 +3,26 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import jsPDF from "jspdf";
 import NotificationDropdown from "../../components/NotificationDropdown";
 import {
   BellIcon,
   UserIcon,
   HomeIcon,
-  UsersIcon,
+  CreditCardIcon,
   ClipboardDocumentIcon,
-  MegaphoneIcon,
   ChartBarIcon,
+  ChatBubbleLeftEllipsisIcon,
+  DocumentTextIcon,
+  MegaphoneIcon,
   Bars3Icon,
   ChevronLeftIcon,
   ChevronRightIcon,
   XMarkIcon,
   ArrowRightOnRectangleIcon,
-  UserGroupIcon,
-  DocumentTextIcon,
-  ExclamationCircleIcon,
-  ChatBubbleLeftEllipsisIcon,
+  UsersIcon,
 } from "@heroicons/react/24/outline";
 
-// Add this interface definition for notification
 interface Notification {
   notification_id: number;
   type: string;
@@ -32,25 +31,20 @@ interface Notification {
   created_at: string;
 }
 
-interface DashboardStats {
-  totalUsers: number;
-  pendingRegistrations: number;
-  totalAnnouncements: number;
-  recentActivities: number;
-}
-
-export default function AdminDashboard() {
+export default function ReportsSection() {
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeItem, setActiveItem] = useState("reports");
+  const [view, setView] = useState<"table" | "chart">("table");
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [stats, setStats] = useState<DashboardStats>({
-    totalUsers: 0,
-    pendingRegistrations: 0,
-    totalAnnouncements: 0,
-    recentActivities: 0,
-  });
   const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({
+    totalResidents: 0,
+    totalStaff: 0,
+    totalCertificates: 0,
+    totalFeedback: 0,
+    totalAnnouncements: 0,
+  });
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
@@ -64,7 +58,6 @@ export default function AdminDashboard() {
     { name: "manage-announcement", label: "Announcements", icon: MegaphoneIcon },
     { name: "reports", label: "Reports", icon: ChartBarIcon },
   ];
-
 
   useEffect(() => {
     fetchNotifications();
@@ -89,73 +82,146 @@ export default function AdminDashboard() {
     }
   };
 
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const res = await fetch("/api/dash/reports");
+        const data = await res.json();
+        if (data.stats) setStats(data.stats);
+      } catch (error) {
+        console.error("Error fetching reports:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchStats();
+  }, []);
+
+  useEffect(() => {
+    if (view === "chart" && typeof window !== "undefined" && !loading) {
+      import("chart.js/auto").then(({ default: Chart }) => {
+        const ctx = document.getElementById("reportChart") as HTMLCanvasElement;
+        new Chart(ctx, {
+          type: "bar",
+          data: {
+            labels: ["Residents", "Staff", "Certificates", "Feedback", "Announcements"],
+            datasets: [
+              {
+                label: "Total Count",
+                data: [
+                  stats.totalResidents,
+                  stats.totalStaff,
+                  stats.totalCertificates,
+                  stats.totalFeedback,
+                  stats.totalAnnouncements,
+                ],
+                backgroundColor: "#b91c1c",
+                borderRadius: 6,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              legend: { display: false },
+            },
+            scales: { y: { beginAtZero: true } },
+          },
+        });
+      });
+    }
+  }, [view, stats, loading]);
+
+  const handleExportCSV = () => {
+    const csv = [
+      ["Category", "Count"],
+      ["Residents", stats.totalResidents],
+      ["Staff", stats.totalStaff],
+      ["Certificates", stats.totalCertificates],
+      ["Feedback", stats.totalFeedback],
+      ["Announcements", stats.totalAnnouncements],
+    ]
+      .map((e) => e.join(","))
+      .join("\n");
+
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "barangay_report.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExportPDF = () => {
+    const doc = new jsPDF();
+    doc.setFontSize(14);
+    doc.text("Barangay Report Summary", 14, 16);
+    doc.setFontSize(11);
+
+    const rows = [
+      ["Residents", stats.totalResidents.toString()],
+      ["Staff", stats.totalStaff.toString()],
+      ["Certificates", stats.totalCertificates.toString()],
+      ["Feedback", stats.totalFeedback.toString()],
+      ["Announcements", stats.totalAnnouncements.toString()],
+    ];
+
+    let y = 30;
+    rows.forEach(([label, value]) => {
+      doc.text(`${label}: ${value}`, 20, y);
+      y += 10;
+    });
+
+    doc.save("barangay_report.pdf");
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to-slate-50 p-4 flex gap-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to-slate-50 p-2 sm:p-4 flex flex-col md:flex-row gap-4">
       {/* Sidebar */}
       <div
         className={`${
           sidebarOpen ? "w-64" : "w-16"
-        } bg-gray-50 shadow-lg rounded-xl transition-all duration-300 ease-in-out flex flex-col ${
-          sidebarOpen ? "fixed inset-y-0 left-0 z-50 md:static md:translate-x-0" : "hidden md:flex"
-        }`}
+        } bg-gray-50 shadow-lg rounded-xl transition-all duration-300 flex flex-col 
+        ${sidebarOpen ? "fixed inset-y-0 left-0 z-50 md:static md:translate-x-0" : "hidden md:flex"}`}
       >
-        {/* Logo + Close */}
         <div className="p-4 flex items-center justify-between">
-          <img
-            src="/niugan-logo.png"
-            alt="Company Logo"
-            className="w-10 h-10 rounded-full object-cover"
-          />
-          <button
-            onClick={toggleSidebar}
-            className="block md:hidden text-black hover:text-red-700 focus:outline-none"
-          >
+          <img src="/niugan-logo.png" alt="Logo" className="w-10 h-10 rounded-full" />
+          <button onClick={toggleSidebar} className="block md:hidden text-black hover:text-red-700">
             <XMarkIcon className="w-6 h-6" />
           </button>
         </div>
 
-        {/* Navigation */}
         <nav className="flex-1 mt-6">
-            <ul>
-            {features.map(({ name, label, icon: Icon }) => {
-                const href = `/admin-front/${name}`;
-                const isActive = name === "reports";
-                return (
-                <li key={name} className="mb-2">
-                    <Link href={href}>
-                    <span
-                        className={`relative flex items-center w-full px-4 py-2 text-left group transition-colors duration-200 ${
-                        isActive
-                            ? "text-red-700 "
-                            : "text-black hover:text-red-700"
-                        }`}
-                    >
-                        {isActive && (
-                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-700 rounded-r-full" />
-                        )}
-                        <Icon
-                        className={`w-6 h-6 mr-2 ${
-                            isActive ? "text-red-700" : "text-gray-600 group-hover:text-red-700"
-                        }`}
-                        />
-                        {sidebarOpen && (
-                        <span
-                            className={`${
-                            isActive ? "text-red-700" : "group-hover:text-red-700"
-                            }`}
-                        >
-                            {label}
-                        </span>
-                        )}
-                    </span>
-                    </Link>
-                </li>
-                );
-            })}
-            </ul>
+          <ul>
+            {features.map(({ name, label, icon: Icon }) => (
+              <li key={name} className="mb-2">
+                <Link
+                  href={`/dash-front/${name}`}
+                  onClick={() => setActiveItem(name)}
+                  className={`relative flex items-center px-4 py-2 transition-all duration-200 ${
+                    activeItem === name
+                      ? "text-red-700 font-semibold"
+                      : "text-black hover:text-red-700"
+                  }`}
+                >
+                  {activeItem === name && (
+                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-700 rounded-r-full" />
+                  )}
+                  <Icon
+                    className={`w-6 h-6 mr-2 ${
+                      activeItem === name
+                        ? "text-red-700"
+                        : "text-gray-600 group-hover:text-red-700"
+                    }`}
+                  />
+                  {sidebarOpen && <span>{label}</span>}
+                </Link>
+              </li>
+            ))}
+          </ul>
         </nav>
 
-        {/* Logout Button */}
         <div className="p-4">
           <button
             onClick={handleLogout}
@@ -166,11 +232,10 @@ export default function AdminDashboard() {
           </button>
         </div>
 
-        {/* Sidebar Toggle (desktop only) */}
         <div className="p-4 flex justify-center hidden md:flex">
           <button
             onClick={toggleSidebar}
-            className="w-10 h-10 bg-white hover:bg-red-50 rounded-full flex items-center justify-center focus:outline-none transition-colors duration-200 shadow-sm"
+            className="w-10 h-10 bg-white hover:bg-red-50 rounded-full flex items-center justify-center shadow-sm"
           >
             {sidebarOpen ? (
               <ChevronLeftIcon className="w-5 h-5 text-black" />
@@ -181,7 +246,6 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Mobile Overlay */}
       {sidebarOpen && (
         <div
           className="fixed inset-0 bg-white/80 z-40 md:hidden"
@@ -191,16 +255,15 @@ export default function AdminDashboard() {
 
       {/* Main Section */}
       <div className="flex-1 flex flex-col gap-4">
-        {/* Header */}
-        <header className="bg-gray-50 shadow-sm p-4 flex justify-between items-center rounded-xl">
+        <header className="bg-gray-50 shadow-sm p-3 sm:p-4 flex justify-between items-center rounded-xl">
           <button
             onClick={toggleSidebar}
-            className="block md:hidden text-black hover:text-red-700 focus:outline-none"
+            className="block md:hidden text-black hover:text-red-700"
           >
             <Bars3Icon className="w-6 h-6" />
           </button>
-          <h1 className="text-xl font-semibold text-black">Reports</h1>
-          <div className="flex items-center space-x-4">
+          <h1 className="text-lg sm:text-xl font-semibold text-black">Admin Reports</h1>
+          <div className="flex items-center gap-2 sm:gap-4">
             <NotificationDropdown notifications={notifications} />
             <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center shadow-sm">
               <UserIcon className="w-5 h-5 text-black" />
@@ -209,7 +272,114 @@ export default function AdminDashboard() {
         </header>
 
         {/* Main Content */}
+        <main className="flex-1 bg-white/80 backdrop-blur-md shadow-md rounded-xl p-4 sm:p-6">
+          {/* Date Form */}
+          <form className="flex flex-col sm:flex-row flex-wrap gap-4 items-start sm:items-end mb-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-600">Start Date</label>
+              <input
+                type="date"
+                className="mt-1 block w-full sm:w-48 rounded-md border border-gray-300 p-2 text-sm focus:border-red-600 focus:ring-red-600"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-600">End Date</label>
+              <input
+                type="date"
+                className="mt-1 block w-full sm:w-48 rounded-md border border-gray-300 p-2 text-sm focus:border-red-600 focus:ring-red-600"
+              />
+            </div>
+            <button
+              type="submit"
+              className="bg-red-700 hover:bg-red-800 text-white px-4 py-2 rounded-lg shadow-sm transition-all w-full sm:w-auto"
+            >
+              Generate
+            </button>
+          </form>
 
+          {/* Toggle View */}
+          <div className="flex flex-wrap justify-between items-center mb-4 gap-2">
+            <h3 className="text-md font-semibold text-gray-800">Report Summary</h3>
+            <div className="flex gap-2 w-full sm:w-auto justify-end">
+              <button
+                className={`px-3 py-1.5 text-sm rounded-lg border border-gray-300 hover:bg-gray-100 transition w-1/2 sm:w-auto ${
+                  view === "table" ? "bg-gray-100" : ""
+                }`}
+                onClick={() => setView("table")}
+              >
+                Table View
+              </button>
+              <button
+                className={`px-3 py-1.5 text-sm rounded-lg border border-gray-300 hover:bg-gray-100 transition w-1/2 sm:w-auto ${
+                  view === "chart" ? "bg-gray-100" : ""
+                }`}
+                onClick={() => setView("chart")}
+              >
+                Chart View
+              </button>
+            </div>
+          </div>
+
+          {/* Data Display */}
+          <div className="bg-white rounded-xl shadow-inner p-4 border border-gray-100 min-h-[300px] overflow-x-auto">
+            {loading ? (
+              <p className="text-center text-gray-500">Loading data...</p>
+            ) : view === "table" ? (
+              <table className="min-w-full text-sm text-left border border-gray-200">
+                <thead className="bg-red-700 text-white">
+                  <tr>
+                    <th className="px-4 py-2">Category</th>
+                    <th className="px-4 py-2">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="border-b hover:bg-gray-50">
+                    <td className="px-4 py-2">Residents</td>
+                    <td className="px-4 py-2">{stats.totalResidents}</td>
+                  </tr>
+                  <tr className="border-b hover:bg-gray-50">
+                    <td className="px-4 py-2">Staff</td>
+                    <td className="px-4 py-2">{stats.totalStaff}</td>
+                  </tr>
+                  <tr className="border-b hover:bg-gray-50">
+                    <td className="px-4 py-2">Certificates</td>
+                    <td className="px-4 py-2">{stats.totalCertificates}</td>
+                  </tr>
+                  <tr className="border-b hover:bg-gray-50">
+                    <td className="px-4 py-2">Feedback</td>
+                    <td className="px-4 py-2">{stats.totalFeedback}</td>
+                  </tr>
+                  <tr>
+                    <td className="px-4 py-2">Announcements</td>
+                    <td className="px-4 py-2">{stats.totalAnnouncements}</td>
+                  </tr>
+                </tbody>
+              </table>
+            ) : (
+              <div className="h-[300px] flex items-center justify-center">
+                <canvas id="reportChart" className="w-full h-full"></canvas>
+              </div>
+            )}
+          </div>
+
+          {/* Export Buttons */}
+          <div className="flex flex-col sm:flex-row justify-end mt-6 gap-3">
+            <button
+              onClick={handleExportPDF}
+              className="bg-red-700 hover:bg-red-800 text-white px-4 py-2 rounded-lg shadow-md flex items-center justify-center gap-2 transition w-full sm:w-auto"
+            >
+              <DocumentTextIcon className="w-5 h-5" />
+              Export PDF
+            </button>
+            <button
+              onClick={handleExportCSV}
+              className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-lg shadow-md flex items-center justify-center gap-2 transition w-full sm:w-auto"
+            >
+              <ClipboardDocumentIcon className="w-5 h-5" />
+              Export CSV
+            </button>
+          </div>
+        </main>
       </div>
     </div>
   );
