@@ -7,7 +7,6 @@ export async function GET(req: NextRequest) {
     const category = searchParams.get("category");
 
     if (category) {
-      // Fetch details for a specific category
       let details: any[] = [];
       switch (category) {
         case "residents":
@@ -22,6 +21,7 @@ export async function GET(req: NextRequest) {
             },
           });
           break;
+
         case "staff":
           details = await prisma.staff.findMany({
             select: {
@@ -34,6 +34,7 @@ export async function GET(req: NextRequest) {
             },
           });
           break;
+
         case "certificates":
           details = await prisma.certificateRequest.findMany({
             select: {
@@ -43,8 +44,10 @@ export async function GET(req: NextRequest) {
               status: true,
               requested_at: true,
               approved_at: true,
+              resident_id: true, // ← include resident_id
               resident: {
                 select: {
+                  resident_id: true, // ← include resident_id
                   first_name: true,
                   last_name: true,
                   contact_no: true,
@@ -55,6 +58,7 @@ export async function GET(req: NextRequest) {
             orderBy: { requested_at: "desc" },
           });
           break;
+
         case "feedback":
           details = await prisma.feedback.findMany({
             select: {
@@ -63,8 +67,10 @@ export async function GET(req: NextRequest) {
               status: true,
               submitted_at: true,
               responded_at: true,
+              resident_id: true, // ← include resident_id
               resident: {
                 select: {
+                  resident_id: true, // ← include resident_id
                   first_name: true,
                   last_name: true,
                 },
@@ -73,6 +79,7 @@ export async function GET(req: NextRequest) {
             orderBy: { submitted_at: "desc" },
           });
           break;
+
         case "households":
           details = await prisma.household.findMany({
             select: {
@@ -81,12 +88,14 @@ export async function GET(req: NextRequest) {
               created_at: true,
               headResident: {
                 select: {
+                  resident_id: true, // ← include resident_id
                   first_name: true,
                   last_name: true,
                 },
               },
               headStaff: {
                 select: {
+                  staff_id: true,
                   first_name: true,
                   last_name: true,
                 },
@@ -94,9 +103,11 @@ export async function GET(req: NextRequest) {
             },
           });
           break;
+
         default:
           return NextResponse.json({ message: "Invalid category" }, { status: 400 });
       }
+
       return NextResponse.json({ details });
     } else {
       // Fetch summary stats
@@ -106,7 +117,6 @@ export async function GET(req: NextRequest) {
       const totalFeedback = await prisma.feedback.count();
       const totalHouseholds = await prisma.household.count();
 
-      // Demographics (example: count by tags)
       const demographics: { [key: string]: number } = {};
       const demoCounts = await prisma.demographicTag.groupBy({
         by: ["tag_type"],

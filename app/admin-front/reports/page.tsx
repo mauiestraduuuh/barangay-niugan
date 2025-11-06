@@ -65,7 +65,7 @@ export default function ReportsSection() {
     { name: "certificate-request", label: "Certificate Requests", icon: ClipboardDocumentIcon },
     { name: "feedback", label: "Feedback", icon: ChatBubbleLeftEllipsisIcon },
     { name: "staff-acc", label: "Staff Accounts", icon: UsersIcon },
-    { name: "manage-announcement", label: "Announcements", icon: MegaphoneIcon },
+    { name: "announcement", label: "Announcements", icon: MegaphoneIcon },
     { name: "reports", label: "Reports", icon: ChartBarIcon },
   ];
 
@@ -101,37 +101,49 @@ export default function ReportsSection() {
   };
 
   const fetchDetails = async (category: string) => {
-    setActiveCategory(category);
-    setDetails([]);
-    try {
-      const res = await axios.get(`/api/admin/reports?category=${category}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const flattenedDetails = res.data.details.map((item: any) => {
-        if (item.resident) return { ...item, ...item.resident, resident: undefined };
-        if (item.headResident) {
-          return {
-            ...item,
-            head_resident_first_name: item.headResident.first_name,
-            head_resident_last_name: item.headResident.last_name,
-            headResident: undefined,
-          };
-        }
-        if (item.headStaff) {
-          return {
-            ...item,
-            head_staff_first_name: item.headStaff.first_name,
-            head_staff_last_name: item.headStaff.last_name,
-            headStaff: undefined,
-          };
-        }
-        return item;
-      });
-      setDetails(flattenedDetails);
-    } catch (err) {
-      console.error(err);
-    }
-  };
+  setActiveCategory(category);
+  setDetails([]); // reset
+
+  try {
+    const res = await axios.get(`/api/admin/reports?category=${category}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    const flattenedDetails = res.data.details.map((item: any) => {
+      const newItem: any = { ...item };
+
+      // Flatten resident and keep resident_id
+      if (item.resident) {
+        newItem.resident_id = item.resident.resident_id;
+        newItem.resident_first_name = item.resident.first_name;
+        newItem.resident_last_name = item.resident.last_name;
+        delete newItem.resident; // remove nested object
+      }
+
+      // Flatten headResident
+      if (item.headResident) {
+        newItem.head_resident_id = item.headResident.resident_id;
+        newItem.head_resident_first_name = item.headResident.first_name;
+        newItem.head_resident_last_name = item.headResident.last_name;
+        delete newItem.headResident;
+      }
+
+      // Flatten headStaff
+      if (item.headStaff) {
+        newItem.head_staff_id = item.headStaff.staff_id;
+        newItem.head_staff_first_name = item.headStaff.first_name;
+        newItem.head_staff_last_name = item.headStaff.last_name;
+        delete newItem.headStaff;
+      }
+
+      return newItem;
+    });
+
+    setDetails(flattenedDetails);
+  } catch (err) {
+    console.error(err);
+  }
+};
 
   const handleExportPDF = () => {
     const doc = new jsPDF();
