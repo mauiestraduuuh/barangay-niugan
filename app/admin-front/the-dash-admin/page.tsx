@@ -23,7 +23,6 @@ import {
   ChatBubbleLeftEllipsisIcon,
 } from "@heroicons/react/24/outline";
 
-// Add this interface definition for notification
 interface Notification {
   notification_id: number;
   type: string;
@@ -61,7 +60,7 @@ export default function AdminDashboard() {
     { name: "certificate-request", label: "Certificate Requests", icon: ClipboardDocumentIcon },
     { name: "feedback", label: "Feedback", icon: ChatBubbleLeftEllipsisIcon },
     { name: "staff-acc", label: "Staff Accounts", icon: UsersIcon },
-    { name: "manage-announcement", label: "Announcements", icon: MegaphoneIcon },
+    { name: "announcement", label: "Announcements", icon: MegaphoneIcon },
     { name: "reports", label: "Reports", icon: ChartBarIcon },
   ];
 
@@ -85,9 +84,9 @@ export default function AdminDashboard() {
   const fetchDashboardStats = async () => {
     setLoading(true);
     try {
-      // Fetch stats from your APIs (adjust endpoints as needed)
+      // Fetch stats from APIs (adjust endpoints as needed)
       const [usersRes, regsRes, annRes] = await Promise.all([
-        fetch("/api/admin/users/count"), // change kung ano ung api for user count
+        fetch("/api/admin/"), // change kung ano ung api for user count
         fetch("/api/auth/approve-registration"), // Get pending registrations
         fetch("/api/announcements"),
       ]);
