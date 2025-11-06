@@ -35,8 +35,6 @@ interface Notification {
 export default function ReportsSection() {
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [activeItem, setActiveItem] = useState("reports");
-  const [view, setView] = useState<"table" | "chart">("table");
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
@@ -44,13 +42,13 @@ export default function ReportsSection() {
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState({ from: "", to: "" });
 
-  // Make all stats numbers to satisfy TypeScript
   const [stats, setStats] = useState<Record<string, number>>({
     totalResidents: 0,
     totalStaff: 0,
     totalCertificates: 0,
     totalFeedback: 0,
     totalAnnouncements: 0,
+    totalHouseholds: 0,
   });
 
   const token =
@@ -69,8 +67,8 @@ export default function ReportsSection() {
     { name: "reports", label: "Reports", icon: ChartBarIcon },
   ];
 
+  // Fetch notifications
   useEffect(() => {
-    // Fetch notifications
     const fetchNotifications = async () => {
       try {
         const res = await fetch("/api/dash/notifications");
@@ -84,6 +82,7 @@ export default function ReportsSection() {
     fetchNotifications();
   }, []);
 
+  // Fetch stats (auto + manual)
   const fetchStats = async () => {
     setLoading(true);
     try {
@@ -100,51 +99,47 @@ export default function ReportsSection() {
     }
   };
 
+  useEffect(() => {
+    fetchStats(); // auto-fetch on load
+  }, []);
+
+  // Fetch details when clicking a panel
   const fetchDetails = async (category: string) => {
-  setActiveCategory(category);
-  setDetails([]); // reset
+    setActiveCategory(category);
+    setDetails([]);
+    try {
+      const res = await axios.get(`/api/admin/reports?category=${category}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const flattened = res.data.details.map((item: any) => {
+        const newItem: any = { ...item };
+        if (item.resident) {
+          newItem.resident_id = item.resident.resident_id;
+          newItem.resident_first_name = item.resident.first_name;
+          newItem.resident_last_name = item.resident.last_name;
+          delete newItem.resident;
+        }
+        if (item.headResident) {
+          newItem.head_resident_id = item.headResident.resident_id;
+          newItem.head_resident_first_name = item.headResident.first_name;
+          newItem.head_resident_last_name = item.headResident.last_name;
+          delete newItem.headResident;
+        }
+        if (item.headStaff) {
+          newItem.head_staff_id = item.headStaff.staff_id;
+          newItem.head_staff_first_name = item.headStaff.first_name;
+          newItem.head_staff_last_name = item.headStaff.last_name;
+          delete newItem.headStaff;
+        }
+        return newItem;
+      });
+      setDetails(flattened);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
-  try {
-    const res = await axios.get(`/api/admin/reports?category=${category}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-
-    const flattenedDetails = res.data.details.map((item: any) => {
-      const newItem: any = { ...item };
-
-      // Flatten resident and keep resident_id
-      if (item.resident) {
-        newItem.resident_id = item.resident.resident_id;
-        newItem.resident_first_name = item.resident.first_name;
-        newItem.resident_last_name = item.resident.last_name;
-        delete newItem.resident; // remove nested object
-      }
-
-      // Flatten headResident
-      if (item.headResident) {
-        newItem.head_resident_id = item.headResident.resident_id;
-        newItem.head_resident_first_name = item.headResident.first_name;
-        newItem.head_resident_last_name = item.headResident.last_name;
-        delete newItem.headResident;
-      }
-
-      // Flatten headStaff
-      if (item.headStaff) {
-        newItem.head_staff_id = item.headStaff.staff_id;
-        newItem.head_staff_first_name = item.headStaff.first_name;
-        newItem.head_staff_last_name = item.headStaff.last_name;
-        delete newItem.headStaff;
-      }
-
-      return newItem;
-    });
-
-    setDetails(flattenedDetails);
-  } catch (err) {
-    console.error(err);
-  }
-};
-
+  // Export PDF
   const handleExportPDF = () => {
     const doc = new jsPDF();
     doc.text("Barangay Report Summary", 14, 16);
@@ -158,13 +153,13 @@ export default function ReportsSection() {
     doc.save("barangay_report.pdf");
   };
 
+  // Export CSV
   const handleExportCSV = () => {
     const csv = Object.entries(stats)
       .filter(([_, value]) => typeof value === "number")
       .map(([key, value]) => [key.replace(/^total/i, ""), value])
       .map((e) => e.join(","))
       .join("\n");
-
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -183,7 +178,7 @@ export default function ReportsSection() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to-black p-4 flex gap-4 ">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to-black p-4 flex gap-4">
       {/* Sidebar */}
       <div
         className={`${
@@ -194,7 +189,6 @@ export default function ReportsSection() {
           sidebarOpen ? "fixed inset-y-0 left-0 z-50 md:static md:translate-x-0" : ""
         }`}
       >
-        {/* Logo + Close */}
         <div className="p-4 flex items-center justify-center">
           <img
             src="/niugan-logo.png"
@@ -203,7 +197,6 @@ export default function ReportsSection() {
               sidebarOpen ? "w-30 h-30" : "w-8.5 h-8.5"
             }`}
           />
-
           <button
             onClick={toggleSidebar}
             className="absolute top-3 right-3 text-black hover:text-red-700 focus:outline-none md:hidden"
@@ -211,48 +204,47 @@ export default function ReportsSection() {
             <XMarkIcon className="w-6 h-6" />
           </button>
         </div>
-{/* Navigation */}
- <nav className="flex-1 mt-6">
-    <ul>
-      {features.map(({ name, label, icon: Icon }) => {
-        const href = `/admin-front/${name}`;
-        const isActive = name === "admin-profile";
-        return (
-          <li key={name} className="mb-2">
-            <Link href={href}>
-              <span
-                className={`relative flex items-center w-full px-4 py-2 text-left group transition-colors duration-200 ${
-                  isActive
-                    ? "text-red-700 "
-                    : "text-black hover:text-red-700"
-                }`}
-              >
-                {isActive && (
-                  <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-700 rounded-r-full" />
-                )}
-                <Icon
-                  className={`w-6 h-6 mr-2 ${
-                    isActive ? "text-red-700" : "text-gray-600 group-hover:text-red-700"
-                  }`}
-                />
-                {sidebarOpen && (
-                  <span
-                    className={`${
-                      isActive ? "text-red-700" : "group-hover:text-red-700"
-                    }`}
-                  >
-                    {label}
-                  </span>
-                )}
-              </span>
-            </Link>
-          </li>
-        );
-      })}
-    </ul>
-  </nav>
 
-        {/* Logout Button */}
+        {/* Navigation */}
+        <nav className="flex-1 mt-6">
+          <ul>
+            {features.map(({ name, label, icon: Icon }) => {
+              const href = `/admin-front/${name}`;
+              const isActive = name === "reports";
+              return (
+                <li key={name} className="mb-2">
+                  <Link href={href}>
+                    <span
+                      className={`relative flex items-center w-full px-4 py-2 text-left group transition-colors duration-200 ${
+                        isActive ? "text-red-700" : "text-black hover:text-red-700"
+                      }`}
+                    >
+                      {isActive && (
+                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-700 rounded-r-full" />
+                      )}
+                      <Icon
+                        className={`w-6 h-6 mr-2 ${
+                          isActive ? "text-red-700" : "text-gray-600 group-hover:text-red-700"
+                        }`}
+                      />
+                      {sidebarOpen && (
+                        <span
+                          className={`${
+                            isActive ? "text-red-700" : "group-hover:text-red-700"
+                          }`}
+                        >
+                          {label}
+                        </span>
+                      )}
+                    </span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </nav>
+
+        {/* Logout */}
         <div className="p-4">
           <button
             onClick={handleLogout}
@@ -263,7 +255,7 @@ export default function ReportsSection() {
           </button>
         </div>
 
-        {/* Sidebar Toggle (desktop only) */}
+        {/* Sidebar Toggle */}
         <div className="p-4 flex justify-center hidden md:flex">
           <button
             onClick={toggleSidebar}
@@ -278,7 +270,7 @@ export default function ReportsSection() {
         </div>
       </div>
 
-      {/* Overlay (Mobile) */}
+      {/* Overlay for mobile */}
       {sidebarOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden" onClick={toggleSidebar}></div>
       )}
@@ -302,7 +294,7 @@ export default function ReportsSection() {
         </header>
 
         <main className="flex-1 bg-white/80 backdrop-blur-md shadow-md rounded-xl p-4 sm:p-6">
-          {/* Date Form */}
+          {/* Date Range Form */}
           <form className="flex flex-col sm:flex-row flex-wrap gap-4 items-start sm:items-end mb-6">
             <div>
               <label className="block text-sm font-medium text-gray-600">Start Date</label>
@@ -331,24 +323,28 @@ export default function ReportsSection() {
             </button>
           </form>
 
-          {/* Cards / Panels */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {Object.entries(stats)
-              .filter(([_, value]) => typeof value === "number")
-              .map(([key, value]) => (
-                <div
-                  key={key}
-                  onClick={() => fetchDetails(key.replace(/^total/i, "").toLowerCase())}
-                  className="cursor-pointer bg-white shadow-md p-6 rounded-lg hover:bg-red-50 transition flex flex-col items-start"
-                >
-                  <h3 className="text-lg font-semibold text-gray-800">
-                    {key.replace(/^total/i, "")}
-                  </h3>
-                  <p className="text-3xl font-bold text-red-700 mt-2">{value}</p>
-                  <p className="text-sm text-gray-600 mt-1">Click to view details</p>
-                </div>
-              ))}
-          </div>
+          {/* Square Panels */}
+          {loading ? (
+            <div className="text-center py-6 text-gray-500">Loading stats...</div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {Object.entries(stats)
+                .filter(([_, value]) => typeof value === "number")
+                .map(([key, value]) => (
+                  <div
+                    key={key}
+                    onClick={() => fetchDetails(key.replace(/^total/i, "").toLowerCase())}
+                    className="cursor-pointer bg-white shadow-md p-6 rounded-lg hover:bg-red-50 transition flex flex-col items-start"
+                  >
+                    <h3 className="text-lg font-semibold text-gray-800">
+                      {key.replace(/^total/i, "")}
+                    </h3>
+                    <p className="text-3xl font-bold text-red-700 mt-2">{value}</p>
+                    <p className="text-sm text-gray-600 mt-1">Click to view details</p>
+                  </div>
+                ))}
+            </div>
+          )}
 
           {/* Export Buttons */}
           <div className="flex flex-col sm:flex-row justify-end mt-6 gap-3">
@@ -370,7 +366,7 @@ export default function ReportsSection() {
         </main>
       </div>
 
-      {/* Modal for Details */}
+      {/* Details Modal */}
       {activeCategory && (
         <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50">
           <div className="bg-white rounded-xl w-11/12 md:w-2/3 lg:w-1/2 p-6 relative">
@@ -403,7 +399,9 @@ export default function ReportsSection() {
                       <tr key={i} className="border-t hover:bg-red-50 transition">
                         {Object.entries(item).map(([key, val], j) => (
                           <td key={j} className="px-4 py-2 text-sm text-gray-700">
-                            {["created_at","requested_at","approved_at","submitted_at","responded_at"].includes(key)
+                            {["created_at", "requested_at", "approved_at", "submitted_at", "responded_at", "posted_at"].includes(
+                              key
+                            )
                               ? new Date(val as string).toLocaleDateString()
                               : String(val)}
                           </td>

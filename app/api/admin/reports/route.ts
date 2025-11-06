@@ -44,10 +44,10 @@ export async function GET(req: NextRequest) {
               status: true,
               requested_at: true,
               approved_at: true,
-              resident_id: true, // ← include resident_id
+              resident_id: true,
               resident: {
                 select: {
-                  resident_id: true, // ← include resident_id
+                  resident_id: true,
                   first_name: true,
                   last_name: true,
                   contact_no: true,
@@ -67,10 +67,10 @@ export async function GET(req: NextRequest) {
               status: true,
               submitted_at: true,
               responded_at: true,
-              resident_id: true, // ← include resident_id
+              resident_id: true,
               resident: {
                 select: {
-                  resident_id: true, // ← include resident_id
+                  resident_id: true,
                   first_name: true,
                   last_name: true,
                 },
@@ -88,7 +88,7 @@ export async function GET(req: NextRequest) {
               created_at: true,
               headResident: {
                 select: {
-                  resident_id: true, // ← include resident_id
+                  resident_id: true,
                   first_name: true,
                   last_name: true,
                 },
@@ -104,18 +104,33 @@ export async function GET(req: NextRequest) {
           });
           break;
 
+          case "announcements":
+            details = await prisma.announcement.findMany({
+              select: {
+                announcement_id: true,
+                title: true,
+                content: true,
+                posted_at: true,
+                is_public: true,
+                posted_by: true, // already contains the user_id
+              },
+              orderBy: { posted_at: "desc" },
+            });
+            break;
+
         default:
           return NextResponse.json({ message: "Invalid category" }, { status: 400 });
       }
 
       return NextResponse.json({ details });
     } else {
-      // Fetch summary stats
+      // Summary stats
       const totalResidents = await prisma.resident.count();
       const totalStaff = await prisma.staff.count();
       const totalCertificates = await prisma.certificateRequest.count();
       const totalFeedback = await prisma.feedback.count();
       const totalHouseholds = await prisma.household.count();
+      const totalAnnouncements = await prisma.announcement.count();
 
       const demographics: { [key: string]: number } = {};
       const demoCounts = await prisma.demographicTag.groupBy({
@@ -132,6 +147,7 @@ export async function GET(req: NextRequest) {
         totalCertificates,
         totalFeedback,
         totalHouseholds,
+        totalAnnouncements,
         demographics,
       };
 
