@@ -1,20 +1,134 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/../lib/prisma";
 
-//GET summarized statistics for reports page
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
-    const stats = {
-      totalResidents: await prisma.resident.count(),
-      totalStaff: await prisma.staff.count(),
-      totalCertificates: await prisma.certificateRequest.count(),
-      totalFeedback: await prisma.feedback.count(),
-      totalAnnouncements: await prisma.announcement.count(),
-    };
+    const { searchParams } = new URL(req.url);
+    const category = searchParams.get("category");
 
-    return NextResponse.json({ stats });
+    if (category) {
+      // Fetch details for a specific category
+      let details: any[] = [];
+      switch (category) {
+        case "residents":
+          details = await prisma.resident.findMany({
+            select: {
+              resident_id: true,
+              first_name: true,
+              last_name: true,
+              contact_no: true,
+              address: true,
+              created_at: true,
+            },
+          });
+          break;
+        case "staff":
+          details = await prisma.staff.findMany({
+            select: {
+              staff_id: true,
+              first_name: true,
+              last_name: true,
+              contact_no: true,
+              address: true,
+              created_at: true,
+            },
+          });
+          break;
+        case "certificates":
+          details = await prisma.certificateRequest.findMany({
+            select: {
+              request_id: true,
+              certificate_type: true,
+              purpose: true,
+              status: true,
+              requested_at: true,
+              approved_at: true,
+              resident: {
+                select: {
+                  first_name: true,
+                  last_name: true,
+                  contact_no: true,
+                  address: true,
+                },
+              },
+            },
+            orderBy: { requested_at: "desc" },
+          });
+          break;
+        case "feedback":
+          details = await prisma.feedback.findMany({
+            select: {
+              feedback_id: true,
+              message: true,
+              status: true,
+              submitted_at: true,
+              responded_at: true,
+              resident: {
+                select: {
+                  first_name: true,
+                  last_name: true,
+                },
+              },
+            },
+            orderBy: { submitted_at: "desc" },
+          });
+          break;
+        case "households":
+          details = await prisma.household.findMany({
+            select: {
+              id: true,
+              address: true,
+              created_at: true,
+              headResident: {
+                select: {
+                  first_name: true,
+                  last_name: true,
+                },
+              },
+              headStaff: {
+                select: {
+                  first_name: true,
+                  last_name: true,
+                },
+              },
+            },
+          });
+          break;
+        default:
+          return NextResponse.json({ message: "Invalid category" }, { status: 400 });
+      }
+      return NextResponse.json({ details });
+    } else {
+      // Fetch summary stats
+      const totalResidents = await prisma.resident.count();
+      const totalStaff = await prisma.staff.count();
+      const totalCertificates = await prisma.certificateRequest.count();
+      const totalFeedback = await prisma.feedback.count();
+      const totalHouseholds = await prisma.household.count();
+
+      // Demographics (example: count by tags)
+      const demographics: { [key: string]: number } = {};
+      const demoCounts = await prisma.demographicTag.groupBy({
+        by: ["tag_type"],
+        _count: { tag_type: true },
+      });
+      demoCounts.forEach((item) => {
+        demographics[item.tag_type] = item._count.tag_type;
+      });
+
+      const stats = {
+        totalResidents,
+        totalStaff,
+        totalCertificates,
+        totalFeedback,
+        totalHouseholds,
+        demographics,
+      };
+
+      return NextResponse.json({ stats });
+    }
   } catch (error) {
-    console.error("Report generation failed:", error);
-    return NextResponse.json({ message: "Failed to generate report" }, { status: 500 });
+    console.error("Fetch reports failed:", error);
+    return NextResponse.json({ message: "Failed to fetch reports" }, { status: 500 });
   }
 }

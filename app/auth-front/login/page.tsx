@@ -31,7 +31,7 @@ export default function LoginPage() {
         return;
       }
 
-      // Save token
+          // Save token
       if (data.token) {
         localStorage.setItem("token", data.token);
       } else {
@@ -49,6 +49,14 @@ export default function LoginPage() {
       } else {
         localStorage.removeItem("resident_id");
       }
+
+      // Save admin_id if user is ADMIN
+      if (data.user.role === "ADMIN") {
+        localStorage.setItem("admin_id", data.user.id.toString());
+      } else {
+        localStorage.removeItem("admin_id");
+      }
+
 
       setMessage("Login successful! Redirecting...");
       router.push(data.redirectUrl); // Use dynamic redirect from backend
