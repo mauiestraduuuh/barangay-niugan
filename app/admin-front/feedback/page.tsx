@@ -67,7 +67,7 @@ export default function AdminFeedbackPage() {
     { name: "certificate-request", label: "Certificate Requests", icon: ClipboardDocumentIcon },
     { name: "feedback", label: "Feedback", icon: ChatBubbleLeftEllipsisIcon },
     { name: "staff", label: "Staff Accounts", icon: UsersIcon },
-    { name: "manage-announcement", label: "Announcements", icon: MegaphoneIcon },
+    { name: "announcement", label: "Announcements", icon: MegaphoneIcon },
     { name: "reports", label: "Reports", icon: ChartBarIcon },
   ];
 
