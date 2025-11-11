@@ -40,6 +40,16 @@ enum DemoTag {
   PWD
 }
 
+enum ComplaintGroup {
+  PEACE
+  PETS
+  ENVIRONMENT
+  ROAD
+  INFRASTRUCTURE
+  SAFETY
+}
+
+
 //
 // USERS
 //
@@ -229,13 +239,13 @@ model Announcement {
 // COMPLAINT CATEGORIES (New Model for 31 Bilingual Complaints)
 //
 model ComplaintCategory {
-  category_id   Int      @id @default(autoincrement())
+  category_id   Int             @id @default(autoincrement())
+  english_name  String          @unique
   tagalog_name  String
-  english_name  String   @unique  
+  group         ComplaintGroup  // now required, must be one of the enum
   description   String?
   feedbacks     Feedback[]
 }
-
 
 //
 // FEEDBACK 
@@ -244,7 +254,6 @@ model Feedback {
   feedback_id          Int             @id @default(autoincrement())
   resident_id          Int
   category_id          Int
-  message              String
   proof_file           String?
   status               FeedbackStatus  @default(PENDING)
   response             String?
