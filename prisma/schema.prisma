@@ -168,15 +168,23 @@ model CertificateRequest {
   certificate_type String
   purpose          String?
   status           CertificateStatus @default(PENDING)
+  rejection_reason String?           
   approved_by      Int?
   requested_at     DateTime          @default(now())
   approved_at      DateTime?
   file_path        String?
+  pickup_date      DateTime?
+  pickup_time      String?
+  claim_code       String?
 
   // Relations
   resident   Resident @relation(fields: [resident_id], references: [resident_id], onDelete: Cascade)
   approvedBy User?    @relation("ApprovedBy", fields: [approved_by], references: [user_id])
 }
+
+
+
+
 
 //
 // DIGITAL IDs
