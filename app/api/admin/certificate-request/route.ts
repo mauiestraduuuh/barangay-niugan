@@ -1,105 +1,111 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/../lib/prisma";
-import fs from "fs";
-import path from "path";
+import jwt from "jsonwebtoken";
 
-// Helper: serialize numbers/dates to strings for frontend
-function serializeRequest(req: any) {
-  return {
-    ...req,
-    request_id: req.request_id.toString(),
-    resident_id: req.resident_id.toString(),
-    approved_by: req.approved_by?.toString() ?? null,
-    requested_at: req.requested_at?.toISOString(),
-    approved_at: req.approved_at?.toISOString() ?? null,
-    resident: {
-      ...req.resident,
-      resident_id: req.resident.resident_id.toString(),
-      head_id: req.resident.head_id?.toString() ?? null,
-      birthdate: req.resident.birthdate.toISOString(),
-      created_at: req.resident.created_at.toISOString(),
-      updated_at: req.resident.updated_at.toISOString(),
-    },
-  };
+const JWT_SECRET = process.env.JWT_SECRET!;
+
+// Extract user ID and role from token
+function getUserFromToken(req: NextRequest): { userId: number; role: string } | null {
+  try {
+    const authHeader = req.headers.get("authorization");
+    if (!authHeader) return null;
+
+    const token = authHeader.split(" ")[1];
+    if (!token) return null;
+
+    const decoded = jwt.verify(token, JWT_SECRET) as { userId: number; role: string };
+    return { userId: decoded.userId, role: decoded.role };
+  } catch {
+    return null;
+  }
 }
 
-// ✅ GET all certificate requests
-export async function GET() {
+// Generate a 6-digit claim code
+function generateClaimCode() {
+  return 'CC-' + Math.floor(100000 + Math.random() * 900000);
+}
+
+// GET: fetch all certificate requests with resident info
+export async function GET(req: NextRequest) {
   try {
+    const user = getUserFromToken(req);
+    if (!user || user.role !== "ADMIN") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const requests = await prisma.certificateRequest.findMany({
-      include: { resident: true },
+      include: {
+        resident: {
+          select: { resident_id: true, first_name: true, last_name: true, address: true, contact_no: true },
+        },
+        approvedBy: { select: { user_id: true, username: true } },
+      },
       orderBy: { requested_at: "desc" },
     });
 
-    return NextResponse.json(requests.map(serializeRequest));
+    return NextResponse.json({ requests });
   } catch (error) {
-    console.error("Fetch certificate requests failed:", error);
-    return NextResponse.json({ message: "Failed to fetch requests" }, { status: 500 });
+    console.error("Error fetching certificate requests:", error);
+    return NextResponse.json({ error: "Failed to fetch requests" }, { status: 500 });
   }
 }
 
-// ✅ PUT: approve/reject a request
+// PUT: handle approve/reject or schedule pickup
 export async function PUT(req: NextRequest) {
   try {
-    const { requestId, status, approvedBy } = await req.json();
-
-    const updated = await prisma.certificateRequest.update({
-      where: { request_id: Number(requestId) },
-      data: {
-        status,
-        approved_by: approvedBy ? Number(approvedBy) : null,
-        approved_at: new Date(),
-      },
-    });
-
-    return NextResponse.json({
-      message: `Certificate request ${status.toLowerCase()} successfully`,
-      updated: serializeRequest(updated),
-    });
-  } catch (error) {
-    console.error("Update certificate request failed:", error);
-    return NextResponse.json({ message: "Failed to update request" }, { status: 500 });
-  }
-}
-
-// ✅ POST: attach file + remarks
-export async function POST(req: NextRequest) {
-  try {
-    const formData = await req.formData();
-    const requestIdStr = formData.get("requestId")?.toString();
-    const remarks = formData.get("remarks")?.toString() || undefined;
-    const file = formData.get("file") as File | null;
-
-    if (!requestIdStr) return NextResponse.json({ message: "requestId is required" }, { status: 400 });
-
-    let filePath: string | undefined = undefined;
-    if (file && file.name) {
-      const arrayBuffer = await file.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
-
-      const uploadsDir = path.join(process.cwd(), "public", "uploads");
-      if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
-
-      filePath = `/uploads/${Date.now()}_${file.name}`;
-      fs.writeFileSync(path.join(process.cwd(), "public", filePath), buffer);
+    const user = getUserFromToken(req);
+    if (!user || user.role !== "ADMIN") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const updated = await prisma.certificateRequest.update({
-  where: { request_id: Number(requestIdStr) },
-  data: {
-    purpose: remarks,
-    file_path: filePath,
-  },
-  include: { resident: true }, // << add this
-});
+    const { request_id, action, rejection_reason, pickup_date, pickup_time } = await req.json();
 
+    if (!request_id || !action) {
+      return NextResponse.json({ error: "request_id and action are required" }, { status: 400 });
+    }
 
-    return NextResponse.json({
-      message: "File and remarks attached successfully",
-      updated: serializeRequest(updated),
+    const data: any = {};
+
+    // Approve request (no pickup info yet)
+    if (action === "APPROVE") {
+      data.status = "APPROVED";
+      data.approved_by = user.userId;
+      data.approved_at = new Date();
+    }
+
+    // Reject request (must provide reason)
+    else if (action === "REJECT") {
+      if (!rejection_reason || rejection_reason.trim() === "") {
+        return NextResponse.json({ error: "Rejection reason is required" }, { status: 400 });
+      }
+      data.status = "REJECTED";
+      data.rejection_reason = rejection_reason.trim();
+      data.approved_by = user.userId;
+      data.approved_at = new Date();
+    }
+
+    // Schedule pickup for approved request
+    else if (action === "SCHEDULE_PICKUP") {
+      if (!pickup_date || !pickup_time) {
+        return NextResponse.json({ error: "Pickup date and time are required" }, { status: 400 });
+      }
+      data.pickup_date = new Date(pickup_date);
+      data.pickup_time = pickup_time;
+      data.claim_code = generateClaimCode();
+    }
+
+    else {
+      return NextResponse.json({ error: "Invalid action" }, { status: 400 });
+    }
+
+    const updatedRequest = await prisma.certificateRequest.update({
+      where: { request_id },
+      data,
     });
+
+    return NextResponse.json({ message: "Request updated successfully", updatedRequest });
   } catch (error) {
-    console.error("Attach file failed:", error);
-    return NextResponse.json({ message: "Failed to attach file" }, { status: 500 });
+    console.error("Error updating certificate request:", error);
+    return NextResponse.json({ error: "Failed to update request" }, { status: 500 });
   }
 }
