@@ -15,8 +15,10 @@
     "axios": "^1.12.2",
     "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.2",
+    "formidable": "^3.5.4",
     "jsonwebtoken": "^9.0.2",
     "jspdf": "^3.0.3",
+    "jspdf-autotable": "^5.0.2",
     "lucide-react": "^0.545.0",
     "next": "15.5.4",
     "nodemailer": "^7.0.9",
@@ -24,6 +26,7 @@
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-qr-code": "^2.0.18",
+    "recharts": "^3.3.0",
     "supabase": "^2.48.3"
   },
   "devDependencies": {
@@ -42,5 +45,10 @@
     "prisma": "^6.17.0",
     "tailwindcss": "^4.0.0",
     "typescript": "^5"
-  }
+  },
+
+  "prisma": {
+  "seed": "ts-node prisma/seed.js"
+}
+
 }
