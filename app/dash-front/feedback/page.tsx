@@ -235,7 +235,7 @@ export default function FeedbackPage() {
         {/* Main Content */}
         <main className="flex-1 bg-gray-50 rounded-xl p-6 shadow-sm overflow-auto">
           <div className="space-y-6">
-            <h1 className="text-2xl font-bold text-center text-black">Submit Feedback / Complain</h1>
+            <h1 className="text-2xl font-bold text-center text-black">Submit Complain</h1>
             {infoMessage && <p className="text-center text-black font-semibold bg-yellow-100 p-2 rounded">{infoMessage}</p>}
 
             {/* Language toggle */}
