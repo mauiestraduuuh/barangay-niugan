@@ -17,7 +17,7 @@ import {
   ChevronRightIcon,
   XMarkIcon,
   PlusIcon,
-  ArrowRightOnRectangleIcon, 
+  ArrowRightOnRectangleIcon,
 } from "@heroicons/react/24/outline";
 
 interface CertificateRequest {
@@ -26,10 +26,14 @@ interface CertificateRequest {
   purpose?: string;
   requested_at: string;
   status: string;
+  claim_code?: string;
+  pickup_date?: string;
+  pickup_time?: string;
 }
+
 interface Notification {
   notification_id: number;
-  type: string; 
+  type: string;
   message: string;
   is_read: boolean;
   created_at: string;
@@ -42,24 +46,24 @@ export default function Dashboard() {
   const [certificateType, setCertificateType] = useState("");
   const [purpose, setPurpose] = useState("");
   const [message, setMessage] = useState("");
-  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [messageType, setMessageType] = useState<"success" | "error" | "">("");
-  const token =
-    typeof window !== "undefined" ? localStorage.getItem("token") : null;
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
   const features = [
-    { name: 'the-dash-resident', label: 'Home', icon: HomeIcon },
-    { name: 'resident', label: 'Manage Profile', icon: UserIcon },
-    { name: 'digital-id', label: 'Digital ID', icon: CreditCardIcon },
-    { name: 'certificate-request', label: 'Certificates', icon: ClipboardDocumentIcon },
-    { name: 'feedback', label: 'Feedback / Complain', icon: ChatBubbleLeftEllipsisIcon },
-    { name: 'notifications', label: 'Notifications', icon: BellIcon },
+    { name: "the-dash-resident", label: "Home", icon: HomeIcon },
+    { name: "resident", label: "Manage Profile", icon: UserIcon },
+    { name: "digital-id", label: "Digital ID", icon: CreditCardIcon },
+    { name: "certificate-request", label: "Certificates", icon: ClipboardDocumentIcon },
+    { name: "feedback", label: "Feedback / Complain", icon: ChatBubbleLeftEllipsisIcon },
+    { name: "notifications", label: "Notifications", icon: BellIcon },
   ];
 
   useEffect(() => {
     fetchRequests();
+    fetchNotifications();
   }, []);
 
   const fetchRequests = async () => {
@@ -72,6 +76,17 @@ export default function Dashboard() {
     } catch (err) {
       console.error(err);
       setMessage("Failed to fetch certificate requests");
+    }
+  };
+
+  const fetchNotifications = async () => {
+    try {
+      const res = await fetch("/api/dash/notifications");
+      if (!res.ok) throw new Error("Failed to fetch notifications");
+      const data: Notification[] = await res.json();
+      setNotifications(data);
+    } catch (error) {
+      console.error(error);
     }
   };
 
@@ -94,7 +109,7 @@ export default function Dashboard() {
       setTimeout(() => {
         setMessage("");
         setMessageType("");
-      }, 5000); // Clear message after 5 seconds
+      }, 5000);
     } catch (err) {
       console.error(err);
       setMessageType("error");
@@ -106,28 +121,39 @@ export default function Dashboard() {
     }
   };
 
+  const statusColor = (status: string) => {
+    switch (status.toUpperCase()) {
+      case "APPROVED":
+        return "text-green-600";
+      case "PENDING":
+        return "text-yellow-600";
+      case "DENIED":
+        return "text-red-600";
+      default:
+        return "text-gray-600";
+    }
+  };
+
   const handleDownloadPDF = (req: CertificateRequest) => {
     const doc = new jsPDF();
     doc.setFontSize(18);
     doc.text("Barangay Certificate", 105, 20, { align: "center" });
     doc.setFontSize(12);
-    doc.text(
-      "This certifies that the following request has been approved.",
-      105,
-      30,
-      { align: "center" }
-    );
+    doc.text("This certifies that the following request has been approved.", 105, 30, { align: "center" });
+
     doc.text(`Certificate ID: ${req.request_id}`, 20, 50);
     doc.text(`Certificate Type: ${req.certificate_type}`, 20, 60);
     doc.text(`Purpose: ${req.purpose || "N/A"}`, 20, 70);
-    doc.text(
-      `Requested On: ${new Date(req.requested_at).toLocaleDateString()}`,
-      20,
-      80
-    );
+    doc.text(`Requested On: ${new Date(req.requested_at).toLocaleDateString()}`, 20, 80);
     doc.text(`Status: ${req.status}`, 20, 90);
-    doc.text("__________________________", 140, 120);
-    doc.text("Authorized Signature", 150, 125);
+
+    if (req.claim_code && req.pickup_date && req.pickup_time) {
+      doc.text(`Claim Code: ${req.claim_code}`, 20, 100);
+      doc.text(`Pickup Schedule: ${new Date(req.pickup_date).toLocaleDateString()} ${req.pickup_time}`, 20, 110);
+    }
+
+    doc.text("__________________________", 140, 140);
+    doc.text("Authorized Signature", 150, 145);
     doc.setFontSize(10);
     doc.text("Barangay Management System", 105, 280, { align: "center" });
     doc.save(`certificate_${req.request_id}.pdf`);
@@ -145,10 +171,11 @@ export default function Dashboard() {
             <p><strong>Certificate ID:</strong> ${req.request_id}</p>
             <p><strong>Certificate Type:</strong> ${req.certificate_type}</p>
             <p><strong>Purpose:</strong> ${req.purpose || "N/A"}</p>
-            <p><strong>Requested On:</strong> ${new Date(
-              req.requested_at
-            ).toLocaleDateString()}</p>
+            <p><strong>Requested On:</strong> ${new Date(req.requested_at).toLocaleDateString()}</p>
             <p><strong>Status:</strong> ${req.status}</p>
+            ${req.claim_code && req.pickup_date && req.pickup_time ? `
+            <p><strong>Claim Code:</strong> ${req.claim_code}</p>
+            <p><strong>Pickup Schedule:</strong> ${new Date(req.pickup_date).toLocaleDateString()} ${req.pickup_time}</p>` : ''}
             <br><br>
             <p style="text-align: right;">__________________________<br>Authorized Signature</p>
           </body>
@@ -156,33 +183,6 @@ export default function Dashboard() {
       `);
       printWindow.document.close();
       printWindow.print();
-    }
-  };
-
-  const statusColor = (status: string) => {
-    switch (status.toUpperCase()) {
-      case "APPROVED":
-        return "text-green-600";
-      case "PENDING":
-        return "text-yellow-600";
-      case "DENIED":
-        return "text-red-600";
-      default:
-        return "text-gray-600";
-    }
-  };
-  useEffect(() => {
-    fetchNotifications();
-  }, []);
-
-  const fetchNotifications = async () => {
-    try {
-      const res = await fetch("/api/dash/notifications");
-      if (!res.ok) throw new Error("Failed to fetch notifications");
-      const data: Notification[] = await res.json();
-      setNotifications(data);
-    } catch (error) {
-      console.error(error);
     }
   };
 
@@ -269,161 +269,135 @@ export default function Dashboard() {
     </button>
   </div>
 </div>
+{/* Main Section */}
+<div className="flex-1 flex flex-col gap-4">
+  {/* Header */}
+  <div className="flex justify-between items-center bg-gray-50 rounded-xl p-6 shadow-sm">
+    <div>
+      <h1 className="text-2xl font-bold text-gray-800">Certificate Requests</h1>
+      <p className="text-gray-500 mt-1">View and manage your certificate requests here.</p>
+    </div>
+    <button
+      onClick={() => setShowModal(true)}
+      className="bg-red-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-red-800"
+    >
+      <PlusIcon className="w-5 h-5" /> Request Certificate
+    </button>
+  </div>
 
-      {/* Main Section */}
-      <div className="flex-1 flex flex-col gap-4">
-        <header className="bg-gray-50 shadow-sm p-4 flex justify-between items-center rounded-xl">
+  {/* Table */}
+  {message && (
+    <p
+      className={`text-center p-2 rounded mb-4 ${
+        messageType === "success" ? "bg-green-500 text-white" : "bg-red-500 text-white"
+      }`}
+    >
+      {message}
+    </p>
+  )}
+
+  <div className="overflow-x-auto bg-white rounded-xl shadow">
+    <table className="w-full border-collapse">
+      <thead className="bg-gray-200 text-gray-800">
+        <tr>
+          <th className="border-b p-4 text-left">ID</th>
+          <th className="border-b p-4 text-left">Type</th>
+          <th className="border-b p-4 text-left">Purpose</th>
+          <th className="border-b p-4 text-left">Requested At</th>
+          <th className="border-b p-4 text-left">Status</th>
+          <th className="border-b p-4 text-left">Claim Code</th>
+          <th className="border-b p-4 text-left">Pickup Schedule</th>
+          <th className="border-b p-4 text-center">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {requests.map((req) => (
+          <tr key={req.request_id} className="hover:bg-gray-50">
+            <td className="border-b p-4">{req.request_id}</td>
+            <td className="border-b p-4">{req.certificate_type}</td>
+            <td className="border-b p-4">{req.purpose || "-"}</td>
+            <td className="border-b p-4">{new Date(req.requested_at).toLocaleDateString()}</td>
+            <td className={`border-b p-4 font-semibold ${statusColor(req.status)}`}>{req.status}</td>
+            <td className="border-b p-4">{req.claim_code || "-"}</td>
+            <td className="border-b p-4">
+              {req.pickup_date && req.pickup_time
+                ? `${new Date(req.pickup_date).toLocaleDateString()} ${req.pickup_time}`
+                : "-"}
+            </td>
+            <td className="border-b p-4 text-center">
+              {req.status === "APPROVED" ? (
+                <div className="flex justify-center gap-2">
+                  <button
+                    onClick={() => handlePrint(req)}
+                    className="bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700"
+                  >
+                    Print
+                  </button>
+                  <button
+                    onClick={() => handleDownloadPDF(req)}
+                    className="bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700"
+                  >
+                    PDF
+                  </button>
+                </div>
+              ) : (
+                <span className="text-gray-400 italic">No actions</span>
+              )}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+
+  {/* Request Modal */}
+  {showModal && (
+    <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+      <div className="bg-white rounded-xl w-full max-w-md p-6 relative">
+        <button
+          onClick={() => setShowModal(false)}
+          className="absolute top-4 right-4 text-black-500 hover:text-red-700"
+        >
+          <XMarkIcon className="w-6 h-6" />
+        </button>
+        <h2 className="text-xl font-semibold mb-4">New Certificate Request</h2>
+        <form onSubmit={handleRequestSubmit} className="flex flex-col gap-4">
+          <div>
+            <label className="block text-black-700 mb-1">Certificate Type</label>
+            <select
+              value={certificateType}
+              onChange={(e) => setCertificateType(e.target.value)}
+              className="w-full border-black-300 rounded-lg p-2"
+              required
+            >
+              <option value="">Select a type</option>
+              <option value="Barangay Clearance">Barangay Clearance</option>
+              <option value="Indigency Certificate">Indigency Certificate</option>
+              <option value="Business Permit">Business Permit</option>
+              {/* Add more types as needed */}
+            </select>
+          </div>
+          <div>
+            <label className="block text-gray-700 mb-1">Purpose</label>
+            <input
+              type="text"
+              value={purpose}
+              onChange={(e) => setPurpose(e.target.value)}
+              className="w-full border-black-300 rounded-lg p-2"
+              placeholder="Enter purpose"
+            />
+          </div>
           <button
-            onClick={toggleSidebar}
-            className="block md:hidden text-black hover:text-red-700 focus:outline-none"
+            type="submit"
+            className="bg-red-700 text-white px-4 py-2 rounded-lg hover:bg-red-800"
           >
-            <Bars3Icon className="w-6 h-6" />
+            Submit Request
           </button>
-          <h1 className="text-xl font-semibold text-black">
-            Certificate Requests
-          </h1>
-          <div className="flex items-center space-x-4">
-            <NotificationDropdown notifications={notifications} />
-            <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center shadow-sm">
-              <UserIcon className="w-5 h-5 text-black" />
-            </div>
-          </div>
-        </header>
-
-        <main className="flex-1 bg-gray-50 rounded-xl p-6 shadow-sm">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold text-gray-800">
-              My Certificate Requests
-            </h2>
-            <button
-              onClick={() => setShowModal(true)}
-              className="bg-red-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-red-800"
-            >
-              <PlusIcon className="w-5 h-5" /> Request Certificate
-            </button>
-          </div>
-
-          {message && (
-            <p className={`text-center p-2 rounded mb-4 ${messageType === "success" ? "bg-green-500 text-white" : "bg-red-500 text-white"}`}>
-              {message}
-            </p>
-          )}
-
-          <div className="overflow-x-auto bg-white rounded-xl shadow">
-            <table className="w-full border-collapse">
-              <thead className="bg-gray-200 text-gray-800">
-                <tr>
-                  <th className="border-b p-4 text-left">ID</th>
-                  <th className="border-b p-4 text-left">Type</th>
-                  <th className="border-b p-4 text-left">Purpose</th>
-                  <th className="border-b p-4 text-left">Requested At</th>
-                  <th className="border-b p-4 text-left">Status</th>
-                  <th className="border-b p-4 text-center">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {requests.map((req) => (
-                  <tr key={req.request_id} className="hover:bg-gray-50">
-                    <td className="border-b p-4">{req.request_id}</td>
-                    <td className="border-b p-4">{req.certificate_type}</td>
-                    <td className="border-b p-4">{req.purpose || "-"}</td>
-                    <td className="border-b p-4">
-                      {new Date(req.requested_at).toLocaleDateString()}
-                    </td>
-                    <td
-                      className={`border-b p-4 font-semibold ${statusColor(
-                        req.status
-                      )}`}
-                    >
-                      {req.status}
-                    </td>
-                    <td className="border-b p-4 text-center">
-                      {req.status === "APPROVED" ? (
-                        <div className="flex justify-center gap-2">
-                          <button
-                            onClick={() => handlePrint(req)}
-                            className="bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700"
-                          >
-                            Print
-                          </button>
-                          <button
-                            onClick={() => handleDownloadPDF(req)}
-                            className="bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700"
-                          >
-                            PDF
-                          </button>
-                        </div>
-                      ) : (
-                        <span className="text-gray-400 italic">
-                          No actions
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </main>
+        </form>
       </div>
-
-      {/* Request Modal */}
-      {showModal && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40">
-          <div className="bg-white rounded-xl p-6 shadow-lg w-full max-w-md relative">
-            <button
-              className="absolute top-3 right-3 text-gray-500 hover:text-gray-700"
-              onClick={() => setShowModal(false)}
-            >
-              <XMarkIcon className="w-5 h-5" />
-            </button>
-
-            <h2 className="text-lg font-semibold mb-4 text-gray-800">
-              Request a Certificate
-            </h2>
-
-            <form onSubmit={handleRequestSubmit} className="flex flex-col gap-4">
-              <label className="flex flex-col">
-                <span className="text-sm text-gray-600 mb-1">
-                  Certificate Type
-                </span>
-                <select
-                  className="border rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-red-700"
-                  value={certificateType}
-                  onChange={(e) => setCertificateType(e.target.value)}
-                  required
-                >
-                  <option value="" disabled>Select Type</option>
-                  <option value="Barangay Clearance">Barangay Clearance</option>
-                  <option value="Certificate of Residency">
-                    Certificate of Residency
-                  </option>
-                  <option value="Indigency Certificate">
-                    Indigency Certificate
-                  </option>
-                </select>
-              </label>
-
-              <label className="flex flex-col">
-                <span className="text-sm text-gray-600 mb-1">Purpose</span>
-                <textarea
-                  className="border rounded-lg p-2 h-24 resize-none focus:outline-none focus:ring-2 focus:ring-red-700"
-                  placeholder="State your purpose"
-                  value={purpose}
-                  onChange={(e) => setPurpose(e.target.value)}
-                />
-              </label>
-
-              <button
-                type="submit"
-                className="bg-gray-900 text-white py-2 rounded-lg hover:bg-gray-800"
-              >
-                Submit Request
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
+    </div>
+  )}
+</div>
     </div>
   );
 }
