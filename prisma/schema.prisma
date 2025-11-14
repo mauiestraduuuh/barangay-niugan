@@ -18,6 +18,7 @@ enum CertificateStatus {
   PENDING
   APPROVED
   REJECTED
+  CLAIMED     //request status: claimed; document has been claimed
 }
 
 enum FeedbackStatus {
@@ -47,6 +48,7 @@ enum ComplaintGroup {
   ROAD
   INFRASTRUCTURE
   SAFETY
+  OTHERS
 }
 
 
@@ -65,6 +67,7 @@ model User {
   residents            Resident[] 
   staffs               Staff[]
   certificateApprovals CertificateRequest[]  @relation("ApprovedBy")
+  claimedCertificates  CertificateRequest[]  @relation("ClaimedBy")
   digitalIdIssued      DigitalID[]           @relation("IssuedBy")
   demographicAssigned  DemographicTag[]      @relation("AssignedBy")
   announcementsPosted  Announcement[]
@@ -73,6 +76,7 @@ model User {
   eventsCreated        Event[]               @relation("EventCreatedBy")
   approvedRequests     RegistrationRequest[] @relation("ApprovedRequests")
   notifications        Notification[]
+
 }
 
 //
@@ -176,10 +180,13 @@ model CertificateRequest {
   pickup_date      DateTime?
   pickup_time      String?
   claim_code       String?
+  claimed_by       Int?             //admin who set status as claimed
+  claimed_at       DateTime?        //when it was claimed
 
   // Relations
   resident   Resident @relation(fields: [resident_id], references: [resident_id], onDelete: Cascade)
   approvedBy User?    @relation("ApprovedBy", fields: [approved_by], references: [user_id])
+  claimedBy  User?    @relation("ClaimedBy", fields: [claimed_by], references: [user_id])
 }
 
 
