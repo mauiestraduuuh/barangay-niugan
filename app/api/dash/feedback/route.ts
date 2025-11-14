@@ -12,9 +12,24 @@ export const config = {
 export async function GET() {
   try {
     const feedbacks = await prisma.feedback.findMany({
-      include: { category: true },
+      include: {
+        category: true,
+      },
       orderBy: { submitted_at: "desc" },
     });
+
+    // ✅ Include response_proof_file in the output
+    const formattedFeedbacks = feedbacks.map((fb) => ({
+      feedback_id: fb.feedback_id,
+      category_id: fb.category_id,
+      status: fb.status,
+      proof_file: fb.proof_file,
+      response: fb.response,
+      response_proof_file: fb.response_proof_file, // NEW FIELD
+      submitted_at: fb.submitted_at,
+      responded_at: fb.responded_at,
+      category: fb.category,
+    }));
 
     const categories = await prisma.complaintCategory.findMany({
       orderBy: [{ group: "asc" }, { english_name: "asc" }],
@@ -27,12 +42,16 @@ export async function GET() {
       group: cat.group,
     }));
 
-    return NextResponse.json({ feedbacks, categories: formattedCategories });
+    return NextResponse.json({
+      feedbacks: formattedFeedbacks,
+      categories: formattedCategories,
+    });
   } catch (err) {
     console.error(err);
     return NextResponse.json({ message: "Failed to fetch feedbacks" }, { status: 500 });
   }
 }
+
 
 // --- POST: submit new feedback ---
 export async function POST(req: NextRequest) {
