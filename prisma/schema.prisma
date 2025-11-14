@@ -18,6 +18,7 @@ enum CertificateStatus {
   PENDING
   APPROVED
   REJECTED
+  CLAIMED
 }
 
 enum FeedbackStatus {
@@ -47,8 +48,8 @@ enum ComplaintGroup {
   ROAD
   INFRASTRUCTURE
   SAFETY
+  OTHERS
 }
-
 
 //
 // USERS
@@ -62,7 +63,7 @@ model User {
   updated_at DateTime @updatedAt
 
   // Relations
-  residents            Resident[] 
+  residents            Resident[]
   staffs               Staff[]
   certificateApprovals CertificateRequest[]  @relation("ApprovedBy")
   digitalIdIssued      DigitalID[]           @relation("IssuedBy")
@@ -101,14 +102,15 @@ model Resident {
   updated_at         DateTime @updatedAt
 
   // Relations
-  user                User       @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
-  household           Household? @relation("HouseholdMembers", fields: [household_id], references: [id], onDelete: SetNull)
-  headedHousehold     Household? @relation("HouseholdHeadResident")
+  user                User                 @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  household           Household?           @relation("HouseholdMembers", fields: [household_id], references: [id], onDelete: SetNull)
+  headedHousehold     Household?           @relation("HouseholdHeadResident")
   certificateRequests CertificateRequest[]
   digitalIds          DigitalID[]
   demographicTags     DemographicTag[]
   feedbacks           Feedback[]
   clearances          Clearance[]
+  registrationCodes   RegistrationCode[]   @relation("ResidentUsedCodes")
 }
 
 //
@@ -137,26 +139,26 @@ model Staff {
   updated_at         DateTime @updatedAt
 
   // Relations
-  user             User       @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
-  household        Household? @relation("HouseholdMembersStaff", fields: [household_id], references: [id], onDelete: SetNull)
-  headedHousehold  Household? @relation("HouseholdHeadStaff")
-  digitalId        DigitalID?
+  user            User       @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  household       Household? @relation("HouseholdMembersStaff", fields: [household_id], references: [id], onDelete: SetNull)
+  headedHousehold Household? @relation("HouseholdHeadStaff")
+  digitalId       DigitalID?
 }
 
 //
 // HOUSEHOLDS
 //
 model Household {
-  id             Int       @id @default(autoincrement()) // ← this is the household number
-  head_resident  Int?      @unique
-  head_staff     Int?      @unique
-  address        String
-  created_at     DateTime  @default(now())
+  id            Int      @id @default(autoincrement()) // ← this is the household number
+  head_resident Int?     @unique
+  head_staff    Int?     @unique
+  address       String
+  created_at    DateTime @default(now())
 
-  headResident   Resident?  @relation("HouseholdHeadResident", fields: [head_resident], references: [resident_id], onDelete: Cascade)
-  headStaff      Staff?     @relation("HouseholdHeadStaff", fields: [head_staff], references: [staff_id], onDelete: Cascade)
-  members        Resident[] @relation("HouseholdMembers")
-  staff_members  Staff[]    @relation("HouseholdMembersStaff")
+  headResident  Resident?  @relation("HouseholdHeadResident", fields: [head_resident], references: [resident_id], onDelete: Cascade)
+  headStaff     Staff?     @relation("HouseholdHeadStaff", fields: [head_staff], references: [staff_id], onDelete: Cascade)
+  members       Resident[] @relation("HouseholdMembers")
+  staff_members Staff[]    @relation("HouseholdMembersStaff")
 }
 
 //
@@ -168,7 +170,7 @@ model CertificateRequest {
   certificate_type String
   purpose          String?
   status           CertificateStatus @default(PENDING)
-  rejection_reason String?           
+  rejection_reason String?
   approved_by      Int?
   requested_at     DateTime          @default(now())
   approved_at      DateTime?
@@ -176,30 +178,31 @@ model CertificateRequest {
   pickup_date      DateTime?
   pickup_time      String?
   claim_code       String?
+  claimed_at       DateTime?
+  claimed_by       Int?
 
   // Relations
   resident   Resident @relation(fields: [resident_id], references: [resident_id], onDelete: Cascade)
   approvedBy User?    @relation("ApprovedBy", fields: [approved_by], references: [user_id])
 }
 
-
 //
 // DIGITAL IDs
 //
 model DigitalID {
-  id           Int      @id @default(autoincrement())
-  resident_id  Int?     @unique
-  staff_id     Int?     @unique
-  id_number    String   @unique  
-  qr_code      String?
-  issued_by    Int
-  issued_at    DateTime @default(now())
+  id          Int      @id @default(autoincrement())
+  resident_id Int?     @unique
+  staff_id    Int?     @unique
+  id_number   String   @unique
+  qr_code     String?
+  issued_by   Int
+  issued_at   DateTime @default(now())
 
   // Relations
-  resident     Resident? @relation(fields: [resident_id], references: [resident_id], onDelete: Cascade)
-  staff        Staff?    @relation(fields: [staff_id], references: [staff_id], onDelete: Cascade)
-  issuedBy     User      @relation("IssuedBy", fields: [issued_by], references: [user_id])
-  tags         DigitalIDTag[]
+  resident Resident?      @relation(fields: [resident_id], references: [resident_id], onDelete: Cascade)
+  staff    Staff?         @relation(fields: [staff_id], references: [staff_id], onDelete: Cascade)
+  issuedBy User           @relation("IssuedBy", fields: [issued_by], references: [user_id])
+  tags     DigitalIDTag[]
 }
 
 model DigitalIDTag {
@@ -244,33 +247,33 @@ model Announcement {
 // COMPLAINT CATEGORIES (New Model for 31 Bilingual Complaints)
 //
 model ComplaintCategory {
-  category_id   Int             @id @default(autoincrement())
-  english_name  String          @unique
-  tagalog_name  String
-  group         ComplaintGroup  // now required, must be one of the enum
-  description   String?
-  feedbacks     Feedback[]
+  category_id  Int            @id @default(autoincrement())
+  english_name String         @unique
+  tagalog_name String
+  group        ComplaintGroup // now required, must be one of the enum
+  description  String?
+  feedbacks    Feedback[]
 }
 
 //
 // FEEDBACK 
 //
 model Feedback {
-  feedback_id          Int             @id @default(autoincrement())
-  resident_id          Int
-  category_id          Int
-  proof_file           String?
-  status               FeedbackStatus  @default(PENDING)
-  response             String?
-  response_proof_file  String?
-  responded_by         Int?
-  submitted_at         DateTime        @default(now())
-  responded_at         DateTime?
+  feedback_id         Int            @id @default(autoincrement())
+  resident_id         Int
+  category_id         Int
+  proof_file          String?
+  status              FeedbackStatus @default(PENDING)
+  response            String?
+  response_proof_file String?
+  responded_by        Int?
+  submitted_at        DateTime       @default(now())
+  responded_at        DateTime?
 
   // Relations
-  resident     Resident           @relation(fields: [resident_id], references: [resident_id], onDelete: Cascade)
-  respondedBy  User?              @relation("RespondedBy", fields: [responded_by], references: [user_id])
-  category     ComplaintCategory  @relation(fields: [category_id], references: [category_id])
+  resident    Resident          @relation(fields: [resident_id], references: [resident_id], onDelete: Cascade)
+  respondedBy User?             @relation("RespondedBy", fields: [responded_by], references: [user_id])
+  category    ComplaintCategory @relation(fields: [category_id], references: [category_id])
 }
 
 //
@@ -325,7 +328,7 @@ model RegistrationRequest {
   photo_url          String?
   is_head_of_family  Boolean            @default(false)
   head_id            Int?
-  household_number   String?           
+  household_number   String?
   is_4ps_member      Boolean            @default(false)
   is_indigenous      Boolean            @default(false)
   is_slp_beneficiary Boolean            @default(false)
@@ -340,16 +343,30 @@ model RegistrationRequest {
 }
 
 //
+// REGISTRATION CODES
+//
+model RegistrationCode {
+  id        Int      @id @default(autoincrement())
+  code      String   @unique
+  ownerName String
+  isUsed    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  usedById Int?
+  usedBy   Resident? @relation("ResidentUsedCodes", fields: [usedById], references: [resident_id])
+}
+
+//
 // NOTIFICATIONS
 //
 model Notification {
-  id           Int      @id @default(autoincrement())
-  user_id      Int
-  title        String
-  message      String
-  type         String?     // e.g. "announcement", "certificate", "feedback"
-  is_read      Boolean  @default(false)
-  created_at   DateTime @default(now())
+  id         Int      @id @default(autoincrement())
+  user_id    Int
+  title      String
+  message    String
+  type       String? // e.g. "announcement", "certificate", "feedback"
+  is_read    Boolean  @default(false)
+  created_at DateTime @default(now())
 
-  user         User     @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  user User @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
 }
