@@ -315,9 +315,6 @@ model Event {
   creator User? @relation("EventCreatedBy", fields: [created_by], references: [user_id])
 }
 
-//
-// REGISTRATION REQUESTS
-//
 model RegistrationRequest {
   request_id         Int                @id @default(autoincrement())
   first_name         String
@@ -338,6 +335,7 @@ model RegistrationRequest {
   is_pwd             Boolean            @default(false)
   is_senior          Boolean            @default(false)
   status             RegistrationStatus @default(PENDING)
+  reference_number   String?            @unique  // <--- ADD THIS
   submitted_at       DateTime           @default(now())
   approved_at        DateTime?
   approved_by        Int?
