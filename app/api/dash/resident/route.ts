@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/../lib/prisma";
 import bcrypt from "bcryptjs";
@@ -42,9 +44,13 @@ export async function GET(req: NextRequest) {
       include: {
         user: {
           select: {
-            username: true, // ✅ use username instead of email
+            username: true,
+            role: true,
+            created_at: true,
           },
         },
+        certificateRequests: true,
+        feedbacks: true,
       },
     });
 
@@ -54,7 +60,9 @@ export async function GET(req: NextRequest) {
 
     const data = {
       ...serializeResident(resident),
-      email: resident.user?.username || null, // ✅ treat username as email
+      email: resident.user?.username || null,
+      role: resident.user?.role,
+      account_created: resident.user?.created_at,
     };
 
     return NextResponse.json(data);
@@ -63,6 +71,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
   }
 }
+
 
 // PATCH change password
 export async function PATCH(req: NextRequest) {
