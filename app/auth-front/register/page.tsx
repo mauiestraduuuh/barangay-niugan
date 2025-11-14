@@ -1,11 +1,9 @@
-"use client"; // run on browser not on server
+"use client";
 
-import { useState } from "react"; // import from react to manage input, photo, messages
+import { useState } from "react";
 
-// state variables
 export default function RegisterPage() {
   const [form, setForm] = useState({
-    // empty strings for default value
     first_name: "",
     last_name: "",
     email: "",
@@ -14,20 +12,18 @@ export default function RegisterPage() {
     gender: "",
     address: "",
     role: "RESIDENT",
-
-    // boolean for checkboxes
     is_head_of_family: false,
     is_4ps_member: false,
     is_pwd: false,
     is_indigenous: false,
     is_slp_beneficiary: false,
-
-    // new household number field
     household_number: "",
+    registration_code: "", // NEW
   });
 
   const [photo, setPhoto] = useState<File | null>(null);
   const [message, setMessage] = useState("");
+  const [referenceNumber, setReferenceNumber] = useState(""); // NEW
 
   const handleChange = (
     e: React.ChangeEvent<
@@ -41,19 +37,15 @@ export default function RegisterPage() {
     const { name, value } = target;
 
     if (target instanceof HTMLInputElement && target.type === "checkbox") {
-      // Handle checkbox specifically
       setForm((prev) => ({ ...prev, [name]: target.checked }));
     } else if (target instanceof HTMLInputElement && target.type === "file") {
-      // Handle photo upload
       const file = target.files?.[0] || null;
       setPhoto(file);
     } else {
-      // Handle text, select, and textarea
       setForm((prev) => ({ ...prev, [name]: value }));
     }
   };
 
-  // prevent page from reloading when submitting
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -76,7 +68,15 @@ export default function RegisterPage() {
         return;
       }
 
-      setMessage("Registration submitted successfully!");
+      // Display reference number if backend generated one
+      if (!form.email && data.request?.reference_number) {
+        setReferenceNumber(data.request.reference_number);
+        setMessage(
+          `Registration submitted successfully! Your reference number is ${data.request.reference_number}`
+        );
+      } else {
+        setMessage("Registration submitted successfully!");
+      }
 
       setForm({
         first_name: "",
@@ -93,6 +93,7 @@ export default function RegisterPage() {
         is_indigenous: false,
         is_slp_beneficiary: false,
         household_number: "",
+        registration_code: "",
       });
       setPhoto(null);
     } catch (error) {
@@ -104,7 +105,6 @@ export default function RegisterPage() {
   return (
     <div className="relative flex min-h-screen items-center justify-center bg-[linear-gradient(90deg,rgba(255,0,0,1)_0%,rgba(0,0,0,1)_50%,rgba(255,255,255,1)_100%)] h-screen">
       <div className="relative z-10 bg-black/80 backdrop-blur-lg shadow-2xl max-w-4xl w-full rounded-2xl p-8 border border-white/40 flex flex-col md:flex-row gap-8">
-        {/* Left side — heading */}
         <div className="flex-1 flex flex-col justify-center text-center md:text-left">
           <h1 className="text-3xl font-bold font-poppins text-white mb-3">
             Register
@@ -115,9 +115,7 @@ export default function RegisterPage() {
           </p>
         </div>
 
-        {/* Right side — form */}
         <div className="flex-1 bg-white rounded-xl p-5 shadow-md">
-          {/* MESSAGE DISPLAY */}
           {message && (
             <p
               className={`mb-4 text-center text-sm font-medium ${
@@ -179,7 +177,6 @@ export default function RegisterPage() {
               className="col-span-1 px-3 py-2 rounded-md border border-gray-300 focus:ring-2 focus:ring-red-600 focus:outline-none"
               required
             />
-
             <select
               name="gender"
               value={form.gender}
@@ -191,7 +188,6 @@ export default function RegisterPage() {
               <option value="FEMALE">Female</option>
               <option value="OTHERS">Others</option>
             </select>
-
             <select
               name="role"
               value={form.role}
@@ -202,7 +198,6 @@ export default function RegisterPage() {
               <option value="STAFF">Staff</option>
               <option value="ADMIN">Admin</option>
             </select>
-
             <textarea
               name="address"
               placeholder="Complete Address"
@@ -240,6 +235,19 @@ export default function RegisterPage() {
                   No
                 </label>
               </div>
+
+              {/* Show registration code input if head */}
+              {form.is_head_of_family && (
+                <input
+                  type="text"
+                  name="registration_code"
+                  placeholder="Enter Registration Code"
+                  value={form.registration_code}
+                  onChange={handleChange}
+                  className="mt-2 w-full px-3 py-2 rounded-md border border-gray-300 focus:ring-2 focus:ring-red-600 focus:outline-none"
+                  required
+                />
+              )}
 
               {/* Show household number only if NOT head */}
               {!form.is_head_of_family && (
@@ -300,6 +308,12 @@ export default function RegisterPage() {
             >
               Register
             </button>
+            {referenceNumber && (
+                <p className="col-span-2 mt-2 text-sm text-gray-700 text-center">
+                  Keep your reference number safe: <span className="font-semibold">{referenceNumber}</span> 
+                  — you can use it later to check your registration status and login details.
+                </p>
+              )}
           </form>
         </div>
       </div>
