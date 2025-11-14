@@ -44,11 +44,12 @@ export async function GET(req: NextRequest) {
         pickup_date: true,
         pickup_time: true,
         claim_code: true,
+        rejection_reason: true, //new field reason for rejection
       },
       orderBy: { requested_at: "desc" },
     });
 
-    // Optional: Hide claim_code if pickup_date/time not set
+    // Hide claim code if pickup details not set
     const formattedRequests = requests.map((req) => ({
       ...req,
       claim_code: req.pickup_date && req.pickup_time ? req.claim_code : null,
@@ -60,6 +61,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Failed to fetch requests" }, { status: 500 });
   }
 }
+
 
 // POST: Submit a new certificate request
 export async function POST(req: NextRequest) {
