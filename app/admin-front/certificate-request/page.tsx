@@ -203,7 +203,7 @@ if (type === "SCHEDULE") {
       {
         request_id: Number(selectedRequest.request_id),
         action: "SCHEDULE_PICKUP",
-        pickup_date: new Date(pickupDate), // convert to Date
+        pickup_date: pickupDate, // convert to Date
         pickup_time: pickupTime,
       },
       { headers: { Authorization: `Bearer ${token}` } }
