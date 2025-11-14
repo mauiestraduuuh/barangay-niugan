@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import axios from "axios";
 import jsPDF from "jspdf";
+import { useRouter } from "next/navigation";
 import NotificationDropdown from "../../components/NotificationDropdown";
 import {
   BellIcon,
@@ -25,8 +26,9 @@ interface CertificateRequest {
   certificate_type: string;
   purpose?: string;
   requested_at: string;
-  status: string;
+  status: "PENDING" | "APPROVED" | "REJECTED" | "CLAIMED";
   claim_code?: string;
+  rejection_reason?: string;
   pickup_date?: string;
   pickup_time?: string;
 }
@@ -40,12 +42,19 @@ interface Notification {
 }
 
 export default function Dashboard() {
+  const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [requests, setRequests] = useState<CertificateRequest[]>([]);
+  const [filteredRequests, setFilteredRequests] = useState<CertificateRequest[]>([]);
   const [showModal, setShowModal] = useState(false);
+  const [showRejectionModal, setShowRejectionModal] = useState(false);
+  const [currentRejectionReason, setCurrentRejectionReason] = useState("");
   const [certificateType, setCertificateType] = useState("");
+  const [search, setSearch] = useState("");
+  const [activeItem, setActiveItem] = useState("certificate-request");
   const [purpose, setPurpose] = useState("");
   const [message, setMessage] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"PENDING" | "" | "APPROVED" | "REJECTED"| "CLAIMED">("PENDING");
   const [messageType, setMessageType] = useState<"success" | "error" | "">("");
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
@@ -90,6 +99,19 @@ export default function Dashboard() {
     }
   };
 
+useEffect(() => {
+  filterRequests();
+}, [statusFilter, requests]);
+
+const filterRequests = () => {
+  let filtered = [...requests];
+  if (statusFilter !== "") {
+    filtered = filtered.filter((r) => r.status === statusFilter);
+  }
+  setFilteredRequests(filtered);
+};
+  
+
   const handleRequestSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!certificateType) return setMessage("Please select a certificate type.");
@@ -127,8 +149,10 @@ export default function Dashboard() {
         return "text-green-600";
       case "PENDING":
         return "text-yellow-600";
-      case "DENIED":
+      case "REJECTED":
         return "text-red-600";
+      case "CLAIMED":
+        return "text-purple-600";
       default:
         return "text-gray-600";
     }
@@ -185,169 +209,259 @@ export default function Dashboard() {
       printWindow.print();
     }
   };
+    const handleLogout = () => {
+    if (window.confirm("Are you sure you want to log out?")) {
+      localStorage.removeItem("token");
+      router.push("/auth-front/login");
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-gray-200 p-4 flex gap-4">
-{/* Sidebar */}
+    <div className= "min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to-black p-4 flex gap-4 ">
+    {/* Sidebar */}
       <div
-  className={`${
-    sidebarOpen ? "w-64" : "w-16"
-  } bg-gray-50 shadow-lg rounded-xl transition-all duration-300 ease-in-out flex flex-col
-  ${sidebarOpen ? "fixed inset-y-0 left-0 z-50 md:static md:translate-x-0" : "hidden md:flex"}`}
->
-  <div className="p-4 flex items-center justify-between">
-    <img
-      src="/logo.png"
-      alt="Logo"
-      className="w-10 h-10 rounded-full object-cover"
-    />
+        className={`${
+          sidebarOpen ? "w-64" : "w-16"
+        } bg-gray-50 shadow-lg rounded-xl transition-all duration-300 ease-in-out flex flex-col 
+        ${sidebarOpen ? "fixed inset-y-0 left-0 z-50 md:static md:translate-x-0" : "hidden md:flex"}`}
+      >
+        {/* Logo + Close */}
+        <div className="p-4 flex items-center justify-center">
+          <img
+            src="/niugan-logo.png"
+            alt="Company Logo"
+            className={`rounded-full object-cover transition-all duration-300 ${
+              sidebarOpen ? "w-30 h-30" : "w-8.5 h-8.5"
+            }`}
+          />
+          <button
+            onClick={toggleSidebar}
+            className="absolute top-3 right-3 text-black hover:text-red-700 focus:outline-none md:hidden"
+          >
+            <XMarkIcon className="w-6 h-6" />
+          </button>
+        </div>
+          
+
+        {/* Navigation */}
+        <nav className="flex-1 mt-6">
+          <ul>
+            {features.map(({ name, label, icon: Icon }) => (
+              <li key={name} className="mb-2">
+                <Link
+                  href={`/admin-front/${name}`}
+                  onClick={() => setActiveItem(name)}
+                  className={`relative flex items-center w-full px-4 py-2 text-left group transition-colors duration-200 ${
+                    activeItem === name
+                      ? "text-red-700 font-semibold"
+                      : "text-black hover:text-red-700"
+                  }`}
+                >
+                  {activeItem === name && (
+                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-700 rounded-r-full" />
+                  )}
+                  <Icon
+                    className={`w-6 h-6 mr-2 ${
+                      activeItem === name
+                        ? "text-red-700"
+                        : "text-gray-600 group-hover:text-red-700"
+                    }`}
+                  />
+                  {sidebarOpen && (
+                    <span
+                      className={`${
+                        activeItem === name
+                          ? "text-red-700"
+                          : "group-hover:text-red-700"
+                      }`}
+                    >
+                      {label}
+                    </span>
+                  )}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
+
+      {/* Functional Logout Button */}
+    <div className="p-4">
+      <button
+        onClick={handleLogout}
+        className="flex items-center gap-3 text-black hover:text-red-700 transition w-full text-left"
+      >
+        <ArrowRightOnRectangleIcon className="w-6 h-6" />
+        {sidebarOpen && <span>Log Out</span>}
+      </button>
+    </div>
+
+        {/* Sidebar Toggle (desktop only) */}
+        <div className="p-4 flex justify-center hidden md:flex">
+          <button
+            onClick={toggleSidebar}
+            className="w-10 h-10 bg-white hover:bg-red-50 rounded-full flex items-center justify-center focus:outline-none transition-colors duration-200 shadow-sm"
+          >
+            {sidebarOpen ? (
+              <ChevronLeftIcon className="w-5 h-5 text-black" />
+            ) : (
+              <ChevronRightIcon className="w-5 h-5 text-black" />
+            )}
+          </button>
+        </div>
+      </div>
+
+{/* MAIN */}
+<div className="flex-1 flex flex-col gap-4 overflow-x-auto text-xs sm:text-sm md:text-base lg:text-lg">
+
+  {/* Header */}
+  <header className="bg-gray-50 shadow-sm p-4 flex justify-between items-center rounded-xl">
     <button
       onClick={toggleSidebar}
       className="block md:hidden text-black hover:text-red-700 focus:outline-none"
     >
-      <XMarkIcon className="w-6 h-6" />
+      <Bars3Icon className="w-6 h-6" />
     </button>
-  </div>
 
-  <nav className="flex-1 mt-6">
-    <ul>
-      {features.map(({ name, label, icon: Icon }) => {
-        const href = `/dash-front/${name}`;
-        const isActive = name === "certificate-request";
-        return (
-          <li key={name} className="mb-2">
-            <Link href={href}>
-              <span
-                className={`relative flex items-center w-full px-4 py-2 text-left group transition-colors duration-200 ${
-                  isActive
-                    ? "text-red-700 "
-                    : "text-black hover:text-red-700"
-                }`}
-              >
-                {isActive && (
-                  <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-700 rounded-r-full" />
-                )}
-                <Icon
-                  className={`w-6 h-6 mr-2 ${
-                    isActive ? "text-red-700" : "text-gray-600 group-hover:text-red-700"
-                  }`}
-                />
-                {sidebarOpen && (
-                  <span
-                    className={`${
-                      isActive ? "text-red-700" : "group-hover:text-red-700"
-                    }`}
-                  >
-                    {label}
-                  </span>
-                )}
-              </span>
-            </Link>
-          </li>
-        );
-      })}
-    </ul>
-  </nav>
+    <h1 className="text-large font-bold">Certificate Request</h1>
 
-  <div className="p-4">
-    <button className="flex items-center gap-3 text-black hover:text-red-700 transition w-full text-left">
-      <ArrowRightOnRectangleIcon className="w-6 h-6" />
-      {sidebarOpen && <span>Log Out</span>}
-    </button>
-  </div>
+    <div className="flex items-center space-x-4"></div>
+        {/* Request Certificate Button */}
+    <div className="flex justify-end">
+      <button
+        onClick={() => setShowModal(true)}
+        className="bg-red-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-red-800"
+      >
+        <PlusIcon className="w-5 h-5" /> Request Certificate
+      </button>
+    </div>
+  </header>
 
-  <div className="p-4 flex justify-center hidden md:flex">
-    <button
-      onClick={toggleSidebar}
-      className="w-10 h-10 bg-white hover:bg-red-50 rounded-full flex items-center justify-center focus:outline-none transition-colors duration-200 shadow-sm"
-    >
-      {sidebarOpen ? (
-        <ChevronLeftIcon className="w-5 h-5 text-black" />
-      ) : (
-        <ChevronRightIcon className="w-5 h-5 text-black" />
-      )}
-    </button>
+  {/* MAIN CONTENT CONTAINER */}
+  <div className="bg-white backdrop-blur-sm p-5 rounded-xl shadow-lg flex flex-col gap-4">
+
+
+    {/* Filter */}
+<div className="flex items-center justify-between">
+  <h1 className="text-medium font-bold text-gray-800 tracking-tight">Certificate History</h1>
+  
+  <div className="flex items-center gap-3">
+    <label className="text-sm font-semibold text-gray-600">Filter Status:</label>
+    
+    <div className="relative">
+      <select
+        className="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-8 text-sm font-medium text-gray-700 shadow-sm hover:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
+        value={statusFilter}
+        onChange={(e) => setStatusFilter(e.target.value as any)}
+      >
+        <option value="">All Statuses</option>
+        <option value="PENDING">Pending</option>
+        <option value="APPROVED">Approved</option>
+        <option value="REJECTED">Rejected</option>
+        <option value="CLAIMED">Claimed</option>
+      </select>
+      <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+        <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </div>
+    </div>
   </div>
 </div>
-{/* Main Section */}
-<div className="flex-1 flex flex-col gap-4">
-  {/* Header */}
-  <div className="flex justify-between items-center bg-gray-50 rounded-xl p-6 shadow-sm">
-    <div>
-      <h1 className="text-2xl font-bold text-gray-800">Certificate Requests</h1>
-      <p className="text-gray-500 mt-1">View and manage your certificate requests here.</p>
-    </div>
-    <button
-      onClick={() => setShowModal(true)}
-      className="bg-red-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-red-800"
-    >
-      <PlusIcon className="w-5 h-5" /> Request Certificate
-    </button>
-  </div>
 
-  {/* Table */}
-  {message && (
-    <p
-      className={`text-center p-2 rounded mb-4 ${
-        messageType === "success" ? "bg-green-500 text-white" : "bg-red-500 text-white"
-      }`}
-    >
-      {message}
-    </p>
-  )}
-
-  <div className="overflow-x-auto bg-white rounded-xl shadow">
-    <table className="w-full border-collapse">
-      <thead className="bg-gray-200 text-gray-800">
-        <tr>
-          <th className="border-b p-4 text-left">ID</th>
-          <th className="border-b p-4 text-left">Type</th>
-          <th className="border-b p-4 text-left">Purpose</th>
-          <th className="border-b p-4 text-left">Requested At</th>
-          <th className="border-b p-4 text-left">Status</th>
-          <th className="border-b p-4 text-left">Claim Code</th>
-          <th className="border-b p-4 text-left">Pickup Schedule</th>
-          <th className="border-b p-4 text-center">Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        {requests.map((req) => (
-          <tr key={req.request_id} className="hover:bg-gray-50">
-            <td className="border-b p-4">{req.request_id}</td>
-            <td className="border-b p-4">{req.certificate_type}</td>
-            <td className="border-b p-4">{req.purpose || "-"}</td>
-            <td className="border-b p-4">{new Date(req.requested_at).toLocaleDateString()}</td>
-            <td className={`border-b p-4 font-semibold ${statusColor(req.status)}`}>{req.status}</td>
-            <td className="border-b p-4">{req.claim_code || "-"}</td>
-            <td className="border-b p-4">
-              {req.pickup_date && req.pickup_time
-                ? `${new Date(req.pickup_date).toLocaleDateString()} ${req.pickup_time}`
-                : "-"}
-            </td>
-            <td className="border-b p-4 text-center">
-              {req.status === "APPROVED" ? (
-                <div className="flex justify-center gap-2">
-                  <button
-                    onClick={() => handlePrint(req)}
-                    className="bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700"
-                  >
-                    Print
-                  </button>
-                  <button
-                    onClick={() => handleDownloadPDF(req)}
-                    className="bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700"
-                  >
-                    PDF
-                  </button>
-                </div>
-              ) : (
-                <span className="text-gray-400 italic">No actions</span>
-              )}
-            </td>
+    {/* Table */}
+    <div className="overflow-x-auto bg-white rounded-xl shadow-lg">
+      <table className="w-full text-left border-collapse text-[0.65rem] sm:text-xs md:text-sm lg:text-base">
+        <thead className="bg-gradient-to-br from-black via-red-800 to-black text-white uppercase">
+          <tr>
+            <th className="p-4">ID</th>
+            <th className="p-4">Type</th>
+            <th className="p-4">Purpose</th>
+            <th className="p-4">Requested At</th>
+            <th className="p-4">Status</th>
+            <th className="p-4">Claim Code</th>
+            <th className="p-4">Pickup Schedule</th>
+            <th className="p-4 text-center">Actions</th>
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+
+        <tbody>
+          {filteredRequests.map((req) => (
+            <tr
+              key={req.request_id}
+              className="hover:bg-gray-50 transition duration-200"
+            >
+              <td className="p-4">{req.request_id}</td>
+              <td className="p-4">{req.certificate_type}</td>
+              <td className="p-4">{req.purpose || "-"}</td>
+              <td className="p-4">
+                {new Date(req.requested_at).toLocaleDateString()}
+              </td>
+
+              {/* Status */}
+              <td className="p-4 font-semibold">
+                {req.status === "REJECTED" ? (
+                  <button
+                    onClick={() => {
+                      setCurrentRejectionReason(
+                        req.rejection_reason || "No reason provided"
+                      );
+                      setShowRejectionModal(true);
+                    }}
+                    className="text-red-600 hover:underline"
+                  >
+                    {req.status}
+                  </button>
+                ) : (
+                  <span
+                    className={`${
+                      req.status === "APPROVED"
+                        ? "text-green-600"
+                        : req.status === "PENDING"
+                        ? "text-yellow-600"
+                        : req.status === "CLAIMED"
+                        ? "text-purple-600"
+                        : "text-gray-600"
+                    }`}
+                  >
+                    {req.status}
+                  </span>
+                )}
+              </td>
+
+              <td className="p-4">{req.claim_code || "-"}</td>
+
+              <td className="p-4">
+                {req.pickup_date && req.pickup_time
+                  ? `${new Date(req.pickup_date).toLocaleDateString()} ${req.pickup_time}`
+                  : "-"}
+              </td>
+
+              <td className="p-4 text-center">
+                {req.status === "APPROVED" ? (
+                  <div className="flex justify-center gap-2">
+                    <button
+                      onClick={() => handlePrint(req)}
+                      className="bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700"
+                    >
+                      Print
+                    </button>
+                    <button
+                      onClick={() => handleDownloadPDF(req)}
+                      className="bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700"
+                    >
+                      PDF
+                    </button>
+                  </div>
+                ) : (
+                  <span className="text-gray-400 italic">No actions</span>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+
   </div>
 
   {/* Request Modal */}
@@ -397,7 +511,30 @@ export default function Dashboard() {
       </div>
     </div>
   )}
+
+  {showRejectionModal && (
+  <div className="fixed inset-0 z-[1000] bg-black bg-opacity-40 flex items-center justify-center">
+    <div className="bg-white rounded-xl w-full max-w-sm p-6 relative">
+      <button
+        onClick={() => setShowRejectionModal(false)}
+        className="absolute top-4 right-4 text-black hover:text-red-700"
+      >
+        <XMarkIcon className="w-6 h-6" />
+      </button>
+      <h2 className="text-xl font-semibold mb-4 text-red-600">Request Denied</h2>
+      <p>{currentRejectionReason}</p>
+      <button
+        onClick={() => setShowRejectionModal(false)}
+        className="mt-4 bg-red-700 text-white px-4 py-2 rounded-lg hover:bg-red-800"
+      >
+        Close
+      </button>
+    </div>
+  </div>
+)}
 </div>
+
+
     </div>
   );
 }

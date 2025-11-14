@@ -111,8 +111,7 @@ export default function AdminDashboard() {
   ];
 
   return (
-    // GLOBAL TEXT COLOR: dark red as default
-    <div className="min-h-screen bg-gray-200 p-4 flex gap-4 text-red-900">
+    <div className="min-h-screen bg-gray-200 p-4 flex gap-4 text-black">
       {/* Sidebar */}
       <div
         className={`${
@@ -145,7 +144,7 @@ export default function AdminDashboard() {
     <ul>
       {features.map(({ name, label, icon: Icon }) => {
         const href = `/admin-front/${name}`;
-        const isActive = name === "admin-profile";
+        const isActive = name === "the-dash-admin";
         return (
           <li key={name} className="mb-2">
             <Link href={href}>

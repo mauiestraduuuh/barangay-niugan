@@ -28,7 +28,7 @@ interface CertificateRequest {
   resident_id: string;
   certificate_type: string;
   purpose?: string;
-  status: "PENDING" | "APPROVED" | "REJECTED";
+  status: "PENDING" | "APPROVED" | "REJECTED" | "CLAIMED";
   approved_by?: string | null;
   requested_at: string;
   approved_at?: string | null;
@@ -61,7 +61,7 @@ export default function AdminCertificateRequestsPage() {
   const [pickupDate, setPickupDate] = useState("");
   const [pickupTime, setPickupTime] = useState("");
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"PENDING" | "" | "APPROVED" | "REJECTED">("PENDING");
+  const [statusFilter, setStatusFilter] = useState<"PENDING" | "" | "APPROVED" | "REJECTED"| "CLAIMED">("PENDING");
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
   const features = [
@@ -203,7 +203,7 @@ if (type === "SCHEDULE") {
       {
         request_id: Number(selectedRequest.request_id),
         action: "SCHEDULE_PICKUP",
-        pickup_date: pickupDate, // convert to Date
+        pickup_date: pickupDate, 
         pickup_time: pickupTime,
       },
       { headers: { Authorization: `Bearer ${token}` } }
@@ -243,7 +243,7 @@ if (type === "SCHEDULE") {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to-black p-4 flex gap-4">
-{/* Sidebar */}
+    {/* Sidebar */}
       <div
         className={`${
           sidebarOpen ? "w-64" : "w-16"
@@ -371,6 +371,7 @@ if (type === "SCHEDULE") {
       <option value="PENDING">Pending</option>
       <option value="APPROVED">Approved</option>
       <option value="REJECTED">Rejected</option>
+      <option value="REJECTED">Claimed</option>
     </select>
   </div>
 
@@ -426,6 +427,12 @@ if (type === "SCHEDULE") {
                     Rejected
                   </span>
                 )}
+                {req.status === "CLAIMED" && (
+                  <span className="px-2 py-1 bg-purple-200 text-purple-800 rounded-full text-xs sm:text-sm font-semibold">
+                    Claimed
+                  </span>
+                )}
+                
                 
               </td>
               <td className="px-3 py-2 flex flex-wrap gap-1">
