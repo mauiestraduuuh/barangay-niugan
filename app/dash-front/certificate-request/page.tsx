@@ -249,7 +249,7 @@ const filterRequests = () => {
             {features.map(({ name, label, icon: Icon }) => (
               <li key={name} className="mb-2">
                 <Link
-                  href={`/admin-front/${name}`}
+                  href={`/dash-front/${name}`}
                   onClick={() => setActiveItem(name)}
                   className={`relative flex items-center w-full px-4 py-2 text-left group transition-colors duration-200 ${
                     activeItem === name
