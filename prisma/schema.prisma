@@ -40,7 +40,6 @@ enum DemoTag {
   PWD
 }
 
-
 //
 // USERS
 //
@@ -128,10 +127,10 @@ model Staff {
   updated_at         DateTime @updatedAt
 
   // Relations
-  user          User       @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
-  household     Household? @relation("HouseholdMembersStaff", fields: [household_id], references: [id], onDelete: SetNull)
-  headedHousehold Household? @relation("HouseholdHeadStaff")
-  digitalId     DigitalID?
+  user             User       @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  household        Household? @relation("HouseholdMembersStaff", fields: [household_id], references: [id], onDelete: SetNull)
+  headedHousehold  Household? @relation("HouseholdHeadStaff")
+  digitalId        DigitalID?
 }
 
 //
@@ -149,7 +148,6 @@ model Household {
   members        Resident[] @relation("HouseholdMembers")
   staff_members  Staff[]    @relation("HouseholdMembersStaff")
 }
-
 
 //
 // CERTIFICATE REQUESTS
@@ -188,7 +186,6 @@ model DigitalID {
   issuedBy     User      @relation("IssuedBy", fields: [issued_by], references: [user_id])
   tags         DigitalIDTag[]
 }
-
 
 model DigitalIDTag {
   id        Int    @id @default(autoincrement())
@@ -229,21 +226,37 @@ model Announcement {
 }
 
 //
-// FEEDBACK
+// COMPLAINT CATEGORIES (New Model for 31 Bilingual Complaints)
+//
+model ComplaintCategory {
+  category_id   Int      @id @default(autoincrement())
+  tagalog_name  String
+  english_name  String   @unique  
+  description   String?
+  feedbacks     Feedback[]
+}
+
+
+//
+// FEEDBACK 
 //
 model Feedback {
-  feedback_id  Int            @id @default(autoincrement())
-  resident_id  Int
-  message      String
-  status       FeedbackStatus @default(PENDING)
-  response     String?
-  responded_by Int?
-  submitted_at DateTime       @default(now())
-  responded_at DateTime?
+  feedback_id          Int             @id @default(autoincrement())
+  resident_id          Int
+  category_id          Int
+  message              String
+  proof_file           String?
+  status               FeedbackStatus  @default(PENDING)
+  response             String?
+  response_proof_file  String?
+  responded_by         Int?
+  submitted_at         DateTime        @default(now())
+  responded_at         DateTime?
 
   // Relations
-  resident    Resident @relation(fields: [resident_id], references: [resident_id], onDelete: Cascade)
-  respondedBy User?    @relation("RespondedBy", fields: [responded_by], references: [user_id])
+  resident     Resident           @relation(fields: [resident_id], references: [resident_id], onDelete: Cascade)
+  respondedBy  User?              @relation("RespondedBy", fields: [responded_by], references: [user_id])
+  category     ComplaintCategory  @relation(fields: [category_id], references: [category_id])
 }
 
 //
@@ -313,7 +326,7 @@ model RegistrationRequest {
 }
 
 //
-//NOTIFICATIONS
+// NOTIFICATIONS
 //
 model Notification {
   id           Int      @id @default(autoincrement())
@@ -326,5 +339,3 @@ model Notification {
 
   user         User     @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
 }
-
-

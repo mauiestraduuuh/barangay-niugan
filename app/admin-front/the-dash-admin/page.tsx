@@ -1,58 +1,103 @@
 "use client";
-
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import NotificationDropdown from "../../components/NotificationDropdown";
 import {
-  BellIcon,
-  UserIcon,
   HomeIcon,
-  UsersIcon,
+  UserIcon,
   ClipboardDocumentIcon,
+  ChatBubbleLeftEllipsisIcon,
+  UsersIcon,
   MegaphoneIcon,
   ChartBarIcon,
+  BellIcon,
   Bars3Icon,
   ChevronLeftIcon,
+  ArrowRightOnRectangleIcon,
   ChevronRightIcon,
   XMarkIcon,
-  ArrowRightOnRectangleIcon,
-  UserGroupIcon,
-  DocumentTextIcon,
-  ExclamationCircleIcon,
-  ChatBubbleLeftEllipsisIcon,
 } from "@heroicons/react/24/outline";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
 
-// Add this interface definition for notification
-interface Notification {
-  notification_id: number;
-  type: string;
-  message: string;
-  is_read: boolean;
-  created_at: string;
+interface Admin {
+  id: number;
+  name: string;
+  photo_url?: string | null;
+  role: string;
 }
 
-interface DashboardStats {
-  totalUsers: number;
-  pendingRegistrations: number;
+interface Overview {
+  totalResidents: number;
+  totalCertificates: number;
+  totalFeedback: number;
+  totalStaff: number;
   totalAnnouncements: number;
-  recentActivities: number;
+}
+
+interface MonthlyRegistration {
+  month: string;
+  count: number;
+}
+
+interface Activity {
+  request_id: number;
+  certificate_type: string;
+  resident: { first_name: string; last_name: string };
+  requested_at: string;
 }
 
 export default function AdminDashboard() {
-  const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [activeItem, setActiveItem] = useState("the-dash-admin");
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [stats, setStats] = useState<DashboardStats>({
-    totalUsers: 0,
-    pendingRegistrations: 0,
-    totalAnnouncements: 0,
-    recentActivities: 0,
-  });
-  const [loading, setLoading] = useState(true);
+  const router = useRouter(); 
+  const [activeItem, setActiveItem] = useState("dashboard");
+  const [admin, setAdmin] = useState<Admin | null>(null);
+  const [overview, setOverview] = useState<Overview | null>(null);
+  const [monthlyData, setMonthlyData] = useState<MonthlyRegistration[]>([]);
+  const [recentActivity, setRecentActivity] = useState<Activity[]>([]);
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    router.push("/auth-front/login");
+  };
+
+  const fetchDashboardData = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        console.error("No token found in localStorage");
+        return;
+      }
+      const res = await fetch("/api/admin/the-dash-admin", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        console.error("API Error:", data);
+        throw new Error(data.message || "Failed to fetch admin dashboard");
+      }
+      setAdmin(data.admin);
+      setOverview(data.overview);
+      setMonthlyData(data.monthlyRegistrations);
+      setRecentActivity(data.recentActivity);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   const features = [
     { name: "the-dash-admin", label: "Home", icon: HomeIcon },
@@ -60,158 +105,81 @@ export default function AdminDashboard() {
     { name: "registration-request", label: "Registration Requests", icon: ClipboardDocumentIcon },
     { name: "certificate-request", label: "Certificate Requests", icon: ClipboardDocumentIcon },
     { name: "feedback", label: "Feedback", icon: ChatBubbleLeftEllipsisIcon },
-    { name: "staff-acc", label: "Staff Accounts", icon: UsersIcon },
-    { name: "manage-announcement", label: "Announcements", icon: MegaphoneIcon },
+    { name: "staff", label: "Staff Accounts", icon: UsersIcon },
+    { name: "announcement", label: "Announcements", icon: MegaphoneIcon },
     { name: "reports", label: "Reports", icon: ChartBarIcon },
   ];
 
-
-  useEffect(() => {
-    fetchNotifications();
-    fetchDashboardStats();
-  }, []);
-
-  const fetchNotifications = async () => {
-    try {
-      const res = await fetch("/api/dash/notifications");
-      if (!res.ok) throw new Error("Failed to fetch notifications");
-      const data: Notification[] = await res.json();
-      setNotifications(data);
-    } catch (error) {
-      console.error(error);
-    }
-  };
-
-  const fetchDashboardStats = async () => {
-    setLoading(true);
-    try {
-      // Fetch stats from your APIs (adjust endpoints as needed)
-      const [usersRes, regsRes, annRes] = await Promise.all([
-        fetch("/api/admin/users/count"), // change kung ano ung api for user count
-        fetch("/api/auth/approve-registration"), // Get pending registrations
-        fetch("/api/announcements"),
-      ]);
-
-      const usersData = usersRes.ok ? await usersRes.json() : { count: 0 };
-      const regsData = regsRes.ok ? await regsRes.json() : [];
-      const annData = annRes.ok ? await annRes.json() : [];
-
-      setStats({
-        totalUsers: usersData.count || 0,
-        pendingRegistrations: regsData.length || 0,
-        totalAnnouncements: annData.length || 0,
-        recentActivities: 5, // Placeholder, replace with actual recent activities count
-      });
-    } catch (error) {
-      console.error("Failed to fetch dashboard stats:", error);
-    }
-    setLoading(false);
-  };
-
-  const handleLogout = () => {
-    const confirmed = window.confirm("Are you sure you want to log out?");
-    if (confirmed) {
-      localStorage.removeItem("token");
-      router.push("/auth-front/login");
-    }
-  };
-
-  const statCards = [
-    {
-      title: "Total Users",
-      value: stats.totalUsers,
-      icon: UserGroupIcon,
-      color: "bg-blue-500",
-      link: "/admin-front/manage-users",
-    },
-    {
-      title: "Pending Registrations",
-      value: stats.pendingRegistrations,
-      icon: ExclamationCircleIcon,
-      color: "bg-yellow-500",
-      link: "/admin-front/registration-requests",
-    },
-    {
-      title: "Announcements",
-      value: stats.totalAnnouncements,
-      icon: DocumentTextIcon,
-      color: "bg-green-500",
-      link: "/admin-front/manage-announcements",
-    },
-    {
-      title: "Recent Activities",
-      value: stats.recentActivities,
-      icon: ChartBarIcon,
-      color: "bg-purple-500",
-      link: "/admin-front/reports",
-    },
-  ];
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to-slate-50 p-4 flex gap-4">
+    // GLOBAL TEXT COLOR: dark red as default
+    <div className="min-h-screen bg-gray-200 p-4 flex gap-4 text-red-900">
       {/* Sidebar */}
       <div
         className={`${
           sidebarOpen ? "w-64" : "w-16"
         } bg-gray-50 shadow-lg rounded-xl transition-all duration-300 ease-in-out flex flex-col ${
-          sidebarOpen ? "fixed inset-y-0 left-0 z-50 md:static md:translate-x-0" : "hidden md:flex"
+          sidebarOpen ? "block" : "hidden"
+        } md:block md:relative md:translate-x-0 ${
+          sidebarOpen ? "fixed inset-y-0 left-0 z-50 md:static md:translate-x-0" : ""
         }`}
       >
         {/* Logo + Close */}
-        <div className="p-4 flex items-center justify-between">
+        <div className="p-4 flex items-center justify-center">
           <img
             src="/niugan-logo.png"
             alt="Company Logo"
-            className="w-10 h-10 rounded-full object-cover"
+            className={`rounded-full object-cover transition-all duration-300 ${
+              sidebarOpen ? "w-30 h-30" : "w-8.5 h-8.5"
+            }`}
           />
+
           <button
             onClick={toggleSidebar}
-            className="block md:hidden text-black hover:text-red-700 focus:outline-none"
+            className="absolute top-3 right-3 text-black hover:text-red-700 focus:outline-none md:hidden"
           >
             <XMarkIcon className="w-6 h-6" />
           </button>
         </div>
-
-        {/* Navigation */}
-        <nav className="flex-1 mt-6">
-            <ul>
-            {features.map(({ name, label, icon: Icon }) => {
-                const href = `/admin-front/${name}`;
-                const isActive = name === "the-dash-admin";
-                return (
-                <li key={name} className="mb-2">
-                    <Link href={href}>
-                    <span
-                        className={`relative flex items-center w-full px-4 py-2 text-left group transition-colors duration-200 ${
-                        isActive
-                            ? "text-red-700 "
-                            : "text-black hover:text-red-700"
-                        }`}
-                    >
-                        {isActive && (
-                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-700 rounded-r-full" />
-                        )}
-                        <Icon
-                        className={`w-6 h-6 mr-2 ${
-                            isActive ? "text-red-700" : "text-gray-600 group-hover:text-red-700"
-                        }`}
-                        />
-                        {sidebarOpen && (
-                        <span
-                            className={`${
-                            isActive ? "text-red-700" : "group-hover:text-red-700"
-                            }`}
-                        >
-                            {label}
-                        </span>
-                        )}
-                    </span>
-                    </Link>
-                </li>
-                );
-            })}
-            </ul>
-        </nav>
+{/* Navigation */}
+ <nav className="flex-1 mt-6">
+    <ul>
+      {features.map(({ name, label, icon: Icon }) => {
+        const href = `/admin-front/${name}`;
+        const isActive = name === "admin-profile";
+        return (
+          <li key={name} className="mb-2">
+            <Link href={href}>
+              <span
+                className={`relative flex items-center w-full px-4 py-2 text-left group transition-colors duration-200 ${
+                  isActive
+                    ? "text-red-700 "
+                    : "text-black hover:text-red-700"
+                }`}
+              >
+                {isActive && (
+                  <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-700 rounded-r-full" />
+                )}
+                <Icon
+                  className={`w-6 h-6 mr-2 ${
+                    isActive ? "text-red-700" : "text-gray-600 group-hover:text-red-700"
+                  }`}
+                />
+                {sidebarOpen && (
+                  <span
+                    className={`${
+                      isActive ? "text-red-700" : "group-hover:text-red-700"
+                    }`}
+                  >
+                    {label}
+                  </span>
+                )}
+              </span>
+            </Link>
+          </li>
+        );
+      })}
+    </ul>
+  </nav>
 
         {/* Logout Button */}
         <div className="p-4">
@@ -239,12 +207,9 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Mobile Overlay */}
+      {/* Overlay (Mobile) */}
       {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-white/80 z-40 md:hidden"
-          onClick={toggleSidebar}
-        ></div>
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden" onClick={toggleSidebar}></div>
       )}
 
       {/* Main Section */}
@@ -253,71 +218,133 @@ export default function AdminDashboard() {
         <header className="bg-gray-50 shadow-sm p-4 flex justify-between items-center rounded-xl">
           <button
             onClick={toggleSidebar}
-            className="block md:hidden text-black hover:text-red-700 focus:outline-none"
+            className="block md:hidden hover:text-red-700 focus:outline-none"
           >
-            <Bars3Icon className="w-6 h-6" />
+            <Bars3Icon className="w-6 h-6 text-red-900" />
           </button>
-          <h1 className="text-xl font-semibold text-black">Admin Dashboard</h1>
+          <h1 className="text-xl font-semibold">Admin Dashboard</h1>
           <div className="flex items-center space-x-4">
-            <NotificationDropdown notifications={notifications} />
+            <BellIcon className="w-6 h-6 hover:text-red-700" />
             <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center shadow-sm">
-              <UserIcon className="w-5 h-5 text-black" />
+              <img
+                src={admin?.photo_url || "/default-profile.png"}
+                alt="Profile"
+                className="w-8 h-8 rounded-full object-cover"
+              />
             </div>
           </div>
         </header>
 
         {/* Main Content */}
         <main className="flex-1 bg-gray-50 rounded-xl p-6 shadow-sm overflow-auto">
-          <div className="mb-6">
-            <h2 className="text-2xl font-semibold text-gray-800">Welcome, Admin!</h2>
-            <p className="text-gray-600">Here's an overview of your system.</p>
-          </div>
-
-          {loading ? (
-            <div className="text-center py-10">Loading dashboard...</div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {statCards.map((card, index) => (
-                <Link key={index} href={card.link} className="block">
-                  <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 transform hover:-translate-y-1">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className={`p-3 rounded-full ${card.color}`}>
-                        <card.icon className="w-6 h-6 text-white" />
-                      </div>
-                      <span className="text-2xl font-bold text-gray-800">{card.value}</span>
-                    </div>
-                    <h3 className="text-lg font-semibold text-gray-700">{card.title}</h3>
-                    <p className="text-sm text-gray-500 mt-1">Click to view details</p>
-                  </div>
-                </Link>
-              ))}
+          {admin && (
+            <div className="flex items-center gap-4 mb-6">
+              <img
+                src={admin.photo_url || "/default-profile.png"}
+                alt="Profile"
+                className="w-16 h-16 rounded-full border"
+              />
+              <h1 className="text-3xl font-semibold">{`Welcome back, ${admin.name}!`}</h1>
             </div>
           )}
 
+          {/* Overview Cards */}
+          {overview && (
+            <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+              {[
+                { label: "Total Residents", value: overview.totalResidents },
+                { label: "Certificates", value: overview.totalCertificates },
+                { label: "Feedback", value: overview.totalFeedback },
+                { label: "Staff", value: overview.totalStaff },
+              ].map((item) => (
+                <div
+                  key={item.label}
+                  className="bg-white rounded-xl shadow p-6 hover:shadow-lg transition"
+                >
+                  <h3 className="text-red-900">{item.label}</h3>
+                  <p className="text-3xl font-bold text-red-700">{item.value}</p>
+                </div>
+              ))}
+            </section>
+          )}
+
+          {/* Chart Section */}
+          <section className="mb-8">
+            <h2 className="text-2xl font-semibold mb-4">Monthly Registrations</h2>
+            <div className="bg-white p-6 rounded-xl shadow-md">
+              {monthlyData.length === 0 ? (
+                <p>No data available.</p>
+              ) : (
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart data={monthlyData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="month" stroke="#7f1d1d" />
+                    <YAxis stroke="#7f1d1d" />
+                    <Tooltip />
+                    <Line type="monotone" dataKey="count" stroke="#dc2626" strokeWidth={2} />
+                  </LineChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+          </section>
+
           {/* Quick Actions */}
-          <div className="mt-8">
-            <h3 className="text-xl font-semibold text-gray-800 mb-4">Quick Actions</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <section className="mt-8">
+            <h2 className="text-2xl font-semibold mb-4">Quick Actions</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <Link href="/admin-front/registration-request">
                 <div className="bg-red-50 border border-red-200 p-4 rounded-lg hover:bg-red-100 transition cursor-pointer">
                   <h4 className="font-semibold text-red-800">Review Registrations</h4>
-                  <p className="text-sm text-red-600">Approve or reject pending user registrations</p>
+                  <p className="text-sm text-red-600">
+                    Approve or reject pending user registrations
+                  </p>
                 </div>
               </Link>
-              <Link href="/admin-front/manage-announcement">
+              <Link href="/admin-front/announcement">
                 <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg hover:bg-blue-100 transition cursor-pointer">
-                  <h4 className="font-semibold text-blue-800">Manage Announcements</h4>
-                  <p className="text-sm text-blue-600">Create, edit, or delete system announcements</p>
+                  <h4 className="font-semibold text-red-800">Manage Announcements</h4>
+                  <p className="text-sm text-red-600">
+                    Create, edit, or delete system announcements
+                  </p>
                 </div>
               </Link>
               <Link href="/admin-front/reports">
                 <div className="bg-green-50 border border-green-200 p-4 rounded-lg hover:bg-green-100 transition cursor-pointer">
-                  <h4 className="font-semibold text-green-800">View Reports</h4>
-                  <p className="text-sm text-green-600">Access detailed system reports and analytics</p>
+                  <h4 className="font-semibold text-red-800">View Reports</h4>
+                  <p className="text-sm text-red-600">
+                    Access detailed system reports and analytics
+                  </p>
                 </div>
               </Link>
             </div>
-          </div>
+          </section>
+
+          {/* Recent Activity */}
+          <section>
+            <h2 className="text-2xl font-semibold mb-4">Recent Activity</h2>
+            <div className="bg-white rounded-xl shadow p-6">
+              {recentActivity.length === 0 ? (
+                <p>No recent requests.</p>
+              ) : (
+                <ul className="space-y-3">
+                  {recentActivity.map((req) => (
+                    <li
+                      key={req.request_id}
+                      className="border-b last:border-none pb-2 flex justify-between"
+                    >
+                      <span>
+                        <strong className="text-red-900">{req.resident.first_name} {req.resident.last_name}</strong> requested a{" "}
+                        <span className="text-red-600 font-medium">{req.certificate_type}</span>
+                      </span>
+                      <span className="text-sm text-red-900">
+                        {new Date(req.requested_at).toLocaleDateString()}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </section>
         </main>
       </div>
     </div>
