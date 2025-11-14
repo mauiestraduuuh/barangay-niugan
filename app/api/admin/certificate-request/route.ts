@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/../lib/prisma";
 import jwt from "jsonwebtoken";
@@ -25,6 +26,7 @@ function generateClaimCode() {
   return 'CC-' + Math.floor(100000 + Math.random() * 900000);
 }
 
+
 // GET: fetch all certificate requests with resident info
 export async function GET(req: NextRequest) {
   try {
@@ -33,10 +35,48 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get("id");
+
+    // --- If ?id= is provided, fetch specific request for View feature ---
+    if (id) {
+      const request = await prisma.certificateRequest.findUnique({
+        where: { request_id: Number(id) },
+        include: {
+          resident: {
+            select: {
+              resident_id: true,
+              first_name: true,
+              last_name: true,
+              birthdate: true,
+              gender: true,
+              address: true,
+              contact_no: true,
+            },
+          },
+          approvedBy: { select: { user_id: true, username: true } },
+          claimedBy: { select: { user_id: true, username: true } },
+        },
+      });
+
+      if (!request) {
+        return NextResponse.json({ error: "Certificate request not found" }, { status: 404 });
+      }
+
+      return NextResponse.json({ request });
+    }
+
+    // --- Otherwise, fetch all requests for listing ---
     const requests = await prisma.certificateRequest.findMany({
       include: {
         resident: {
-          select: { resident_id: true, first_name: true, last_name: true, address: true, contact_no: true },
+          select: {
+            resident_id: true,
+            first_name: true,
+            last_name: true,
+            address: true,
+            contact_no: true,
+          },
         },
         approvedBy: { select: { user_id: true, username: true } },
       },
@@ -92,6 +132,13 @@ export async function PUT(req: NextRequest) {
       data.pickup_date = new Date(pickup_date);
       data.pickup_time = pickup_time;
       data.claim_code = generateClaimCode();
+    }
+
+    // Mark the cert request as claimed
+    else if (action === "CLAIMED") {
+      data.status = "CLAIMED";
+      data.claimed_at = new Date();
+      data.claimed_by = user.userId;
     }
 
     else {

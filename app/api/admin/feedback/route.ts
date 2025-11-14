@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // app/api/admin/feedback/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/../lib/prisma";
@@ -127,3 +128,33 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ message: "Failed to update status" }, { status: 500 });
   }
 }
+
+// --- GET proof file by feedback_id ---
+export async function GET_PROOF(req: NextRequest) {
+  const adminId = getAdminIdFromToken(req);
+  if (!adminId) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+
+  try {
+    const { searchParams } = new URL(req.url);
+    const feedbackId = Number(searchParams.get("feedbackId"));
+
+    if (!feedbackId) {
+      return NextResponse.json({ message: "Missing feedbackId" }, { status: 400 });
+    }
+
+    const feedback = await prisma.feedback.findUnique({
+      where: { feedback_id: feedbackId },
+      select: { proof_file: true },
+    });
+
+    if (!feedback || !feedback.proof_file) {
+      return NextResponse.json({ message: "Proof file not found" }, { status: 404 });
+    }
+
+    return NextResponse.json({ proof_file: feedback.proof_file });
+  } catch (err) {
+    console.error("Error fetching proof file:", err);
+    return NextResponse.json({ message: "Failed to fetch proof file" }, { status: 500 });
+  }
+}
+
