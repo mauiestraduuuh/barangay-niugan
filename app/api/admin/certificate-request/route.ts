@@ -138,6 +138,7 @@ export async function PUT(req: NextRequest) {
     else if (action === "CLAIMED") {
       data.status = "CLAIMED";
       data.claimed_at = new Date();
+      data.claimed_by = user.userId;
     }
 
     else {
