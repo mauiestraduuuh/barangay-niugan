@@ -19,6 +19,7 @@ import {
   ChevronRightIcon,
   CheckIcon,
   XCircleIcon,
+  Bars3Icon,
 } from "@heroicons/react/24/outline";
 
 interface RegistrationRequest {
@@ -124,16 +125,13 @@ export default function AdminRegistrationRequestsPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to-black p-4 flex gap-4 ">
+      <div className= "min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to-black p-4 flex gap-4">
       {/* Sidebar */}
       <div
         className={`${
           sidebarOpen ? "w-64" : "w-16"
-        } bg-gray-50 shadow-lg rounded-xl transition-all duration-300 ease-in-out flex flex-col ${
-          sidebarOpen ? "block" : "hidden"
-        } md:block md:relative md:translate-x-0 ${
-          sidebarOpen ? "fixed inset-y-0 left-0 z-50 md:static md:translate-x-0" : ""
-        }`}
+        } bg-gray-50 shadow-lg rounded-xl transition-all duration-300 ease-in-out flex flex-col 
+        ${sidebarOpen ? "fixed inset-y-0 left-0 z-50 md:static md:translate-x-0" : "hidden md:flex"}`}
       >
         {/* Logo + Close */}
         <div className="p-4 flex items-center justify-center">
@@ -144,7 +142,6 @@ export default function AdminRegistrationRequestsPage() {
               sidebarOpen ? "w-30 h-30" : "w-8.5 h-8.5"
             }`}
           />
-
           <button
             onClick={toggleSidebar}
             className="absolute top-3 right-3 text-black hover:text-red-700 focus:outline-none md:hidden"
@@ -152,57 +149,59 @@ export default function AdminRegistrationRequestsPage() {
             <XMarkIcon className="w-6 h-6" />
           </button>
         </div>
-{/* Navigation */}
- <nav className="flex-1 mt-6">
-    <ul>
-      {features.map(({ name, label, icon: Icon }) => {
-        const href = `/admin-front/${name}`;
-        const isActive = name === "admin-profile";
-        return (
-          <li key={name} className="mb-2">
-            <Link href={href}>
-              <span
-                className={`relative flex items-center w-full px-4 py-2 text-left group transition-colors duration-200 ${
-                  isActive
-                    ? "text-red-700 "
-                    : "text-black hover:text-red-700"
-                }`}
-              >
-                {isActive && (
-                  <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-700 rounded-r-full" />
-                )}
-                <Icon
-                  className={`w-6 h-6 mr-2 ${
-                    isActive ? "text-red-700" : "text-gray-600 group-hover:text-red-700"
-                  }`}
-                />
-                {sidebarOpen && (
-                  <span
-                    className={`${
-                      isActive ? "text-red-700" : "group-hover:text-red-700"
-                    }`}
-                  >
-                    {label}
-                  </span>
-                )}
-              </span>
-            </Link>
-          </li>
-        );
-      })}
-    </ul>
-  </nav>
+          
 
-        {/* Logout Button */}
-        <div className="p-4">
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-3 text-black hover:text-red-700 transition w-full text-left"
-          >
-            <ArrowRightOnRectangleIcon className="w-6 h-6" />
-            {sidebarOpen && <span>Log Out</span>}
-          </button>
-        </div>
+        {/* Navigation */}
+        <nav className="flex-1 mt-6">
+          <ul>
+            {features.map(({ name, label, icon: Icon }) => (
+              <li key={name} className="mb-2">
+                <Link
+                  href={`/admin-front/${name}`}
+                  onClick={() => setActiveItem(name)}
+                  className={`relative flex items-center w-full px-4 py-2 text-left group transition-colors duration-200 ${
+                    activeItem === name
+                      ? "text-red-700 font-semibold"
+                      : "text-black hover:text-red-700"
+                  }`}
+                >
+                  {activeItem === name && (
+                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-700 rounded-r-full" />
+                  )}
+                  <Icon
+                    className={`w-6 h-6 mr-2 ${
+                      activeItem === name
+                        ? "text-red-700"
+                        : "text-gray-600 group-hover:text-red-700"
+                    }`}
+                  />
+                  {sidebarOpen && (
+                    <span
+                      className={`${
+                        activeItem === name
+                          ? "text-red-700"
+                          : "group-hover:text-red-700"
+                      }`}
+                    >
+                      {label}
+                    </span>
+                  )}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
+
+      {/* Functional Logout Button */}
+    <div className="p-4">
+      <button
+        onClick={handleLogout}
+        className="flex items-center gap-3 text-black hover:text-red-700 transition w-full text-left"
+      >
+        <ArrowRightOnRectangleIcon className="w-6 h-6" />
+        {sidebarOpen && <span>Log Out</span>}
+      </button>
+    </div>
 
         {/* Sidebar Toggle (desktop only) */}
         <div className="p-4 flex justify-center hidden md:flex">
@@ -219,71 +218,122 @@ export default function AdminRegistrationRequestsPage() {
         </div>
       </div>
 
-      {/* Overlay (Mobile) */}
+      {/* Mobile Overlay */}
       {sidebarOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden" onClick={toggleSidebar}></div>
+        <div
+          className="fixed inset-0 bg-white/80 z-40 md:hidden"
+          onClick={toggleSidebar}
+        ></div>
       )}
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col gap-4">
-        <header className="bg-gray-50 shadow-sm p-4 rounded-xl flex justify-between items-center">
-          <h1 className="text-xl font-semibold text-black">Registration Requests</h1>
-          <BellIcon className="w-6 h-6 text-black" />
+        <header className="bg-gray-50 shadow-sm p-4 flex justify-between items-center rounded-xl">
+          <button
+            onClick={toggleSidebar}
+            className="block md:hidden text-black hover:text-red-700 focus:outline-none"
+          >
+            <Bars3Icon className="w-6 h-6" />
+          </button>
+          <h1 className="text-large font-bold ">Registration Request</h1>
+          <div className="flex items-center space-x-4"></div>
         </header>
-
-        <main className="bg-gray-50 p-6 rounded-xl shadow-sm overflow-auto">
-          {message && <p className="text-center text-white bg-gray-900 p-2 rounded mb-4">{message}</p>}
+          <main className="bg-gray-50 p-4 sm:p-6 rounded-xl shadow-sm overflow-auto">
+          {message && (
+            <p className="text-center text-white bg-gray-900 p-2 rounded mb-4">
+              {message}
+            </p>
+          )}
 
           {loading ? (
             <p className="text-center">Loading...</p>
           ) : requests.length === 0 ? (
             <p className="text-center">No pending registration requests</p>
           ) : (
-            <div className="grid gap-4">
-              {requests.map((req) => (
-                <div key={req.request_id} className="bg-white p-4 rounded-lg shadow flex justify-between items-center">
-                  <div>
-                    <p className="font-bold">{req.first_name} {req.last_name}</p>
-                    <p className="text-sm text-gray-600">{req.email || "N/A"}</p>
-                    <p className="text-sm text-gray-600">{req.role}</p>
-                    <p className="text-sm text-gray-500">{req.birthdate ? new Date(req.birthdate).toLocaleDateString() : "N/A"}</p>
-                    {req.status !== "PENDING" && req.approvedBy && <p className="text-sm text-green-600">Approved by: {req.approvedBy.username}</p>}
-                  </div>
-                  <div className="flex gap-2">
-                    {req.status === "PENDING" && (
-                      <>
-                        <button
-                          onClick={() => handleApproveReject(req.request_id, true)}
-                          disabled={loading}
-                          className={`bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded flex items-center gap-1 ${loading ? "opacity-50 cursor-not-allowed" : ""}`}
-                        >
-                          <CheckIcon className="w-4 h-4" /> Approve
-                        </button>
-                        <button
-                          onClick={() => handleApproveReject(req.request_id, false)}
-                          disabled={loading}
-                          className={`bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded flex items-center gap-1 ${loading ? "opacity-50 cursor-not-allowed" : ""}`}
-                        >
-                          <XCircleIcon className="w-4 h-4" /> Reject
-                        </button>
-                      </>
-                    )}
-                    <button
-                      onClick={() => setViewRequest(req)}
-                      className="bg-gray-300 hover:bg-gray-400 text-black px-4 py-2 rounded"
+            <div className="overflow-x-auto">
+              <table className="min-w-full border-collapse bg-white shadow-sm rounded-xl overflow-hidden text-sm sm:text-base">
+                <thead className="bg-gradient-to-br from-black via-red-800 to-black text-white">
+                  <tr>
+                    <th className="px-3 py-2 text-left">Name</th>
+                    <th className="px-3 py-2 text-left hidden sm:table-cell">Email</th>
+                    <th className="px-3 py-2 text-left">Role</th>
+                    <th className="px-3 py-2 text-left hidden sm:table-cell">Birthdate</th>
+                    <th className="px-3 py-2 text-left">Status</th>
+                    <th className="px-3 py-2 text-left">Actions</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {requests.map((req, index) => (
+                    <tr
+                      key={req.request_id}
+                      className={`border-b hover:bg-red-50 transition ${
+                        index % 2 === 0 ? "bg-white" : "bg-gray-50"
+                      }`}
                     >
-                      View
-                    </button>
-                  </div>
-                </div>
-              ))}
+                      <td className="px-3 py-2 font-medium">{req.first_name} {req.last_name}</td>
+
+                      <td className="px-3 py-2 text-gray-700 hidden sm:table-cell">
+                        {req.email || "N/A"}
+                      </td>
+
+                      <td className="px-3 py-2 text-gray-700">{req.role}</td>
+
+                      <td className="px-3 py-2 text-gray-700 hidden sm:table-cell">
+                        {req.birthdate ? new Date(req.birthdate).toLocaleDateString() : "N/A"}
+                      </td>
+
+                      <td className="px-3 py-2">
+                        {req.status === "PENDING" ? (
+                          <span className="px-2 py-1 bg-yellow-200 text-yellow-800 rounded-full text-xs sm:text-sm font-semibold">
+                            Pending
+                          </span>
+                        ) : (
+                          <span className="px-2 py-1 bg-green-200 text-green-800 rounded-full text-xs sm:text-sm font-semibold">
+                            {req.approvedBy?.username ? `Approved` : "Processed"}
+                          </span>
+                        )}
+                      </td>
+
+                      <td className="px-3 py-2 flex flex-wrap gap-1">
+                        {req.status === "PENDING" && (
+                          <>
+                            <button
+                              onClick={() => handleApproveReject(req.request_id, true)}
+                              disabled={loading}
+                              className="bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded flex items-center gap-1 text-xs sm:text-sm"
+                            >
+                              <CheckIcon className="w-4 h-4" /> Approve
+                            </button>
+
+                            <button
+                              onClick={() => handleApproveReject(req.request_id, false)}
+                              disabled={loading}
+                              className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded flex items-center gap-1 text-xs sm:text-sm"
+                            >
+                              <XCircleIcon className="w-4 h-4" /> Reject
+                            </button>
+                          </>
+                        )}
+
+                        <button
+                          onClick={() => setViewRequest(req)}
+                          className="bg-gray-300 hover:bg-gray-400 text-black px-2 py-1 rounded text-xs sm:text-sm"
+                        >
+                          View
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
 
-          {/* Modal for viewing request details */}
+          {/* Modal*/}
           {viewRequest && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-              <div className="bg-white p-6 rounded-xl shadow-lg w-1/2 relative">
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 sm:p-0">
+              <div className="bg-white p-4 sm:p-6 rounded-xl shadow-lg w-full sm:w-1/2 relative overflow-auto max-h-[90vh]">
                 <button
                   onClick={() => setViewRequest(null)}
                   className="absolute top-3 right-3 text-gray-700 hover:text-red-600"
@@ -291,6 +341,7 @@ export default function AdminRegistrationRequestsPage() {
                   <XMarkIcon className="w-6 h-6" />
                 </button>
                 <h2 className="text-xl font-semibold mb-4">Request Details</h2>
+
                 <p><strong>Name:</strong> {viewRequest.first_name} {viewRequest.last_name}</p>
                 <p><strong>Email:</strong> {viewRequest.email || "N/A"}</p>
                 <p><strong>Contact:</strong> {viewRequest.contact_no || "N/A"}</p>
@@ -299,7 +350,14 @@ export default function AdminRegistrationRequestsPage() {
                 <p><strong>Address:</strong> {viewRequest.address || "N/A"}</p>
                 <p><strong>Gender:</strong> {viewRequest.gender || "N/A"}</p>
                 <p><strong>Head of Family:</strong> {viewRequest.is_head_of_family ? "Yes" : "No"}</p>
-                {viewRequest.photo_url && <img src={viewRequest.photo_url} alt="Photo" className="mt-4 w-32 h-32 object-cover rounded" />}
+
+                {viewRequest.photo_url && (
+                  <img
+                    src={viewRequest.photo_url}
+                    alt="Photo"
+                    className="mt-4 w-32 h-32 object-cover rounded"
+                  />
+                )}
               </div>
             </div>
           )}
