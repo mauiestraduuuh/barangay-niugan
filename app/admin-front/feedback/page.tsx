@@ -33,6 +33,7 @@ interface Feedback {
   resident_id: string;
   status: "PENDING" | "IN_PROGRESS" | "RESOLVED";
   response?: string;
+  proof_file?: string | null;
   submitted_at?: string;
   resident: {
     first_name: string;
@@ -53,7 +54,7 @@ export default function AdminFeedbackPage() {
   const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"PENDING" | "" | "IN_PROGRESS" | "RESOLVED">("PENDING");
   const [groupFilter, setGroupFilter] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -61,7 +62,7 @@ export default function AdminFeedbackPage() {
   const [viewFeedback, setViewFeedback] = useState<Feedback | null>(null);
   const [replyText, setReplyText] = useState("");
   const [replyFile, setReplyFile] = useState<File | null>(null);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [modalImage, setModalImage] = useState<string | null | undefined>(null);
   const [categories, setCategories] = useState<{ category_id: string; english_name: string; tagalog_name: string; group?: string }[]>([]);
 
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
@@ -79,7 +80,6 @@ export default function AdminFeedbackPage() {
 
   useEffect(() => {
     fetchFeedbackAndCategories();
-    fetchNotifications();
   }, []);
 
   const fetchFeedbackAndCategories = async () => {
@@ -105,20 +105,6 @@ export default function AdminFeedbackPage() {
       setCategories([]);
     }
     setLoading(false);
-  };
-
-  const fetchNotifications = async () => {
-    try {
-      const res = await fetch("/api/admin/notifications", {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
-      if (!res.ok) throw new Error("Failed to fetch notifications");
-      const data: Notification[] = await res.json();
-      setNotifications(data || []);
-    } catch (error) {
-      console.error(error);
-      setNotifications([]);
-    }
   };
 
   const replyFeedback = async () => {
@@ -275,9 +261,8 @@ export default function AdminFeedbackPage() {
           <button onClick={toggleSidebar} className="block md:hidden text-black hover:text-red-700 focus:outline-none">
             <Bars3Icon className="w-6 h-6" />
           </button>
-          <h1 className="text-xl font-semibold text-black">Feedback Management</h1>
+          <h1 className="text-xl font-semibold text-black">Complaints Management</h1>
           <div className="flex items-center space-x-4">
-            <NotificationDropdown notifications={notifications} />
             <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center shadow-sm">
               <UserIcon className="w-5 h-5 text-black" />
             </div>
@@ -286,13 +271,13 @@ export default function AdminFeedbackPage() {
 
         <main className="bg-white rounded-2xl shadow-lg p-6 transition-all duration-300">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-3">
-            <h2 className="text-2xl font-semibold text-black">Resident Feedbacks</h2>
+            <h2 className="text-xl font-semibold text-black">Resident Complaints</h2>
             <div className="flex items-center gap-2 flex-wrap">
               {/* Status filter */}
               <label className="text-sm font-medium">Status:</label>
               <select
                 value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
+                onChange={(e) => setStatusFilter(e.target.value )}
                 className="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
               >
                 <option value="">All</option>
@@ -347,15 +332,15 @@ export default function AdminFeedbackPage() {
           )}
 
           {loading ? (
-            <p className="text-center text-black">Loading feedbacks...</p>
+            <p className="text-center text-black">Loading complaints...</p>
           ) : filteredFeedbacks.length === 0 ? (
-            <p className="text-center text-black">No feedback available.</p>
+            <p className="text-center text-black">No complaints available.</p>
           ) : (
             <>
               {/* Desktop Table */}
               <div className="hidden md:block overflow-x-auto">
                 <table className="min-w-full border border-gray-200 rounded-lg overflow-hidden">
-                  <thead className="bg-gray-100 text-black text-sm uppercase font-semibold">
+                  <thead className="bg-gradient-to-br from-black via-red-800 to-black text-white text-sm uppercase font-semibold">
                     <tr>
                       <th className="px-4 py-3 text-left">Resident Name</th>
                       <th className="px-4 py-3 text-left">Status</th>
@@ -538,12 +523,24 @@ export default function AdminFeedbackPage() {
           <div className="bg-white p-6 rounded-lg w-full max-w-md">
             <div className="flex justify-between items-center mb-4">
               <h3 className="font-semibold text-lg">
-                Feedback from {viewFeedback.resident.first_name} {viewFeedback.resident.last_name}
+                Complaint from {viewFeedback.resident.first_name} {viewFeedback.resident.last_name}
               </h3>
               <button onClick={() => setViewFeedback(null)} className="text-black hover:text-gray-700">
                 <XMarkIcon className="w-5 h-5" />
               </button>
             </div>
+                {viewFeedback.proof_file ? (
+                  <div className="mb-4">
+                    <p className="text-sm font-medium mb-1 text-black">Attached Proof:</p>
+                    <img
+                      src={viewFeedback.proof_file}
+                      alt="Proof"
+                      className="w-full max-h-64 object-contain rounded-lg border"
+                    />
+                  </div>
+                ) : (
+                  <p className="text-sm text-black mb-4">No proof provided.</p>
+                )}
 
             <p className="text-xs text-black mb-4">
               Submitted:{" "}
@@ -577,6 +574,27 @@ export default function AdminFeedbackPage() {
           </div>
         </div>
       )}
+      {modalImage && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+    <div className="bg-white p-4 rounded-lg max-w-lg w-full">
+      <div className="flex justify-between items-center mb-2">
+        <h3 className="text-lg font-semibold">Attached Proof</h3>
+        <button
+          onClick={() => setModalImage(null)}
+          className="text-black hover:text-gray-700"
+        >
+          <XMarkIcon className="w-5 h-5" />
+        </button>
+      </div>
+
+      <img
+        src={modalImage}
+        alt="Proof"
+        className="w-full rounded-lg border"
+      />
+    </div>
+  </div>
+)}
     </div>
   );
 }
