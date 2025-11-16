@@ -8,6 +8,7 @@ export async function GET(req: NextRequest) {
 
     if (category) {
       let details: any[] = [];
+
       switch (category) {
         case "residents":
           details = await prisma.resident.findMany({
@@ -63,8 +64,10 @@ export async function GET(req: NextRequest) {
           details = await prisma.feedback.findMany({
             select: {
               feedback_id: true,
-              message: true,
+              proof_file: true,
               status: true,
+              response: true,
+              response_proof_file: true,
               submitted_at: true,
               responded_at: true,
               resident_id: true,
@@ -75,6 +78,15 @@ export async function GET(req: NextRequest) {
                   last_name: true,
                 },
               },
+              category: {
+                select: {
+                  category_id: true,
+                  english_name: true,
+                  tagalog_name: true,
+                  group: true,
+                },
+              },
+              responded_by: true,
             },
             orderBy: { submitted_at: "desc" },
           });
@@ -100,23 +112,35 @@ export async function GET(req: NextRequest) {
                   last_name: true,
                 },
               },
+              members: {
+                select: {
+                  resident_id: true,
+                  first_name: true,
+                  last_name: true,
+                },
+              },
             },
           });
           break;
 
-          case "announcements":
-            details = await prisma.announcement.findMany({
-              select: {
-                announcement_id: true,
-                title: true,
-                content: true,
-                posted_at: true,
-                is_public: true,
-                posted_by: true, // already contains the user_id
+        case "announcements":
+          details = await prisma.announcement.findMany({
+            select: {
+              announcement_id: true,
+              title: true,
+              content: true,
+              posted_at: true,
+              is_public: true,
+              postedBy: {
+                select: {
+                  user_id: true,
+                  username: true,
+                },
               },
-              orderBy: { posted_at: "desc" },
-            });
-            break;
+            },
+            orderBy: { posted_at: "desc" },
+          });
+          break;
 
         default:
           return NextResponse.json({ message: "Invalid category" }, { status: 400 });
@@ -124,7 +148,7 @@ export async function GET(req: NextRequest) {
 
       return NextResponse.json({ details });
     } else {
-      // Summary stats
+      // ===== Summary stats =====
       const totalResidents = await prisma.resident.count();
       const totalStaff = await prisma.staff.count();
       const totalCertificates = await prisma.certificateRequest.count();
@@ -132,14 +156,24 @@ export async function GET(req: NextRequest) {
       const totalHouseholds = await prisma.household.count();
       const totalAnnouncements = await prisma.announcement.count();
 
-      const demographics: { [key: string]: number } = {};
-      const demoCounts = await prisma.demographicTag.groupBy({
-        by: ["tag_type"],
-        _count: { tag_type: true },
+      // Demographic breakdown
+      const demoCountsRaw = await prisma.resident.aggregate({
+        _count: {
+          is_4ps_member: true,
+          is_indigenous: true,
+          is_slp_beneficiary: true,
+          is_pwd: true,
+          senior_mode: true,
+        },
       });
-      demoCounts.forEach((item) => {
-        demographics[item.tag_type] = item._count.tag_type;
-      });
+
+      const demographics = {
+        fourPs: demoCountsRaw._count.is_4ps_member,
+        indigenous: demoCountsRaw._count.is_indigenous,
+        slp: demoCountsRaw._count.is_slp_beneficiary,
+        pwd: demoCountsRaw._count.is_pwd,
+        senior: demoCountsRaw._count.senior_mode,
+      };
 
       const stats = {
         totalResidents,
