@@ -31,7 +31,7 @@ interface RegistrationRequest {
   birthdate?: string;
   role: "RESIDENT" | "STAFF";
   submitted_at: string;
-  status: string;
+  status: "PENDING" | "APPROVED" | "REJECTED";
   approvedBy?: { user_id: number; username: string } | null;
   address?: string;
   gender?: string;
@@ -44,7 +44,9 @@ export default function AdminRegistrationRequestsPage() {
   const [requests, setRequests] = useState<RegistrationRequest[]>([]);
   const [loading, setLoading] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [filteredRequests, setFilteredRequests] = useState<RegistrationRequest[]>([]);
   const [activeItem, setActiveItem] = useState("registration-request");
+  const [statusFilter, setStatusFilter] = useState<"PENDING" | "" | "APPROVED" | "REJECTED">("PENDING");
   const [message, setMessage] = useState("");
   const [viewRequest, setViewRequest] = useState<RegistrationRequest | null>(null);
 
@@ -74,7 +76,7 @@ export default function AdminRegistrationRequestsPage() {
       const res = await axios.get("/api/admin/registration-request", {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setRequests(res.data.pendingRequests || []);
+      setRequests(res.data.requests || []);
     } catch (err) {
       console.error(err);
       setMessage("Failed to fetch registration requests");
@@ -109,7 +111,17 @@ export default function AdminRegistrationRequestsPage() {
   }
   setLoading(false);
 };
-
+  useEffect(() => {
+    filterRequests();
+  }, [statusFilter, requests]);
+  
+  const filterRequests = () => {
+    let filtered = [...requests];
+    if (statusFilter !== "") {
+      filtered = filtered.filter((r) => r.status === statusFilter);
+    }
+    setFilteredRequests(filtered);
+  };
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
@@ -238,7 +250,36 @@ export default function AdminRegistrationRequestsPage() {
           <h1 className="text-large font-bold ">Registration Request</h1>
           <div className="flex items-center space-x-4"></div>
         </header>
+
           <main className="bg-gray-50 p-4 sm:p-6 rounded-xl shadow-sm overflow-auto">
+
+        {/* Filter */}
+        <div className="flex items-center justify-between">
+          <h1 className="text-medium font-bold text-gray-800 tracking-tight">Registration History</h1>
+          
+          <div className="flex items-center gap-3">
+            <label className="text-sm font-semibold text-gray-600">Filter Status:</label>
+            
+            <div className="relative">
+              <select
+                className="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-8 text-sm font-medium text-gray-700 shadow-sm hover:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value as any)}
+              >
+                <option value="">All Statuses</option>
+                <option value="PENDING">Pending</option>
+                <option value="APPROVED">Approved</option>
+                <option value="REJECTED">Rejected</option>
+              </select>
+              <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </div>
+          </div>
+        </div>
+
           {message && (
             <p className="text-center text-white bg-gray-900 p-2 rounded mb-4">
               {message}
@@ -248,7 +289,7 @@ export default function AdminRegistrationRequestsPage() {
           {loading ? (
             <p className="text-center">Loading...</p>
           ) : requests.length === 0 ? (
-            <p className="text-center">No pending registration requests</p>
+            <p className="text-center">No registration requests found</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full border-collapse bg-white shadow-sm rounded-xl overflow-hidden text-sm sm:text-base">
@@ -264,7 +305,7 @@ export default function AdminRegistrationRequestsPage() {
                 </thead>
 
                 <tbody>
-                  {requests.map((req, index) => (
+                  {filteredRequests.map((req, index) => (
                     <tr
                       key={req.request_id}
                       className={`border-b hover:bg-red-50 transition ${
@@ -283,17 +324,25 @@ export default function AdminRegistrationRequestsPage() {
                         {req.birthdate ? new Date(req.birthdate).toLocaleDateString() : "N/A"}
                       </td>
 
-                      <td className="px-3 py-2">
-                        {req.status === "PENDING" ? (
-                          <span className="px-2 py-1 bg-yellow-200 text-yellow-800 rounded-full text-xs sm:text-sm font-semibold">
-                            Pending
-                          </span>
-                        ) : (
-                          <span className="px-2 py-1 bg-green-200 text-green-800 rounded-full text-xs sm:text-sm font-semibold">
-                            {req.approvedBy?.username ? `Approved` : "Processed"}
-                          </span>
-                        )}
-                      </td>
+                   <td className="px-3 py-2">
+                      {req.status === "PENDING" && (
+                        <span className="px-2 py-1 bg-yellow-200 text-yellow-800 rounded-full text-xs sm:text-sm font-semibold">
+                          Pending
+                        </span>
+                      )}
+
+                      {req.status === "APPROVED" && (
+                        <span className="px-2 py-1 bg-green-200 text-green-800 rounded-full text-xs sm:text-sm font-semibold">
+                          Approved
+                        </span>
+                      )}
+
+                      {req.status === "REJECTED" && (
+                        <span className="px-2 py-1 bg-red-200 text-red-800 rounded-full text-xs sm:text-sm font-semibold">
+                          Rejected
+                        </span>
+                      )}
+                    </td>
 
                       <td className="px-3 py-2 flex flex-wrap gap-1">
                         {req.status === "PENDING" && (
