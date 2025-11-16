@@ -1,173 +1,64 @@
 "use client";
-
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import axios from "axios";
 import {
   HomeIcon,
   UserIcon,
   ClipboardDocumentIcon,
-  ChatBubbleLeftEllipsisIcon,
-  UsersIcon,
   MegaphoneIcon,
-  ChartBarIcon,
   BellIcon,
   Bars3Icon,
   ChevronLeftIcon,
+  ArrowRightOnRectangleIcon,
   ChevronRightIcon,
   XMarkIcon,
-  ArrowRightOnRectangleIcon,
-  LockClosedIcon,
+  ClockIcon,
+  CheckCircleIcon,
 } from "@heroicons/react/24/outline";
 
-interface AdminProfile {
-  user_id: number;
-  username: string;
+interface Staff {
+  id: number;
+  name: string;
+  firstName: string;
+  lastName: string;
   role: string;
-  created_at: string;
-  updated_at: string;
-  first_name: string;
-  last_name: string;
-  email: string | null;
-  contact_no: string | null;
 }
 
+interface PendingTasks {
+  pendingRegistrations: number;
+  pendingCertificates: number;
+}
 
-export default function AdminProfilePage() {
-  const router = useRouter();
+interface Activity {
+  request_id: number;
+  certificate_type: string;
+  status: string;
+  resident: { first_name: string; last_name: string };
+  requested_at: string;
+}
+
+interface Announcement {
+  announcement_id: number;
+  title: string;
+  posted_at: string;
+  is_public: boolean;
+}
+
+export default function StaffDashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [activeItem, setActiveItem] = useState("admin-profile");
-  const [profile, setProfile] = useState<AdminProfile>({
-  user_id: 0,
-  username: "",
-  role: "",
-  created_at: "",
-  updated_at: "",
-  first_name: "",
-  last_name: "",
-  email: null,
-  contact_no: null,
-});
+  const router = useRouter();
+  const [activeItem, setActiveItem] = useState("the-dash-staff");
+  const [staff, setStaff] = useState<Staff | null>(null);
+  const [pendingTasks, setPendingTasks] = useState<PendingTasks | null>(null);
+  const [recentActivity, setRecentActivity] = useState<Activity[]>([]);
+  const [recentAnnouncements, setRecentAnnouncements] = useState<Announcement[]>([]);
 
-
-  const [passwords, setPasswords] = useState({
-    current_password: "",
-    new_password: "",
-    confirm_password: "",
-  });
-
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState("");
-  const [activeSection, setActiveSection] = useState<"overview" | "edit" | "password">("overview");
-
-  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+  const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
   useEffect(() => {
-    fetchProfile();
+    fetchDashboardData();
   }, []);
-
-  const fetchProfile = async () => {
-  if (!token) {
-    setMessage("Unauthorized: No token found");
-    return;
-  }
-
-  try {
-    const res = await axios.get("/api/admin/admin-profile", {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-
-    const admin = res.data.admin;
-
-    if (!admin) {
-      setMessage("Admin data not found");
-      return;
-    }
-
-    // Flatten nested admin object
-    const safeAdmin: AdminProfile = {
-      user_id: admin.user_id,
-      username: admin.username,
-      role: admin.role,
-      created_at: admin.created_at,
-      updated_at: admin.updated_at,
-      first_name: admin.admin?.first_name ?? "",
-      last_name: admin.admin?.last_name ?? "",
-      email: admin.admin?.email ?? "",
-      contact_no: admin.admin?.contact_no ?? "",
-    };
-
-    setProfile(safeAdmin);
-    setMessage(""); // Clear previous messages
-  } catch (err: any) {
-    console.error("Fetch profile error:", err);
-    setMessage(err.response?.data?.message || "Failed to fetch profile");
-  }
-};
-
-  const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    setProfile({ ...profile, [e.target.name]: e.target.value });
-  };
-
-  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setPasswords({ ...passwords, [e.target.name]: e.target.value });
-  };
-
-  const updateProfile = async () => {
-  if (!token) {
-    setMessage("Unauthorized");
-    return;
-  }
-
-  setLoading(true);
-
-  try {
-    await axios.put(
-      "/api/admin/admin-profile",
-      {
-        username: profile.username || undefined,
-        first_name: profile.first_name || undefined,
-        last_name: profile.last_name || undefined,
-        email: profile.email || undefined,
-        contact_no: profile.contact_no || undefined,
-      },
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
-
-    setMessage("Profile updated successfully");
-    setActiveSection("overview");
-    fetchProfile(); // Refresh to get updated data
-  } catch (err: any) {
-    console.error("Update profile error:", err);
-    setMessage(err.response?.data?.message || "Failed to update profile");
-  }
-
-  setLoading(false);
-};
-
-  const changePassword = async () => {
-    if (passwords.new_password !== passwords.confirm_password) {
-      setMessage("Passwords do not match");
-      return;
-    }
-    if (!token) return setMessage("Unauthorized");
-    setLoading(true);
-    try {
-      await axios.put(
-        "/api/admin/admin-profile",
-        { password: passwords.new_password },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setMessage("Password updated successfully");
-      setPasswords({ current_password: "", new_password: "", confirm_password: "" });
-      setActiveSection("overview");
-    } catch (err) {
-      console.error(err);
-      setMessage("Failed to update password");
-    }
-    setLoading(false);
-  };
 
   const handleLogout = () => {
     const confirmed = window.confirm("Are you sure you want to log out?");
@@ -177,21 +68,42 @@ export default function AdminProfilePage() {
     }
   };
 
+  const fetchDashboardData = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        console.error("No token found in localStorage");
+        router.push("/auth-front/login");
+        return;
+      }
+      const res = await fetch("/api/staff/the-dash-staff", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        console.error("API Error:", data);
+        throw new Error(data.message || "Failed to fetch staff dashboard");
+      }
+      setStaff(data.staff);
+      setPendingTasks(data.pendingTasks);
+      setRecentActivity(data.recentActivity);
+      setRecentAnnouncements(data.recentAnnouncements);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // Staff features - NO analytics/reports/feedback/staff accounts (Requirement E)
   const features = [
-    { name: "the-dash-admin", label: "Home", icon: HomeIcon },
-    { name: "admin-profile", label: "Manage Profile", icon: UserIcon },
+    { name: "the-dash-staff", label: "Home", icon: HomeIcon },
+    { name: "staff-profile", label: "Manage Profile", icon: UserIcon },
     { name: "registration-request", label: "Registration Requests", icon: ClipboardDocumentIcon },
     { name: "certificate-request", label: "Certificate Requests", icon: ClipboardDocumentIcon },
-    { name: "feedback", label: "Feedback", icon: ChatBubbleLeftEllipsisIcon },
-    { name: "staff", label: "Staff Accounts", icon: UsersIcon },
     { name: "announcement", label: "Announcements", icon: MegaphoneIcon },
-    { name: "reports", label: "Reports", icon: ChartBarIcon },
   ];
 
-  const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to-black p-4 flex gap-4 ">
+    <div className="min-h-screen bg-gray-200 p-4 flex gap-4 text-black">
       {/* Sidebar */}
       <div
         className={`${
@@ -219,46 +131,45 @@ export default function AdminProfilePage() {
             <XMarkIcon className="w-6 h-6" />
           </button>
         </div>
-{/* Navigation */}
- <nav className="flex-1 mt-6">
-    <ul>
-      {features.map(({ name, label, icon: Icon }) => {
-        const href = `/admin-front/${name}`;
-        const isActive = name === "admin-profile";
-        return (
-          <li key={name} className="mb-2">
-            <Link href={href}>
-              <span
-                className={`relative flex items-center w-full px-4 py-2 text-left group transition-colors duration-200 ${
-                  isActive
-                    ? "text-red-700 "
-                    : "text-black hover:text-red-700"
-                }`}
-              >
-                {isActive && (
-                  <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-700 rounded-r-full" />
-                )}
-                <Icon
-                  className={`w-6 h-6 mr-2 ${
-                    isActive ? "text-red-700" : "text-gray-600 group-hover:text-red-700"
-                  }`}
-                />
-                {sidebarOpen && (
-                  <span
-                    className={`${
-                      isActive ? "text-red-700" : "group-hover:text-red-700"
-                    }`}
-                  >
-                    {label}
-                  </span>
-                )}
-              </span>
-            </Link>
-          </li>
-        );
-      })}
-    </ul>
-  </nav>
+
+        {/* Navigation */}
+        <nav className="flex-1 mt-6">
+          <ul>
+            {features.map(({ name, label, icon: Icon }) => {
+              const href = `/staff-front/${name}`;
+              const isActive = name === "the-dash-staff";
+              return (
+                <li key={name} className="mb-2">
+                  <Link href={href}>
+                    <span
+                      className={`relative flex items-center w-full px-4 py-2 text-left group transition-colors duration-200 ${
+                        isActive ? "text-red-700 " : "text-black hover:text-red-700"
+                      }`}
+                    >
+                      {isActive && (
+                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-700 rounded-r-full" />
+                      )}
+                      <Icon
+                        className={`w-6 h-6 mr-2 ${
+                          isActive ? "text-red-700" : "text-gray-600 group-hover:text-red-700"
+                        }`}
+                      />
+                      {sidebarOpen && (
+                        <span
+                          className={`${
+                            isActive ? "text-red-700" : "group-hover:text-red-700"
+                          }`}
+                        >
+                          {label}
+                        </span>
+                      )}
+                    </span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </nav>
 
         {/* Logout Button */}
         <div className="p-4">
@@ -291,216 +202,195 @@ export default function AdminProfilePage() {
         <div className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden" onClick={toggleSidebar}></div>
       )}
 
-      {/* Main Content */}
+      {/* Main Section */}
       <div className="flex-1 flex flex-col gap-4">
         {/* Header */}
         <header className="bg-gray-50 shadow-sm p-4 flex justify-between items-center rounded-xl">
           <button
             onClick={toggleSidebar}
-            className="block md:hidden text-black hover:text-red-700 focus:outline-none"
+            className="block md:hidden hover:text-red-700 focus:outline-none"
           >
-            <Bars3Icon className="w-6 h-6" />
+            <Bars3Icon className="w-6 h-6 text-red-900" />
           </button>
-          <h1 className="text-xl font-semibold text-black">Manage Profile</h1>
+          <h1 className="text-xl font-semibold">Staff Dashboard</h1>
           <div className="flex items-center space-x-4">
-            <BellIcon className="w-6 h-6 text-black hover:text-red-700" />
-            <img
-              src="/default-profile.png"
-              alt="Profile"
-              className="w-8 h-8 rounded-full object-cover border"
-            />
+            <BellIcon className="w-6 h-6 text-black hover:text-red-700 cursor-pointer" />
           </div>
         </header>
 
-        {/* Body */}
-        <main className="bg-gray-50 rounded-xl p-6 shadow-sm overflow-auto">
-          {message && (
-            <p className={`text-center p-2 rounded mb-4 ${message.includes("success") ? "text-green-800 bg-green-100" : "text-red-800 bg-red-100"}`}>
-              {message}
-            </p>
+        {/* Main Content */}
+        <main className="flex-1 bg-gray-50 rounded-xl p-6 shadow-sm overflow-auto">
+          {staff && (
+            <div className="flex items-center gap-4 mb-6">
+              <img
+                src="/default-profile.png"
+                alt="Profile"
+                className="w-16 h-16 rounded-full border"
+              />
+              <div>
+                <h1 className="text-3xl font-semibold">{`Welcome back, ${staff.firstName} ${staff.lastName}!`}</h1>
+                <p className="text-gray-600 text-sm">Role: {staff.role}</p>
+              </div>
+            </div>
           )}
 
-{activeSection === "overview" && (
-  <div className="space-y-8">
-    {/* Header with photo and basic info */}
-    <div className="flex flex-col md:flex-row items-center md:items-start bg-white shadow-lg rounded-2xl p-8 border border-gray-100 gap-6">
-      {/* Profile Image */}
-      <div className="flex-shrink-0 relative">
-        <img
-          src="/default-profile.png"
-          alt="Profile"
-          className="w-36 h-36 rounded-full object-cover border-4 border-red-500 shadow-md"
-        />
-      </div>
+          {/* Pending Tasks Cards (NO ANALYTICS - Requirement E) */}
+          {pendingTasks && (
+            <section className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+              <div className="bg-white rounded-xl shadow p-6 hover:shadow-lg transition border-l-4 border-orange-500">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-gray-600 text-sm font-medium">Pending Registrations</h3>
+                    <p className="text-3xl font-bold text-orange-600 mt-2">
+                      {pendingTasks.pendingRegistrations}
+                    </p>
+                  </div>
+                  <ClockIcon className="w-12 h-12 text-orange-500 opacity-50" />
+                </div>
+                <Link href="/staff-front/registration-request">
+                  <button className="mt-4 text-sm text-orange-600 hover:text-orange-700 font-medium">
+                    Review Now →
+                  </button>
+                </Link>
+              </div>
 
-      {/* Basic Info */}
-      <div className="flex-1 text-center md:text-left">
-        <h2 className="text-3xl font-bold text-gray-800">
-          {profile.first_name} {profile.last_name}
-        </h2>
-        <p className="text-gray-500 text-sm mt-1">Role: {profile.role}</p>
-        <p className="text-gray-600 mt-2">
-          <span className="font-semibold">Username:</span> {profile.username}
-        </p>
-        <p className="text-gray-600">
-  <span className="font-semibold">Email:</span> {profile.email ?? "N/A"}
-</p>
-<p className="text-gray-600">
-  <span className="font-semibold">Contact:</span> {profile.contact_no ?? "N/A"}
-</p>
+              <div className="bg-white rounded-xl shadow p-6 hover:shadow-lg transition border-l-4 border-blue-500">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-gray-600 text-sm font-medium">Pending Certificates</h3>
+                    <p className="text-3xl font-bold text-blue-600 mt-2">
+                      {pendingTasks.pendingCertificates}
+                    </p>
+                  </div>
+                  <ClipboardDocumentIcon className="w-12 h-12 text-blue-500 opacity-50" />
+                </div>
+                <Link href="/staff-front/certificate-request">
+                  <button className="mt-4 text-sm text-blue-600 hover:text-blue-700 font-medium">
+                    Process Now →
+                  </button>
+                </Link>
+              </div>
+            </section>
+          )}
 
-        <div className="mt-4 flex flex-wrap gap-3 justify-center md:justify-start">
-          <button
-            onClick={() => setActiveSection("edit")}
-            className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white font-semibold px-5 py-2 rounded-full shadow-sm transition"
-          >
-            <UserIcon className="w-5 h-5" />
-            Edit Profile
-          </button>
-          <button
-            onClick={() => setActiveSection("password")}
-            className="flex items-center gap-2 bg-gray-900 hover:bg-gray-800 text-white font-semibold px-5 py-2 rounded-full shadow-sm transition"
-          >
-            <LockClosedIcon className="w-5 h-5" />
-            Change Password
-          </button>
-        </div>
-      </div>
-    </div>
+          {/* Quick Actions */}
+          <section className="mb-8">
+            <h2 className="text-2xl font-semibold mb-4">Quick Actions</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <Link href="/staff-front/registration-request">
+                <div className="bg-red-50 border border-red-200 p-4 rounded-lg hover:bg-red-100 transition cursor-pointer">
+                  <h4 className="font-semibold text-red-800">Review Registrations</h4>
+                  <p className="text-sm text-red-600">
+                    Approve or reject pending resident registrations
+                  </p>
+                </div>
+              </Link>
+              <Link href="/staff-front/certificate-request">
+                <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg hover:bg-blue-100 transition cursor-pointer">
+                  <h4 className="font-semibold text-red-800">Process Certificates</h4>
+                  <p className="text-sm text-red-600">
+                    Manage certificate requests and pickups
+                  </p>
+                </div>
+              </Link>
+              <Link href="/staff-front/announcement">
+                <div className="bg-green-50 border border-green-200 p-4 rounded-lg hover:bg-green-100 transition cursor-pointer">
+                  <h4 className="font-semibold text-red-800">Manage Announcements</h4>
+                  <p className="text-sm text-red-600">
+                    Create, edit, or delete announcements
+                  </p>
+                </div>
+              </Link>
+            </div>
+          </section>
 
-    {/* Detailed Info Grid */}
-    <div className="bg-white shadow-lg rounded-2xl p-8 border border-gray-100">
-      <h3 className="text-xl font-semibold text-gray-800 mb-6">Personal Details</h3>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {[
-          { label: "User ID", value: profile.user_id },
-          { label: "Created At", value: new Date(profile.created_at).toLocaleDateString() },
-          { label: "Updated At", value: new Date(profile.updated_at).toLocaleDateString() },
-        ].map(({ label, value }) => (
-          <div
-            key={label}
-            className="p-4 bg-gray-50 hover:bg-gray-100 rounded-lg transition border border-gray-200"
-          >
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{label}</p>
-            <p className="text-gray-800 mt-1">{value}</p>
-          </div>
-        ))}
-      </div>
-    </div>
-  </div>
-)}
+          {/* Recent Activity */}
+          <section className="mb-8">
+            <h2 className="text-2xl font-semibold mb-4">Recent Certificate Activity</h2>
+            <div className="bg-white rounded-xl shadow p-6">
+              {recentActivity.length === 0 ? (
+                <p className="text-gray-500">No recent requests.</p>
+              ) : (
+                <ul className="space-y-3">
+                  {recentActivity.map((req) => (
+                    <li
+                      key={req.request_id}
+                      className="border-b last:border-none pb-3 flex justify-between items-center"
+                    >
+                      <div className="flex items-center gap-3">
+                        {req.status === "APPROVED" ? (
+                          <CheckCircleIcon className="w-5 h-5 text-green-600" />
+                        ) : (
+                          <ClockIcon className="w-5 h-5 text-orange-600" />
+                        )}
+                        <span>
+                          <strong className="text-red-900">
+                            {req.resident.first_name} {req.resident.last_name}
+                          </strong>{" "}
+                          requested a{" "}
+                          <span className="text-red-600 font-medium">{req.certificate_type}</span>
+                        </span>
+                      </div>
+                      <div className="text-right">
+                        <span
+                          className={`text-xs font-semibold px-2 py-1 rounded ${
+                            req.status === "PENDING"
+                              ? "bg-orange-100 text-orange-700"
+                              : req.status === "APPROVED"
+                              ? "bg-green-100 text-green-700"
+                              : "bg-gray-100 text-gray-700"
+                          }`}
+                        >
+                          {req.status}
+                        </span>
+                        <p className="text-sm text-gray-500 mt-1">
+                          {new Date(req.requested_at).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </section>
 
-
-{activeSection === "edit" && (
-  <div className="bg-white shadow-lg rounded-2xl p-8 border border-gray-100">
-    <h2 className="text-2xl font-semibold mb-6 text-gray-800">Edit Profile</h2>
-
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">First Name</label>
-        <input
-          type="text"
-          name="first_name"
-          value={profile.first_name}
-          onChange={handleProfileChange}
-          placeholder="First Name"
-          className="border border-gray-300 p-3 rounded-md focus:ring-2 focus:ring-red-500 w-full transition"
-        />
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Last Name</label>
-        <input
-          type="text"
-          name="last_name"
-          value={profile.last_name}
-          onChange={handleProfileChange}
-          placeholder="Last Name"
-          className="border border-gray-300 p-3 rounded-md focus:ring-2 focus:ring-red-500 w-full transition"
-        />
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Contact Info</label>
-        <input
-          type="text"
-          name="contact_no"
-          value={profile.contact_no?? ""}
-          onChange={handleProfileChange}
-          placeholder="Contact Info"
-          className="border border-gray-300 p-3 rounded-md focus:ring-2 focus:ring-red-500 w-full transition"
-        />
-      </div>
-    </div>
-
-    <div className="flex flex-wrap justify-end gap-4 mt-8">
-      <button
-        onClick={() => {
-          setActiveSection("overview");
-          fetchProfile(); // Reset to original
-        }}
-        className="bg-gray-300 hover:bg-gray-400 text-black font-medium py-3 px-6 rounded-full transition"
-      >
-        Cancel
-      </button>
-      <button
-        onClick={updateProfile}
-        disabled={loading}
-        className="bg-red-600 hover:bg-red-700 text-white font-semibold py-3 px-6 rounded-full shadow-sm transition"
-      >
-        {loading ? "Saving..." : "Save Changes"}
-      </button>
-    </div>
-  </div>
-)}
-
-{activeSection === "password" && (
-  <div className="bg-white shadow-lg rounded-2xl p-8 border border-gray-100">
-    <h2 className="text-2xl font-semibold mb-6 text-gray-800">Change Password</h2>
-
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">New Password</label>
-        <input
-          type="password"
-          name="new_password"
-          value={passwords.new_password}
-          onChange={handlePasswordChange}
-          placeholder="Enter new password"
-          className="border border-gray-300 p-3 rounded-md focus:ring-2 focus:ring-red-500 w-full transition"
-        />
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Confirm New Password</label>
-        <input
-          type="password"
-          name="confirm_password"
-          value={passwords.confirm_password}
-          onChange={handlePasswordChange}
-          placeholder="Confirm new password"
-          className="border border-gray-300 p-3 rounded-md focus:ring-2 focus:ring-red-500 w-full transition"
-        />
-      </div>
-    </div>
-
-    <div className="flex flex-wrap justify-end gap-4 mt-8">
-      <button
-        onClick={() => setActiveSection("overview")}
-        className="bg-gray-300 hover:bg-gray-400 text-black font-medium py-3 px-6 rounded-full transition"
-      >
-        Cancel
-      </button>
-      <button
-        onClick={changePassword}
-        disabled={loading}
-        className="bg-red-600 hover:bg-red-700 text-white font-semibold py-3 px-6 rounded-full shadow-sm transition"
-      >
-        {loading ? "Updating..." : "Change Password"}
-      </button>
-    </div>
-  </div>
-)}
+          {/* Recent Announcements */}
+          <section>
+            <h2 className="text-2xl font-semibold mb-4">Recent Announcements</h2>
+            <div className="bg-white rounded-xl shadow p-6">
+              {recentAnnouncements.length === 0 ? (
+                <p className="text-gray-500">No recent announcements.</p>
+              ) : (
+                <ul className="space-y-3">
+                  {recentAnnouncements.map((announcement) => (
+                    <li
+                      key={announcement.announcement_id}
+                      className="border-b last:border-none pb-3 flex justify-between items-center"
+                    >
+                      <div className="flex items-center gap-3">
+                        <MegaphoneIcon className="w-5 h-5 text-blue-600" />
+                        <span className="font-medium text-gray-800">{announcement.title}</span>
+                      </div>
+                      <div className="text-right">
+                        <span
+                          className={`text-xs font-semibold px-2 py-1 rounded ${
+                            announcement.is_public
+                              ? "bg-green-100 text-green-700"
+                              : "bg-gray-100 text-gray-700"
+                          }`}
+                        >
+                          {announcement.is_public ? "Public" : "Private"}
+                        </span>
+                        <p className="text-sm text-gray-500 mt-1">
+                          {new Date(announcement.posted_at).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </section>
         </main>
       </div>
     </div>

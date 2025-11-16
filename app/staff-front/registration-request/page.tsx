@@ -8,8 +8,8 @@ import {
   HomeIcon,
   UserIcon,
   ClipboardDocumentIcon,
-  ChatBubbleLeftEllipsisIcon,
   MegaphoneIcon,
+  BellIcon,
   XMarkIcon,
   ArrowRightOnRectangleIcon,
   ChevronLeftIcon,
@@ -42,23 +42,13 @@ export default function StaffRegistrationRequestsPage() {
   const [loading, setLoading] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [filteredRequests, setFilteredRequests] = useState<RegistrationRequest[]>([]);
+  const [activeItem, setActiveItem] = useState("registration-request");
   const [statusFilter, setStatusFilter] = useState<"PENDING" | "" | "APPROVED" | "REJECTED">("PENDING");
   const [message, setMessage] = useState("");
   const [viewRequest, setViewRequest] = useState<RegistrationRequest | null>(null);
 
-  // Fetch token and staff_id from localStorage
+  // Fetch token from localStorage
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-  const staffId = typeof window !== "undefined" ? Number(localStorage.getItem("staff_id")) : null;
-
-  // Staff navigation - excludes Staff Accounts and Reports
-  const features = [
-    { name: "the-dash-staff", label: "Home", icon: HomeIcon },
-    { name: "staff-profile", label: "Manage Profile", icon: UserIcon },
-    { name: "registration-request", label: "Registration Requests", icon: ClipboardDocumentIcon },
-    { name: "certificate-request", label: "Certificate Requests", icon: ClipboardDocumentIcon },
-    { name: "feedback", label: "Feedback", icon: ChatBubbleLeftEllipsisIcon },
-    { name: "announcement", label: "Announcements", icon: MegaphoneIcon },
-  ];
 
   useEffect(() => {
     fetchRequests();
@@ -73,8 +63,9 @@ export default function StaffRegistrationRequestsPage() {
   };
 
   const fetchRequests = async () => {
-    if (!token || !staffId) {
-      setMessage("Unauthorized: Please login as staff");
+    if (!token) {
+      setMessage("Unauthorized: Please login");
+      router.push("/auth-front/login");
       return;
     }
     setLoading(true);
@@ -82,11 +73,7 @@ export default function StaffRegistrationRequestsPage() {
       const res = await axios.get("/api/staff/registration-request", {
         headers: { Authorization: `Bearer ${token}` },
       });
-      // Filter to show only RESIDENT requests for staff
-      const residentRequests = (res.data.requests || []).filter(
-        (req: RegistrationRequest) => req.role === "RESIDENT"
-      );
-      setRequests(residentRequests);
+      setRequests(res.data.requests || []);
     } catch (err) {
       console.error(err);
       setMessage("Failed to fetch registration requests");
@@ -95,7 +82,7 @@ export default function StaffRegistrationRequestsPage() {
   };
 
   const handleApproveReject = async (requestId: number, approve: boolean) => {
-    if (!token || !staffId) {
+    if (!token) {
       setMessage("Unauthorized");
       return;
     }
@@ -103,9 +90,7 @@ export default function StaffRegistrationRequestsPage() {
     setLoading(true);
     try {
       const url = "/api/staff/registration-request";
-      const payload = approve
-        ? { request_id: requestId, approve: true, staff_id: staffId }
-        : { request_id: requestId, approve: false, staff_id: staffId };
+      const payload = { request_id: requestId, approve };
 
       await axios.post(url, payload, {
         headers: { Authorization: `Bearer ${token}` },
@@ -125,7 +110,7 @@ export default function StaffRegistrationRequestsPage() {
   useEffect(() => {
     filterRequests();
   }, [statusFilter, requests]);
-
+  
   const filterRequests = () => {
     let filtered = [...requests];
     if (statusFilter !== "") {
@@ -135,6 +120,15 @@ export default function StaffRegistrationRequestsPage() {
   };
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
+
+  // Staff features - NO analytics/reports/feedback/staff accounts (Requirement E, C)
+  const features = [
+    { name: "the-dash-staff", label: "Home", icon: HomeIcon },
+    { name: "staff-profile", label: "Manage Profile", icon: UserIcon },
+    { name: "registration-request", label: "Registration Requests", icon: ClipboardDocumentIcon },
+    { name: "certificate-request", label: "Certificate Requests", icon: ClipboardDocumentIcon },
+    { name: "announcement", label: "Announcements", icon: MegaphoneIcon },
+  ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to-black p-4 flex gap-4">
@@ -165,45 +159,41 @@ export default function StaffRegistrationRequestsPage() {
         {/* Navigation */}
         <nav className="flex-1 mt-6">
           <ul>
-            {features.map(({ name, label, icon: Icon }) => {
-              const href = `/staff-front/${name}`;
-              const isActive = name === "registration-request";
-              return (
-                <li key={name} className="mb-2">
-                  <Link href={href}>
+            {features.map(({ name, label, icon: Icon }) => (
+              <li key={name} className="mb-2">
+                <Link
+                  href={`/staff-front/${name}`}
+                  onClick={() => setActiveItem(name)}
+                  className={`relative flex items-center w-full px-4 py-2 text-left group transition-colors duration-200 ${
+                    activeItem === name
+                      ? "text-red-700 font-semibold"
+                      : "text-black hover:text-red-700"
+                  }`}
+                >
+                  {activeItem === name && (
+                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-700 rounded-r-full" />
+                  )}
+                  <Icon
+                    className={`w-6 h-6 mr-2 ${
+                      activeItem === name
+                        ? "text-red-700"
+                        : "text-gray-600 group-hover:text-red-700"
+                    }`}
+                  />
+                  {sidebarOpen && (
                     <span
-                      className={`relative flex items-center w-full px-4 py-2 text-left group transition-colors duration-200 ${
-                        isActive
-                          ? "text-red-700 font-semibold"
-                          : "text-black hover:text-red-700"
+                      className={`${
+                        activeItem === name
+                          ? "text-red-700"
+                          : "group-hover:text-red-700"
                       }`}
                     >
-                      {isActive && (
-                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-700 rounded-r-full" />
-                      )}
-                      <Icon
-                        className={`w-6 h-6 mr-2 ${
-                          isActive
-                            ? "text-red-700"
-                            : "text-gray-600 group-hover:text-red-700"
-                        }`}
-                      />
-                      {sidebarOpen && (
-                        <span
-                          className={`${
-                            isActive
-                              ? "text-red-700"
-                              : "group-hover:text-red-700"
-                          }`}
-                        >
-                          {label}
-                        </span>
-                      )}
+                      {label}
                     </span>
-                  </Link>
-                </li>
-              );
-            })}
+                  )}
+                </Link>
+              </li>
+            ))}
           </ul>
         </nav>
 
@@ -250,20 +240,22 @@ export default function StaffRegistrationRequestsPage() {
           >
             <Bars3Icon className="w-6 h-6" />
           </button>
-          <h1 className="text-large font-bold ">Registration Request</h1>
-          <div className="flex items-center space-x-4"></div>
+          <h1 className="text-large font-bold">Registration Request</h1>
+          <div className="flex items-center space-x-4">
+            <BellIcon className="w-6 h-6 text-black hover:text-red-700 cursor-pointer" />
+          </div>
         </header>
 
         <main className="bg-gray-50 p-4 sm:p-6 rounded-xl shadow-sm overflow-auto">
           {/* Filter */}
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between">
             <h1 className="text-medium font-bold text-gray-800 tracking-tight">
               Registration History (Residents Only)
             </h1>
-
+            
             <div className="flex items-center gap-3">
               <label className="text-sm font-semibold text-gray-600">Filter Status:</label>
-
+              
               <div className="relative">
                 <select
                   className="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-8 text-sm font-medium text-gray-700 shadow-sm hover:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
@@ -285,17 +277,17 @@ export default function StaffRegistrationRequestsPage() {
           </div>
 
           {message && (
-            <p className="text-center text-white bg-gray-900 p-2 rounded mb-4">
+            <p className="text-center text-white bg-gray-900 p-2 rounded mb-4 mt-4">
               {message}
             </p>
           )}
 
           {loading ? (
-            <p className="text-center">Loading...</p>
+            <p className="text-center mt-4">Loading...</p>
           ) : requests.length === 0 ? (
-            <p className="text-center">No resident registration requests found</p>
+            <p className="text-center mt-4">No registration requests found</p>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto mt-4">
               <table className="min-w-full border-collapse bg-white shadow-sm rounded-xl overflow-hidden text-sm sm:text-base">
                 <thead className="bg-gradient-to-br from-black via-red-800 to-black text-white">
                   <tr>
@@ -316,9 +308,7 @@ export default function StaffRegistrationRequestsPage() {
                         index % 2 === 0 ? "bg-white" : "bg-gray-50"
                       }`}
                     >
-                      <td className="px-3 py-2 font-medium">
-                        {req.first_name} {req.last_name}
-                      </td>
+                      <td className="px-3 py-2 font-medium">{req.first_name} {req.last_name}</td>
 
                       <td className="px-3 py-2 text-gray-700 hidden sm:table-cell">
                         {req.email || "N/A"}
@@ -385,7 +375,7 @@ export default function StaffRegistrationRequestsPage() {
             </div>
           )}
 
-          {/* Modal*/}
+          {/* Modal */}
           {viewRequest && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 sm:p-0">
               <div className="bg-white p-4 sm:p-6 rounded-xl shadow-lg w-full sm:w-1/2 relative overflow-auto max-h-[90vh]">
@@ -397,31 +387,14 @@ export default function StaffRegistrationRequestsPage() {
                 </button>
                 <h2 className="text-xl font-semibold mb-4">Request Details</h2>
 
-                <p>
-                  <strong>Name:</strong> {viewRequest.first_name} {viewRequest.last_name}
-                </p>
-                <p>
-                  <strong>Email:</strong> {viewRequest.email || "N/A"}
-                </p>
-                <p>
-                  <strong>Contact:</strong> {viewRequest.contact_no || "N/A"}
-                </p>
-                <p>
-                  <strong>Role:</strong> {viewRequest.role}
-                </p>
-                <p>
-                  <strong>Birthdate:</strong>{" "}
-                  {viewRequest.birthdate ? new Date(viewRequest.birthdate).toLocaleDateString() : "N/A"}
-                </p>
-                <p>
-                  <strong>Address:</strong> {viewRequest.address || "N/A"}
-                </p>
-                <p>
-                  <strong>Gender:</strong> {viewRequest.gender || "N/A"}
-                </p>
-                <p>
-                  <strong>Head of Family:</strong> {viewRequest.is_head_of_family ? "Yes" : "No"}
-                </p>
+                <p><strong>Name:</strong> {viewRequest.first_name} {viewRequest.last_name}</p>
+                <p><strong>Email:</strong> {viewRequest.email || "N/A"}</p>
+                <p><strong>Contact:</strong> {viewRequest.contact_no || "N/A"}</p>
+                <p><strong>Role:</strong> {viewRequest.role}</p>
+                <p><strong>Birthdate:</strong> {viewRequest.birthdate ? new Date(viewRequest.birthdate).toLocaleDateString() : "N/A"}</p>
+                <p><strong>Address:</strong> {viewRequest.address || "N/A"}</p>
+                <p><strong>Gender:</strong> {viewRequest.gender || "N/A"}</p>
+                <p><strong>Head of Family:</strong> {viewRequest.is_head_of_family ? "Yes" : "No"}</p>
 
                 {viewRequest.photo_url && (
                   <img

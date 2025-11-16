@@ -8,7 +8,6 @@ import {
   HomeIcon,
   UserIcon,
   ClipboardDocumentIcon,
-  ChatBubbleLeftEllipsisIcon,
   MegaphoneIcon,
   BellIcon,
   Bars3Icon,
@@ -47,6 +46,7 @@ interface StaffProfile {
 export default function StaffProfilePage() {
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [activeItem, setActiveItem] = useState("staff-profile");
   const [profile, setProfile] = useState<StaffProfile>({
     user_id: 0,
     username: "",
@@ -84,16 +84,6 @@ export default function StaffProfilePage() {
 
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
-  // Staff navigation - excludes Staff Accounts and Reports
-  const features = [
-    { name: "the-dash-staff", label: "Home", icon: HomeIcon },
-    { name: "staff-profile", label: "Manage Profile", icon: UserIcon },
-    { name: "registration-request", label: "Registration Requests", icon: ClipboardDocumentIcon },
-    { name: "certificate-request", label: "Certificate Requests", icon: ClipboardDocumentIcon },
-    { name: "feedback", label: "Feedback", icon: ChatBubbleLeftEllipsisIcon },
-    { name: "announcement", label: "Announcements", icon: MegaphoneIcon },
-  ];
-
   useEffect(() => {
     fetchProfile();
   }, []);
@@ -101,6 +91,7 @@ export default function StaffProfilePage() {
   const fetchProfile = async () => {
     if (!token) {
       setMessage("Unauthorized: No token found");
+      router.push("/auth-front/login");
       return;
     }
 
@@ -152,7 +143,7 @@ export default function StaffProfilePage() {
 
   const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
-
+    
     if (type === "checkbox") {
       const checked = (e.target as HTMLInputElement).checked;
       setProfile({ ...profile, [name]: checked });
@@ -240,6 +231,15 @@ export default function StaffProfilePage() {
     }
   };
 
+  // Staff features - NO analytics/reports/feedback/staff accounts (Requirement E)
+  const features = [
+    { name: "the-dash-staff", label: "Home", icon: HomeIcon },
+    { name: "staff-profile", label: "Manage Profile", icon: UserIcon },
+    { name: "registration-request", label: "Registration Requests", icon: ClipboardDocumentIcon },
+    { name: "certificate-request", label: "Certificate Requests", icon: ClipboardDocumentIcon },
+    { name: "announcement", label: "Announcements", icon: MegaphoneIcon },
+  ];
+
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
   return (
@@ -283,7 +283,9 @@ export default function StaffProfilePage() {
                   <Link href={href}>
                     <span
                       className={`relative flex items-center w-full px-4 py-2 text-left group transition-colors duration-200 ${
-                        isActive ? "text-red-700 " : "text-black hover:text-red-700"
+                        isActive
+                          ? "text-red-700 "
+                          : "text-black hover:text-red-700"
                       }`}
                     >
                       {isActive && (
@@ -366,11 +368,7 @@ export default function StaffProfilePage() {
         {/* Body */}
         <main className="bg-gray-50 rounded-xl p-6 shadow-sm overflow-auto">
           {message && (
-            <p
-              className={`text-center p-2 rounded mb-4 ${
-                message.includes("success") ? "text-green-800 bg-green-100" : "text-red-800 bg-red-100"
-              }`}
-            >
+            <p className={`text-center p-2 rounded mb-4 ${message.includes("success") ? "text-green-800 bg-green-100" : "text-red-800 bg-red-100"}`}>
               {message}
             </p>
           )}
@@ -431,10 +429,7 @@ export default function StaffProfilePage() {
                     { label: "Staff ID", value: profile.staff_id },
                     { label: "User ID", value: profile.user_id },
                     { label: "Gender", value: profile.gender ?? "N/A" },
-                    {
-                      label: "Birthdate",
-                      value: profile.birthdate ? new Date(profile.birthdate).toLocaleDateString() : "N/A",
-                    },
+                    { label: "Birthdate", value: profile.birthdate ? new Date(profile.birthdate).toLocaleDateString() : "N/A" },
                     { label: "Household Number", value: profile.household_number ?? "N/A" },
                     { label: "Created At", value: new Date(profile.created_at).toLocaleDateString() },
                   ].map(({ label, value }) => (

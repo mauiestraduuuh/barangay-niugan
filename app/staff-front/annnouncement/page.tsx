@@ -3,13 +3,11 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import NotificationDropdown from "../../components/NotificationDropdown";
 import {
   BellIcon,
   UserIcon,
   HomeIcon,
   ClipboardDocumentIcon,
-  ChatBubbleLeftEllipsisIcon,
   MegaphoneIcon,
   Bars3Icon,
   ChevronLeftIcon,
@@ -20,15 +18,6 @@ import {
   PencilIcon,
   TrashIcon,
 } from "@heroicons/react/24/outline";
-
-// Notification type
-interface Notification {
-  notification_id: number;
-  type: string;
-  message: string;
-  is_read: boolean;
-  created_at: string;
-}
 
 // Announcement type
 interface Announcement {
@@ -43,7 +32,6 @@ interface Announcement {
 export default function StaffManageAnnouncements() {
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
@@ -59,41 +47,30 @@ export default function StaffManageAnnouncements() {
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
-  // Staff navigation - excludes Staff Accounts and Reports
+  // Staff features - NO analytics/reports/feedback/staff accounts (Requirement E, B)
   const features = [
     { name: "the-dash-staff", label: "Home", icon: HomeIcon },
     { name: "staff-profile", label: "Manage Profile", icon: UserIcon },
     { name: "registration-request", label: "Registration Requests", icon: ClipboardDocumentIcon },
     { name: "certificate-request", label: "Certificate Requests", icon: ClipboardDocumentIcon },
-    { name: "feedback", label: "Feedback", icon: ChatBubbleLeftEllipsisIcon },
     { name: "announcement", label: "Announcements", icon: MegaphoneIcon },
   ];
 
-  // Fetch notifications
   useEffect(() => {
-    fetchNotifications();
     fetchAnnouncements();
   }, []);
 
-  const fetchNotifications = async () => {
-    try {
-      const res = await fetch("/api/dash/notifications", {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
-      if (!res.ok) throw new Error("Failed to fetch notifications");
-      const data: Notification[] = await res.json();
-      setNotifications(data);
-    } catch (error) {
-      console.error("Error fetching notifications:", error);
-    }
-  };
-
   // Fetch announcements
   const fetchAnnouncements = async () => {
+    if (!token) {
+      setMessage("Unauthorized: No token");
+      router.push("/auth-front/login");
+      return;
+    }
     setLoading(true);
     try {
       const res = await fetch("/api/staff/announcement", { 
-        headers: token ? { Authorization: `Bearer ${token}` } : {} 
+        headers: { Authorization: `Bearer ${token}` } 
       });
       if (!res.ok) {
         console.error("Fetch failed", res.status, await res.text());
@@ -128,7 +105,7 @@ export default function StaffManageAnnouncements() {
       const method = editingAnnouncement ? "PUT" : "POST";
       const body = editingAnnouncement
         ? { id: editingAnnouncement.announcement_id, ...formData }
-        : { ...formData, posted_by: 1 };
+        : formData; // posted_by is auto-set by API from token
 
       const res = await fetch("/api/staff/announcement", {
         method,
@@ -242,9 +219,7 @@ export default function StaffManageAnnouncements() {
                   <Link href={href}>
                     <span
                       className={`relative flex items-center w-full px-4 py-2 text-left group transition-colors duration-200 ${
-                        isActive
-                          ? "text-red-700 "
-                          : "text-black hover:text-red-700"
+                        isActive ? "text-red-700 " : "text-black hover:text-red-700"
                       }`}
                     >
                       {isActive && (
@@ -311,7 +286,7 @@ export default function StaffManageAnnouncements() {
           </button>
           <h1 className="text-xl font-semibold text-black">Manage Announcements</h1>
           <div className="flex items-center space-x-4">
-            <NotificationDropdown notifications={notifications} />
+            <BellIcon className="w-6 h-6 text-black hover:text-red-700 cursor-pointer" />
             <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center shadow-sm">
               <UserIcon className="w-5 h-5 text-black" />
             </div>

@@ -3,13 +3,11 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import NotificationDropdown from "../../components/NotificationDropdown";
 import {
   BellIcon,
   UserIcon,
   HomeIcon,
   ClipboardDocumentIcon,
-  ChatBubbleLeftEllipsisIcon,
   MegaphoneIcon,
   Bars3Icon,
   ChevronLeftIcon,
@@ -21,16 +19,6 @@ import {
   TrashIcon,
 } from "@heroicons/react/24/outline";
 
-// Notification interface
-interface Notification {
-  notification_id: number;
-  type: string;
-  message: string;
-  is_read: boolean;
-  created_at: string;
-}
-
-// Announcement interface
 interface Announcement {
   announcement_id: number;
   title: string;
@@ -43,7 +31,7 @@ interface Announcement {
 export default function StaffManageAnnouncements() {
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [activeItem, setActiveItem] = useState("announcement");
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
@@ -54,50 +42,39 @@ export default function StaffManageAnnouncements() {
     content: "",
     is_public: true,
   });
-  
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
-  // Staff navigation - excludes Staff Accounts and Reports
+  // Staff features - NO analytics/reports/feedback/staff accounts (Requirement E, B)
   const features = [
     { name: "the-dash-staff", label: "Home", icon: HomeIcon },
     { name: "staff-profile", label: "Manage Profile", icon: UserIcon },
     { name: "registration-request", label: "Registration Requests", icon: ClipboardDocumentIcon },
     { name: "certificate-request", label: "Certificate Requests", icon: ClipboardDocumentIcon },
-    { name: "feedback", label: "Feedback", icon: ChatBubbleLeftEllipsisIcon },
-    { name: "manage-announcement", label: "Announcements", icon: MegaphoneIcon },
+    { name: "announcement", label: "Announcements", icon: MegaphoneIcon },
   ];
 
   useEffect(() => {
-    fetchNotifications();
     fetchAnnouncements();
   }, []);
 
-  const fetchNotifications = async () => {
-    try {
-      const res = await fetch("/api/dash/notifications", {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
-      if (!res.ok) throw new Error("Failed to fetch notifications");
-      const data: Notification[] = await res.json();
-      setNotifications(data);
-    } catch (error) {
-      console.error("Error fetching notifications:", error);
-    }
-  };
-
   const fetchAnnouncements = async () => {
+    if (!token) {
+      setMessage("Unauthorized: No token");
+      router.push("/auth-front/login");
+      return;
+    }
     setLoading(true);
     try {
       const res = await fetch("/api/staff/announcement", {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) throw new Error("Failed to fetch announcements");
       const data: Announcement[] = await res.json();
       setAnnouncements(data);
     } catch (error) {
-      console.error("Error fetching announcements:", error);
+      console.error(error);
       setMessage("Failed to load announcements");
     }
     setLoading(false);
@@ -122,7 +99,7 @@ export default function StaffManageAnnouncements() {
       const method = editingAnnouncement ? "PUT" : "POST";
       const body = editingAnnouncement
         ? { id: editingAnnouncement.announcement_id, ...formData }
-        : { ...formData, posted_by: 1 };
+        : formData; // posted_by is auto-set by API from token
 
       const res = await fetch("/api/staff/announcement", {
         method,
@@ -135,13 +112,17 @@ export default function StaffManageAnnouncements() {
 
       if (!res.ok) throw new Error("Failed to save announcement");
 
-      setMessage(editingAnnouncement ? "Announcement updated successfully" : "Announcement created successfully");
+      setMessage(
+        editingAnnouncement
+          ? "Announcement updated successfully"
+          : "Announcement created successfully"
+      );
       setShowModal(false);
       setEditingAnnouncement(null);
       setFormData({ title: "", content: "", is_public: true });
       fetchAnnouncements();
     } catch (error) {
-      console.error("Error saving announcement:", error);
+      console.error(error);
       setMessage("Failed to save announcement");
     }
     setLoading(false);
@@ -179,7 +160,7 @@ export default function StaffManageAnnouncements() {
       setMessage("Announcement deleted successfully");
       fetchAnnouncements();
     } catch (error) {
-      console.error("Error deleting announcement:", error);
+      console.error(error);
       setMessage("Failed to delete announcement");
     }
     setLoading(false);
@@ -223,15 +204,13 @@ export default function StaffManageAnnouncements() {
           <ul>
             {features.map(({ name, label, icon: Icon }) => {
               const href = `/staff-front/${name}`;
-              const isActive = name === "manage-announcement";
+              const isActive = name === "announcement";
               return (
                 <li key={name} className="mb-2">
                   <Link href={href}>
                     <span
                       className={`relative flex items-center w-full px-4 py-2 text-left group transition-colors duration-200 ${
-                        isActive
-                          ? "text-red-700 "
-                          : "text-black hover:text-red-700"
+                        isActive ? "text-red-700 " : "text-black hover:text-red-700"
                       }`}
                     >
                       {isActive && (
@@ -287,10 +266,7 @@ export default function StaffManageAnnouncements() {
 
       {/* Mobile Overlay */}
       {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-white/80 z-40 md:hidden"
-          onClick={toggleSidebar}
-        ></div>
+        <div className="fixed inset-0 bg-white/80 z-40 md:hidden" onClick={toggleSidebar}></div>
       )}
 
       {/* Main Section */}
@@ -305,7 +281,7 @@ export default function StaffManageAnnouncements() {
           </button>
           <h1 className="text-xl font-semibold text-black">Manage Announcements</h1>
           <div className="flex items-center space-x-4">
-            <NotificationDropdown notifications={notifications} />
+            <BellIcon className="w-6 h-6 text-black hover:text-red-700 cursor-pointer" />
             <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center shadow-sm">
               <UserIcon className="w-5 h-5 text-black" />
             </div>
@@ -315,7 +291,13 @@ export default function StaffManageAnnouncements() {
         {/* Main Content */}
         <main className="flex-1 bg-gray-50 rounded-xl p-6 shadow-sm overflow-auto">
           {message && (
-            <p className={`text-center p-2 rounded mb-4 ${message.includes("success") ? "text-green-800 bg-green-100" : "text-red-800 bg-red-100"}`}>
+            <p
+              className={`text-center p-2 rounded mb-4 ${
+                message.includes("success")
+                  ? "text-green-800 bg-green-100"
+                  : "text-red-800 bg-red-100"
+              }`}
+            >
               {message}
             </p>
           )}
@@ -341,12 +323,18 @@ export default function StaffManageAnnouncements() {
           ) : (
             <div className="space-y-4">
               {announcements.map((announcement) => (
-                <div key={announcement.announcement_id} className="bg-white p-6 rounded-lg shadow-md">
+                <div
+                  key={announcement.announcement_id}
+                  className="bg-white p-6 rounded-lg shadow-md"
+                >
                   <div className="flex justify-between items-start mb-4">
                     <div>
-                      <h3 className="text-xl font-semibold text-gray-800">{announcement.title}</h3>
+                      <h3 className="text-xl font-semibold text-gray-800">
+                        {announcement.title}
+                      </h3>
                       <p className="text-sm text-gray-500">
-                        Posted on {new Date(announcement.posted_at).toLocaleDateString()} • {announcement.is_public ? "Public" : "Private"}
+                        Posted on {new Date(announcement.posted_at).toLocaleDateString()} •{" "}
+                        {announcement.is_public ? "Public" : "Private"}
                       </p>
                     </div>
                     <div className="flex gap-2">
