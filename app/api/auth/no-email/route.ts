@@ -20,6 +20,7 @@ export async function GET(req: NextRequest) {
         last_name: true,
         status: true,
         role: true,
+        temp_password: true,
         approvedBy: { select: { username: true, password: true } }
       },
     });
@@ -37,7 +38,7 @@ export async function GET(req: NextRequest) {
 
     if (request.status === "APPROVED" && request.approvedBy) {
       responseData.username = request.approvedBy.username;
-      responseData.temp_password = await bcrypt.hash(request.approvedBy.password, 10);
+      responseData.temp_password = request.temp_password;
     }
 
     return NextResponse.json({ message: "Status retrieved", request: responseData });

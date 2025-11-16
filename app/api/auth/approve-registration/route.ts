@@ -81,6 +81,12 @@ export async function POST(req: NextRequest) {
     const tempPassword = Math.random().toString(36).slice(-8);
     const hashedPassword = await bcrypt.hash(tempPassword, 10);
 
+    await prisma.registrationRequest.update({
+    where: { request_id: requestId },
+    data: { status: RegistrationStatus.APPROVED, temp_password: tempPassword },
+});
+
+
     let baseUsername = request.email ?? request.last_name ?? `user${Date.now()}`;
     let username = baseUsername;
 
