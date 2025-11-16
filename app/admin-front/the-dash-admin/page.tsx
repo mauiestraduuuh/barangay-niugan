@@ -105,7 +105,7 @@ export default function AdminDashboard() {
     { name: "registration-request", label: "Registration Requests", icon: ClipboardDocumentIcon },
     { name: "certificate-request", label: "Certificate Requests", icon: ClipboardDocumentIcon },
     { name: "feedback", label: "Feedback", icon: ChatBubbleLeftEllipsisIcon },
-    { name: "staff", label: "Staff Accounts", icon: UsersIcon },
+    { name: "staff-acc", label: "Staff Accounts", icon: UsersIcon },
     { name: "announcement", label: "Announcements", icon: MegaphoneIcon },
     { name: "reports", label: "Reports", icon: ChartBarIcon },
   ];
@@ -223,14 +223,6 @@ export default function AdminDashboard() {
           </button>
           <h1 className="text-xl font-semibold">Admin Dashboard</h1>
           <div className="flex items-center space-x-4">
-            <BellIcon className="w-6 h-6 hover:text-red-700" />
-            <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center shadow-sm">
-              <img
-                src={admin?.photo_url || "/default-profile.png"}
-                alt="Profile"
-                className="w-8 h-8 rounded-full object-cover"
-              />
-            </div>
           </div>
         </header>
 
