@@ -12,8 +12,7 @@ function generateHeadId(): number {
 
 export async function GET() {
   try {
-    const pendingRequests = await prisma.registrationRequest.findMany({
-      where: { status: RegistrationStatus.PENDING },
+    const requests = await prisma.registrationRequest.findMany({
       orderBy: { submitted_at: "desc" },
       select: {
         request_id: true,
@@ -29,7 +28,7 @@ export async function GET() {
       },
     });
 
-    return NextResponse.json({ pendingRequests });
+    return NextResponse.json({ requests });
   } catch (error) {
     console.error("Fetch registration requests failed:", error);
     return NextResponse.json(
