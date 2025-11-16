@@ -45,6 +45,7 @@ export async function POST(req: NextRequest) {
     const is_head_of_family = String(formData.get("is_head_of_family") ?? "false") === "true";
     const head_id = formData.get("head_id") ? Number(formData.get("head_id")) : null;
     const household_number = formData.get("household_number") ? String(formData.get("household_number")) : null;
+    const is_renter = String(formData.get("is_renter") ?? "false") === "true";
     const is_4ps_member = String(formData.get("is_4ps_member") ?? "false") === "true";
     const is_pwd = String(formData.get("is_pwd") ?? "false") === "true";
     const is_indigenous = String(formData.get("is_indigenous") ?? "false") === "true";
@@ -110,6 +111,7 @@ export async function POST(req: NextRequest) {
       is_head_of_family,
       head_id,
       household_number,
+      is_renter,
       is_4ps_member,
       is_pwd,
       is_indigenous,

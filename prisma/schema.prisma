@@ -95,6 +95,7 @@ model Resident {
   is_head_of_family  Boolean  @default(false)
   head_id            BigInt?
   household_number   String?
+  is_renter          Boolean  @default(false)
   is_4ps_member      Boolean  @default(false)
   is_indigenous      Boolean  @default(false)
   is_slp_beneficiary Boolean  @default(false)
@@ -132,6 +133,7 @@ model Staff {
   is_head_of_family  Boolean  @default(false)
   head_id            BigInt?
   household_number   String?
+  is_renter          Boolean  @default(false)
   is_4ps_member      Boolean  @default(false)
   is_indigenous      Boolean  @default(false)
   is_slp_beneficiary Boolean  @default(false)
@@ -329,6 +331,7 @@ model RegistrationRequest {
   is_head_of_family  Boolean            @default(false)
   head_id            Int?
   household_number   String?
+  is_renter          Boolean?           @default(false)
   is_4ps_member      Boolean            @default(false)
   is_indigenous      Boolean            @default(false)
   is_slp_beneficiary Boolean            @default(false)

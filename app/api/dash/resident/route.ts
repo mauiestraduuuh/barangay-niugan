@@ -60,6 +60,7 @@ export async function GET(req: NextRequest) {
 
     const data = {
       ...serializeResident(resident),
+      is_renter: resident.is_renter,
       email: resident.user?.username || null,
       role: resident.user?.role,
       account_created: resident.user?.created_at,
