@@ -305,60 +305,57 @@ export default function ManageAnnouncements() {
 
       {/* Main Section */}
       <div className="flex-1 flex flex-col gap-4">
-        <header className="bg-gray-50 shadow-sm p-4 flex justify-between items-center rounded-xl">
-          <button onClick={toggleSidebar} className="block md:hidden text-black hover:text-red-700 focus:outline-none">
-            <Bars3Icon className="w-6 h-6" />
-          </button>
-          <h1 className="text-xl font-semibold text-black">Manage Announcements</h1>
-          <div className="flex items-center space-x-4">
-            <NotificationDropdown notifications={notifications} />
-            <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center shadow-sm">
-              <UserIcon className="w-5 h-5 text-black" />
+        <main className="flex-1 bg-gray-50 rounded-xl p-6 shadow-sm overflow-auto text-black">
+  {message && (
+    <p className={`text-center p-2 rounded mb-4 ${message.includes("success") ? "bg-green-100" : "bg-red-100"}`}>
+      {message}
+    </p>
+  )}
+
+  <div className="flex justify-between items-center mb-6">
+    <h2 className="text-2xl font-semibold text-black">Announcements</h2>
+    <button
+      onClick={() => { setEditingAnnouncement(null); setFormData({ title: "", content: "", is_public: true }); setShowModal(true); }}
+      className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition"
+    >
+      <PlusIcon className="w-5 h-5 text-black" /> Add Announcement
+    </button>
+  </div>
+
+  {loading ? (
+    <div className="text-center py-10 text-black">Loading...</div>
+  ) : announcements.length === 0 ? (
+    <div className="text-center py-10 text-black">No announcements yet.</div>
+  ) : (
+    <div className="space-y-4">
+      {announcements.map(a => (
+        <div key={a.announcement_id} className="bg-white p-6 rounded-lg shadow-md text-black">
+          <div className="flex justify-between items-start mb-4">
+            <div>
+              <h3 className="text-xl font-semibold text-black">{a.title}</h3>
+              <p className="text-sm text-black">Posted on {new Date(a.posted_at).toLocaleDateString()} • {a.is_public ? "Public" : "Private"}</p>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => handleEdit(a)} className="text-black hover:text-gray-800 p-2 rounded transition">
+                <PencilIcon className="w-5 h-5" />
+              </button>
+              <button onClick={() => handleDelete(a.announcement_id)} className="text-black hover:text-gray-800 p-2 rounded transition">
+                <TrashIcon className="w-5 h-5" />
+              </button>
             </div>
           </div>
-        </header>
-
-        <main className="flex-1 bg-gray-50 rounded-xl p-6 shadow-sm overflow-auto">
-          {message && <p className={`text-center p-2 rounded mb-4 ${message.includes("success") ? "text-green-800 bg-green-100" : "text-red-800 bg-red-100"}`}>{message}</p>}
-
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-semibold">Announcements</h2>
-            <button onClick={() => { setEditingAnnouncement(null); setFormData({ title: "", content: "", is_public: true }); setShowModal(true); }} className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition">
-              <PlusIcon className="w-5 h-5" /> Add Announcement
-            </button>
-          </div>
-
-          {loading ? <div className="text-center py-10">Loading...</div> :
-            announcements.length === 0 ? <div className="text-center text-gray-500 py-10">No announcements yet.</div> :
-            <div className="space-y-4">
-              {announcements.map(a => (
-                <div key={a.announcement_id} className="bg-white p-6 rounded-lg shadow-md">
-                  <div className="flex justify-between items-start mb-4">
-                    <div>
-                      <h3 className="text-xl font-semibold text-gray-800">{a.title}</h3>
-                      <p className="text-sm text-gray-500">Posted on {new Date(a.posted_at).toLocaleDateString()} • {a.is_public ? "Public" : "Private"}</p>
-                    </div>
-                    <div className="flex gap-2">
-                      <button onClick={() => handleEdit(a)} className="text-blue-600 hover:text-blue-800 p-2 rounded transition">
-                        <PencilIcon className="w-5 h-5" />
-                      </button>
-                      <button onClick={() => handleDelete(a.announcement_id)} className="text-red-600 hover:text-red-800 p-2 rounded transition">
-                        <TrashIcon className="w-5 h-5" />
-                      </button>
-                    </div>
-                  </div>
-                  <p className="text-gray-700">{a.content}</p>
-                </div>
+          <p className="text-black">{a.content}</p>
+        </div>
               ))}
             </div>
-          }
+          )}
         </main>
       </div>
 
       {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
+          <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md text-black">
             <h3 className="text-xl font-semibold mb-4">{editingAnnouncement ? "Edit Announcement" : "Add Announcement"}</h3>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
