@@ -42,6 +42,7 @@ export async function GET(req: NextRequest) {
         address: true,
         head_id: true,
         household_id: true,
+        is_renter: true, 
         is_4ps_member: true,
         is_pwd: true,
         senior_mode: true,

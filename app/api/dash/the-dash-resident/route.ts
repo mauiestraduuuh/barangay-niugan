@@ -33,6 +33,7 @@ export async function GET(req: NextRequest) {
         is_4ps_member: true,
         is_pwd: true,
         senior_mode: true,
+        is_renter: true
       },
     });
 
