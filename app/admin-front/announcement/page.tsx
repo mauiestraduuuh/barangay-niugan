@@ -74,22 +74,8 @@ export default function ManageAnnouncements() {
 
   // Fetch notifications
   useEffect(() => {
-    fetchNotifications();
     fetchAnnouncements();
   }, []);
-
-  const fetchNotifications = async () => {
-    try {
-      const res = await fetch("/api/dash/notifications", {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
-      if (!res.ok) throw new Error("Failed to fetch notifications");
-      const data: Notification[] = await res.json();
-      setNotifications(data);
-    } catch (error) {
-      console.error("Error fetching notifications:", error);
-    }
-  };
 
   // Fetch announcements
   const fetchAnnouncements = async () => {
@@ -236,7 +222,7 @@ export default function ManageAnnouncements() {
     <ul>
       {features.map(({ name, label, icon: Icon }) => {
         const href = `/admin-front/${name}`;
-        const isActive = name === "admin-profile";
+        const isActive = name === "announcement";
         return (
           <li key={name} className="mb-2">
             <Link href={href}>

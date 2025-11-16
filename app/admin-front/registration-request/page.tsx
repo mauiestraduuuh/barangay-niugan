@@ -131,7 +131,7 @@ export default function AdminRegistrationRequestsPage() {
     { name: "registration-request", label: "Registration Requests", icon: ClipboardDocumentIcon },
     { name: "certificate-request", label: "Certificate Requests", icon: ClipboardDocumentIcon },
     { name: "feedback", label: "Feedback", icon: ChatBubbleLeftEllipsisIcon },
-    { name: "staff", label: "Staff Accounts", icon: UsersIcon },
+    { name: "staff-acc", label: "Staff Accounts", icon: UsersIcon },
     { name: "announcement", label: "Announcements", icon: MegaphoneIcon },
     { name: "reports", label: "Reports", icon: ChartBarIcon },
   ];
@@ -240,7 +240,7 @@ export default function AdminRegistrationRequestsPage() {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col gap-4">
-        <header className="bg-gray-50 shadow-sm p-4 flex justify-between items-center rounded-xl">
+        <header className="bg-gray-50 shadow-sm p-4 flex justify-between items-center rounded-xl text-black">
           <button
             onClick={toggleSidebar}
             className="block md:hidden text-black hover:text-red-700 focus:outline-none"
@@ -292,7 +292,7 @@ export default function AdminRegistrationRequestsPage() {
             <p className="text-center">No registration requests found</p>
           ) : (
             <div className="overflow-x-auto">
-              <table className="min-w-full border-collapse bg-white shadow-sm rounded-xl overflow-hidden text-sm sm:text-base">
+              <table className="min-w-full border-collapse bg-white shadow-sm rounded-xl overflow-hidden text-sm sm:text-base text-black">
                 <thead className="bg-gradient-to-br from-black via-red-800 to-black text-white">
                   <tr>
                     <th className="px-3 py-2 text-left">Name</th>

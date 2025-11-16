@@ -73,7 +73,7 @@ export default function AdminFeedbackPage() {
     { name: "registration-request", label: "Registration Requests", icon: ClipboardDocumentIcon },
     { name: "certificate-request", label: "Certificate Requests", icon: ClipboardDocumentIcon },
     { name: "feedback", label: "Feedback", icon: ChatBubbleLeftEllipsisIcon },
-    { name: "staff", label: "Staff Accounts", icon: UsersIcon },
+    { name: "staff-acc", label: "Staff Accounts", icon: UsersIcon },
     { name: "announcement", label: "Announcements", icon: MegaphoneIcon },
     { name: "reports", label: "Reports", icon: ChartBarIcon },
   ];
@@ -263,9 +263,6 @@ export default function AdminFeedbackPage() {
           </button>
           <h1 className="text-xl font-semibold text-black">Complaints Management</h1>
           <div className="flex items-center space-x-4">
-            <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center shadow-sm">
-              <UserIcon className="w-5 h-5 text-black" />
-            </div>
           </div>
         </header>
 

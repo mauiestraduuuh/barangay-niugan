@@ -198,7 +198,7 @@ export default function StaffAccounts() {
     <ul>
       {features.map(({ name, label, icon: Icon }) => {
         const href = `/admin-front/${name}`;
-        const isActive = name === "admin-profile";
+        const isActive = name === "staff-acc";
         return (
           <li key={name} className="mb-2">
             <Link href={href}>

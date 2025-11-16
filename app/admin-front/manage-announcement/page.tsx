@@ -67,28 +67,14 @@ export default function ManageAnnouncements() {
     { name: "registration-request", label: "Registration Requests", icon: ClipboardDocumentIcon },
     { name: "certificate-request", label: "Certificate Requests", icon: ClipboardDocumentIcon },
     { name: "feedback", label: "Feedback", icon: ChatBubbleLeftEllipsisIcon },
-    { name: "staff", label: "Staff Accounts", icon: UsersIcon },
+    { name: "staff-acc", label: "Staff Accounts", icon: UsersIcon },
     { name: "manage-announcement", label: "Announcements", icon: MegaphoneIcon },
     { name: "reports", label: "Reports", icon: ChartBarIcon },
   ];
 
   useEffect(() => {
-    fetchNotifications();
     fetchAnnouncements();
   }, []);
-
-  const fetchNotifications = async () => {
-    try {
-      const res = await fetch("/api/dash/notifications", {
-        headers: token ? { Authorization: `Bearer ${token}` } : {}, // Added auth header
-      });
-      if (!res.ok) throw new Error("Failed to fetch notifications");
-      const data: Notification[] = await res.json();
-      setNotifications(data);
-    } catch (error) {
-      console.error(error);
-    }
-  };
 
   const fetchAnnouncements = async () => {
     setLoading(true);
