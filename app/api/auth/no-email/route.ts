@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/../lib/prisma";
-import bcrypt from "bcryptjs"; // hashing library for passwords
 
 export async function GET(req: NextRequest) {
   try {
@@ -20,7 +19,8 @@ export async function GET(req: NextRequest) {
         last_name: true,
         status: true,
         role: true,
-        approvedBy: { select: { username: true, password: true } }
+        temp_password: true,
+        email: true,
       },
     });
 
@@ -35,9 +35,27 @@ export async function GET(req: NextRequest) {
       role: request.role,
     };
 
-    if (request.status === "APPROVED" && request.approvedBy) {
-      responseData.username = request.approvedBy.username;
-      responseData.temp_password = await bcrypt.hash(request.approvedBy.password, 10);
+    if (request.status === "APPROVED") {
+      // find user thru email or last name
+      const baseUsername = request.email ?? request.last_name ?? "";
+      
+      // find user
+      const user = await prisma.user.findFirst({
+        where: {
+          OR: [
+            { username: baseUsername },
+            { username: { startsWith: baseUsername } }
+          ],
+          role: request.role
+        },
+        orderBy: { created_at: 'desc' },
+      });
+
+      //save username and temp password to database
+      if (user) {
+        responseData.username = user.username;
+        responseData.temp_password = request.temp_password;
+      }
     }
 
     return NextResponse.json({ message: "Status retrieved", request: responseData });

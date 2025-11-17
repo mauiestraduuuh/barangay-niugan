@@ -16,6 +16,7 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   XMarkIcon,
+  KeyIcon,
   ArrowRightOnRectangleIcon,
   PlusIcon,
   PencilIcon,
@@ -65,6 +66,7 @@ export default function ManageAnnouncements() {
     { name: "the-dash-admin", label: "Home", icon: HomeIcon },
     { name: "admin-profile", label: "Manage Profile", icon: UserIcon },
     { name: "registration-request", label: "Registration Requests", icon: ClipboardDocumentIcon },
+    { name: "registration-code", label: "Registration Code", icon: KeyIcon },
     { name: "certificate-request", label: "Certificate Requests", icon: ClipboardDocumentIcon },
     { name: "feedback", label: "Feedback", icon: ChatBubbleLeftEllipsisIcon },
     { name: "staff-acc", label: "Staff Accounts", icon: UsersIcon },
@@ -236,7 +238,7 @@ export default function ManageAnnouncements() {
     <ul>
       {features.map(({ name, label, icon: Icon }) => {
         const href = `/admin-front/${name}`;
-        const isActive = name === "admin-profile";
+        const isActive = name === "announcement";
         return (
           <li key={name} className="mb-2">
             <Link href={href}>

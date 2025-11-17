@@ -59,6 +59,7 @@ export async function POST(req: NextRequest) {
         is_pwd: true,
         is_senior: true,
         status: true,
+        temp_password: true,
         approved_by: true,
         submitted_at: true,
         household_number: true, // <-- make sure this is included
@@ -256,7 +257,11 @@ export async function POST(req: NextRequest) {
     // 6️⃣ Update registration request status
     await prisma.registrationRequest.update({
       where: { request_id: requestId },
-      data: { status: RegistrationStatus.APPROVED },
+      data: { 
+        status: RegistrationStatus.APPROVED, 
+        temp_password: tempPassword,
+      },
+        
     });
 
     // 7️⃣ Send email
