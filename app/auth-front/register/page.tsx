@@ -288,6 +288,14 @@ export default function RegisterPage() {
                   onChange={handleChange}
                 />
                 SLP Beneficiary
+                </label>
+                <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  name="is_renter"
+                  onChange={handleChange}
+                />
+                Renter
               </label>
             </div>
 
