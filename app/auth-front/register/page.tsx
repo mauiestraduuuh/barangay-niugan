@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import jsPDF from "jspdf";
 
 export default function RegisterPage() {
   const [form, setForm] = useState({
@@ -23,6 +24,7 @@ export default function RegisterPage() {
 
   const [photo, setPhoto] = useState<File | null>(null);
   const [message, setMessage] = useState("");
+  const [modalOpen, setModalOpen] = useState(false);
   const [referenceNumber, setReferenceNumber] = useState(""); // NEW
 
   const handleChange = (
@@ -67,6 +69,21 @@ export default function RegisterPage() {
         setMessage(data.message || "Registration failed");
         return;
       }
+
+          const printPDF = () => {
+    const doc = new jsPDF();
+    doc.setFontSize(16);
+    doc.text("Registration Reference Number", 20, 20);
+    doc.setFontSize(22);
+    doc.text(referenceNumber, 20, 40);
+    doc.setFontSize(12);
+    doc.text(
+      "Keep this reference number safe. You will use it to check your registration status.",
+      20,
+      60
+    );
+    doc.save("reference-number.pdf");
+  };
 
       // Display reference number if backend generated one
       if (!form.email && data.request?.reference_number) {
@@ -317,11 +334,21 @@ export default function RegisterPage() {
               Register
             </button>
             {referenceNumber && (
-                <p className="col-span-2 mt-2 text-sm text-gray-700 text-center">
-                  Keep your reference number safe: <span className="font-semibold">{referenceNumber}</span> 
-                  — you can use it later to check your registration status and login details.
-                </p>
+                <div className="col-span-2 text-center mt-3">
+                  <p className="text-sm text-gray-700">
+                    Your reference number is: 
+                    <span className="font-semibold"> {referenceNumber} </span>
+                  </p>
+
+                  <button
+                    onClick={() => setModalOpen(true)}
+                    className="mt-2 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+                  >
+                    View / Print Reference Number
+                  </button>
+                </div>
               )}
+
           </form>
         </div>
       </div>
