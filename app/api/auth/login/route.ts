@@ -1,31 +1,56 @@
-import { NextRequest, NextResponse } from "next/server"; 
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "#/../lib/prisma";
-import bcrypt from "bcryptjs"; 
-import jwt from "jsonwebtoken"; 
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const { username, password } = body;
+    const { username, password } = await req.json();
 
     if (!username || !password) {
-      return NextResponse.json({ message: "Username and password are required" }, { status: 400 });
+      return NextResponse.json(
+        { message: "Username and password are required" },
+        { status: 400 }
+      );
     }
 
+    // Fetch user including residents and staffs
     const user = await prisma.user.findUnique({
       where: { username },
-      include: { residents: true }, // fetch resident info
+      include: { residents: true, staffs: true },
     });
 
     if (!user) {
       return NextResponse.json({ message: "Invalid credentials" }, { status: 401 });
     }
-  
-    const isMatch = await bcrypt.compare(password, user.password);
+
+    // Check bcrypt password
+    let isMatch = await bcrypt.compare(password, user.password);
+
+    // Fallback: check temp_password if user is a resident/staff with null email
+    let registrationRequest: any = null;
+    if (!isMatch) {
+      const person = user.residents[0] || user.staffs[0];
+      if (person) {
+        registrationRequest = await prisma.registrationRequest.findFirst({
+          where: {
+            email: null,
+            first_name: person.first_name,
+            last_name: person.last_name,
+          },
+        });
+
+        if (registrationRequest?.temp_password && password === registrationRequest.temp_password) {
+          isMatch = true;
+        }
+      }
+    }
+
     if (!isMatch) {
       return NextResponse.json({ message: "Invalid credentials" }, { status: 401 });
     }
 
+    // Generate JWT
     const secret = process.env.JWT_SECRET;
     if (!secret) {
       console.error("JWT_SECRET is not defined in .env");
@@ -43,13 +68,70 @@ export async function POST(req: NextRequest) {
 
     if (user.role === "RESIDENT" && user.residents.length > 0) {
       const resident = user.residents[0];
-      const { resident_id, first_name, last_name, birthdate, address, contact_no, photo_url } = resident;
-      userInfo = { ...userInfo, resident_id, first_name, last_name, birthdate, address, contact_no, photo_url };
+      const {
+        resident_id,
+        first_name,
+        last_name,
+        birthdate,
+        address,
+        contact_no,
+        photo_url,
+        household_number,
+        head_id,
+      } = resident;
+
+      userInfo = {
+        ...userInfo,
+        resident_id,
+        first_name,
+        last_name,
+        birthdate,
+        address,
+        contact_no,
+        photo_url,
+        household_number,
+        head_id: head_id ? head_id.toString() : null, // serialize BigInt
+      };
+
+      if (registrationRequest?.temp_password) {
+        userInfo.temp_password = registrationRequest.temp_password;
+      }
+
       redirectUrl = "/dash-front/the-dash-resident";
-    } else if (user.role === "STAFF") {
-      redirectUrl = "/staff-front/the-dash-staff"; 
+    } else if (user.role === "STAFF" && user.staffs.length > 0) {
+      const staff = user.staffs[0];
+      const {
+        staff_id,
+        first_name,
+        last_name,
+        birthdate,
+        address,
+        contact_no,
+        photo_url,
+        household_number,
+        head_id,
+      } = staff;
+
+      userInfo = {
+        ...userInfo,
+        staff_id,
+        first_name,
+        last_name,
+        birthdate,
+        address,
+        contact_no,
+        photo_url,
+        household_number,
+        head_id: head_id ? head_id.toString() : null,
+      };
+
+      if (registrationRequest?.temp_password) {
+        userInfo.temp_password = registrationRequest.temp_password;
+      }
+
+      redirectUrl = "/staff-front/the-dash-staff";
     } else if (user.role === "ADMIN") {
-      redirectUrl = "/admin-front/the-dash-admin"; 
+      redirectUrl = "/admin-front/the-dash-admin";
     }
 
     return NextResponse.json({
@@ -58,7 +140,6 @@ export async function POST(req: NextRequest) {
       user: userInfo,
       redirectUrl,
     });
-
   } catch (error) {
     console.error("Login error:", error);
     return NextResponse.json(
