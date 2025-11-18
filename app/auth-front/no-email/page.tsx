@@ -72,7 +72,7 @@ export default function NoEmailStatusPage() {
             </div>
           </div>
 
-          {/* Resukts*/}
+          {/* Results */}
           {hasChecked && (
             <div className="flex-1 bg-black/50 rounded-2xl p-6 border border-red-500/30 animate-fade-in">
               <h2 className="text-xl font-bold text-white mb-4">Results</h2>
@@ -85,39 +85,47 @@ export default function NoEmailStatusPage() {
                 </div>
               )}
               {result && (
-                <div className="bg-white/10 border border-white/20 rounded-xl p-4">
-                  <div className="space-y-3">
-                    <p className="flex justify-between">
-                      <span className="font-semibold text-gray-300">Name:</span>
-                      <span className="text-white">{result.first_name} {result.last_name}</span>
-                    </p>
-                    <p className="flex justify-between">
-                      <span className="font-semibold text-gray-300">Status:</span>
-                      <span className={`font-bold ${
-                        result.status === "APPROVED" ? "text-green-400" :
-                        result.status === "REJECTED" ? "text-red-400" :
-                        "text-yellow-400"
-                      }`}>
-                        {result.status}
-                      </span>
-                    </p>
-                    <p className="flex justify-between">
-                      <span className="font-semibold text-gray-300">Role:</span>
-                      <span className="text-white">{result.role}</span>
-                    </p>
-                    {result.status === "APPROVED" && (
-                      <>
-                        <p className="flex justify-between">
-                          <span className="font-semibold text-gray-300">Username:</span>
-                          <span className="text-white">{result.username}</span>
-                        </p>
-                        <p className="flex justify-between">
-                          <span className="font-semibold text-gray-300">Temp Password:</span>
-                          <span className="text-white">{result.temp_password}</span>
-                        </p>
-                      </>
-                    )}
-                  </div>
+                <div className="bg-white/10 border border-white/20 rounded-xl p-4 space-y-3">
+                  <p className="flex justify-between">
+                    <span className="font-semibold text-gray-300">Name:</span>
+                    <span className="text-white">{result.first_name} {result.last_name}</span>
+                  </p>
+                  <p className="flex justify-between">
+                    <span className="font-semibold text-gray-300">Status:</span>
+                    <span className={`font-bold ${
+                      result.status === "APPROVED" ? "text-green-400" :
+                      result.status === "REJECTED" ? "text-red-400" :
+                      "text-yellow-400"
+                    }`}>
+                      {result.status}
+                    </span>
+                  </p>
+                  <p className="flex justify-between">
+                    <span className="font-semibold text-gray-300">Role:</span>
+                    <span className="text-white">{result.role}</span>
+                  </p>
+                  {result.status === "APPROVED" && (
+                    <>
+                      <p className="flex justify-between">
+                        <span className="font-semibold text-gray-300">Username:</span>
+                        <span className="text-white">{result.username}</span>
+                      </p>
+                      <p className="flex justify-between">
+                        <span className="font-semibold text-gray-300">Temp Password:</span>
+                        <span className="text-white">{result.temp_password}</span>
+                      </p>
+                      {result.household_number && (
+                          <p className="flex justify-between">
+                            <span className="font-semibold text-gray-300">Household Number:</span>
+                            <span className="text-white">{result.household_number.replace(/^HH-/, "")}</span>
+                          </p>
+                        )}
+                      <div className="mt-2 p-3 bg-red-500/20 border border-red-500/50 rounded-xl text-red-300 text-sm">
+                        ⚠️ All members of your family should use the same <strong>Household Number</strong>. <br/>
+                        Please change your <strong>temporary password</strong> immediately after logging in.
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
             </div>
@@ -125,7 +133,7 @@ export default function NoEmailStatusPage() {
         </div>
       </div>
 
-      {/* animation*/}
+      {/* Animation */}
       <style jsx>{`
         @keyframes fade-in {
           from { opacity: 0; transform: translateY(20px); }

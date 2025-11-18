@@ -29,17 +29,16 @@ export async function GET(req: NextRequest) {
     }
 
     const responseData: any = {
-      first_name: request.first_name, 
+      first_name: request.first_name,
       last_name: request.last_name,
       status: request.status,
       role: request.role,
     };
 
     if (request.status === "APPROVED") {
-      // find user thru email or last name
       const baseUsername = request.email ?? request.last_name ?? "";
-      
-      // find user
+
+      // Find user
       const user = await prisma.user.findFirst({
         where: {
           OR: [
@@ -49,12 +48,21 @@ export async function GET(req: NextRequest) {
           role: request.role
         },
         orderBy: { created_at: 'desc' },
+        include: { residents: true, staffs: true },
       });
 
-      //save username and temp password to database
       if (user) {
         responseData.username = user.username;
         responseData.temp_password = request.temp_password;
+
+        // Retrieve household number
+        let householdNumber = null;
+        if (user.residents.length > 0) {
+          householdNumber = user.residents[0].household_number;
+        } else if (user.staffs.length > 0) {
+          householdNumber = user.staffs[0].household_number;
+        }
+        responseData.household_number = householdNumber;
       }
     }
 
