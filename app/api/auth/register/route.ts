@@ -1,4 +1,4 @@
-// route.ts
+// app/api/auth/register/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/../lib/prisma";
 import { createClient } from "@supabase/supabase-js";
@@ -25,7 +25,6 @@ function generateReferenceNumber() {
   return `REF-${yyyy}${mm}${dd}-${random}`;
 }
 
-// POST request
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
@@ -98,7 +97,35 @@ export async function POST(req: NextRequest) {
       photo_url = publicData.publicUrl;
     }
 
-    // Prisma insert payload
+    // Conditional registration code for head of family
+    if (is_head_of_family) {
+      const regCodeRaw = formData.get("registration_code");
+      const registration_code = regCodeRaw ? String(regCodeRaw).trim() : null;
+
+      if (!registration_code) {
+        return NextResponse.json({ message: "Registration code is required for head of the family." }, { status: 400 });
+      }
+
+      const regCode = await prisma.registrationCode.findUnique({ where: { code: registration_code } });
+
+      if (!regCode || regCode.isUsed) {
+        return NextResponse.json({ message: "Invalid or already used registration code." }, { status: 400 });
+      }
+
+      // Ensure ownerName matches registrant
+      const registrantFullName = `${first_name} ${last_name}`.toLowerCase().trim();
+      if (regCode.ownerName.toLowerCase().trim() !== registrantFullName) {
+        return NextResponse.json({ message: "This registration code does not belong to you." }, { status: 400 });
+      }
+
+      // Mark the code as used in the registration request
+      await prisma.registrationCode.update({
+        where: { id: regCode.id },
+        data: { isUsed: true },
+      });
+    }
+
+    // Create registration request
     const createData: any = {
       first_name,
       last_name,
@@ -122,37 +149,6 @@ export async function POST(req: NextRequest) {
       reference_number: generateReferenceNumber(),
     };
 
-    // Conditional registration code for head of family
-    // Conditional registration code for head of family
-if (is_head_of_family) {
-  const regCodeRaw = formData.get("registration_code");
-  const registration_code = regCodeRaw ? String(regCodeRaw).trim() : null;
-
-  if (!registration_code) {
-    return NextResponse.json({ message: "Registration code is required for head of the family." }, { status: 400 });
-  }
-
-  const regCode = await prisma.registrationCode.findUnique({ where: { code: registration_code } });
-
-  if (!regCode || regCode.isUsed) {
-    return NextResponse.json({ message: "Invalid or already used registration code." }, { status: 400 });
-  }
-
-  // Ensure ownerName matches registrant
-  const registrantFullName = `${first_name} ${last_name}`.toLowerCase().trim();
-  if (regCode.ownerName.toLowerCase().trim() !== registrantFullName) {
-    return NextResponse.json({ message: "This registration code does not belong to you." }, { status: 400 });
-  }
-
-  // Mark the code as used
-  await prisma.registrationCode.update({
-    where: { id: regCode.id },
-    data: { isUsed: true },
-  });
-}
-
-
-    // Create registration request
     const request = await prisma.registrationRequest.create({ data: createData });
 
     return NextResponse.json({ message: "Registration request submitted", request }, { status: 201 });

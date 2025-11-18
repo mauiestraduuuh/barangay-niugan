@@ -18,14 +18,14 @@ export default function RegisterPage() {
     is_pwd: false,
     is_indigenous: false,
     is_slp_beneficiary: false,
+    is_renter: false,
     household_number: "",
-    registration_code: "", // NEW
+    registration_code: "",
   });
 
   const [photo, setPhoto] = useState<File | null>(null);
   const [message, setMessage] = useState("");
-  const [modalOpen, setModalOpen] = useState(false);
-  const [referenceNumber, setReferenceNumber] = useState(""); // NEW
+  const [referenceNumber, setReferenceNumber] = useState("");
 
   const handleChange = (
     e: React.ChangeEvent<
@@ -70,27 +70,26 @@ export default function RegisterPage() {
         return;
       }
 
-          const printPDF = () => {
-    const doc = new jsPDF();
-    doc.setFontSize(16);
-    doc.text("Registration Reference Number", 20, 20);
-    doc.setFontSize(22);
-    doc.text(referenceNumber, 20, 40);
-    doc.setFontSize(12);
-    doc.text(
-      "Keep this reference number safe. You will use it to check your registration status.",
-      20,
-      60
-    );
-    doc.save("reference-number.pdf");
-  };
-
-      // Display reference number if backend generated one
-      if (!form.email && data.request?.reference_number) {
+      // If backend returns a reference number, set it
+      if (data.request?.reference_number) {
         setReferenceNumber(data.request.reference_number);
         setMessage(
           `Registration submitted successfully! Your reference number is ${data.request.reference_number}`
         );
+
+        // Automatically generate PDF
+        const doc = new jsPDF();
+        doc.setFontSize(16);
+        doc.text("Registration Reference Number", 20, 20);
+        doc.setFontSize(22);
+        doc.text(data.request.reference_number, 20, 40);
+        doc.setFontSize(12);
+        doc.text(
+          "Keep this reference number safe. You will use it to check your registration status.",
+          20,
+          60
+        );
+        doc.save("reference-number.pdf");
       } else {
         setMessage("Registration submitted successfully!");
       }
@@ -109,6 +108,7 @@ export default function RegisterPage() {
         is_pwd: false,
         is_indigenous: false,
         is_slp_beneficiary: false,
+        is_renter: false,
         household_number: "",
         registration_code: "",
       });
@@ -213,7 +213,6 @@ export default function RegisterPage() {
             >
               <option value="RESIDENT">Resident</option>
               <option value="STAFF">Staff</option>
-              <option value="ADMIN">Admin</option>
             </select>
             <textarea
               name="address"
@@ -305,8 +304,8 @@ export default function RegisterPage() {
                   onChange={handleChange}
                 />
                 SLP Beneficiary
-                </label>
-                <label className="flex items-center gap-2">
+              </label>
+              <label className="flex items-center gap-2">
                 <input
                   type="checkbox"
                   name="is_renter"
@@ -333,22 +332,6 @@ export default function RegisterPage() {
             >
               Register
             </button>
-            {referenceNumber && (
-                <div className="col-span-2 text-center mt-3">
-                  <p className="text-sm text-gray-700">
-                    Your reference number is: 
-                    <span className="font-semibold"> {referenceNumber} </span>
-                  </p>
-
-                  <button
-                    onClick={() => setModalOpen(true)}
-                    className="mt-2 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
-                  >
-                    View / Print Reference Number
-                  </button>
-                </div>
-              )}
-
           </form>
         </div>
       </div>
