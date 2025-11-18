@@ -7,23 +7,21 @@ import jwt from "jsonwebtoken";
 
 const JWT_SECRET = process.env.JWT_SECRET!;
 
-// Helper to get userId from token
+// Helper to get userId from JWT token
 function getUserIdFromToken(req: NextRequest): number | null {
   try {
     const authHeader = req.headers.get("authorization");
     if (!authHeader) return null;
-
     const token = authHeader.split(" ")[1]; // expects "Bearer <token>"
     if (!token) return null;
-
     const decoded = jwt.verify(token, JWT_SECRET) as { userId: number };
     return decoded.userId;
-  } catch (error) {
+  } catch {
     return null;
   }
 }
 
-// Helper to safely convert BigInt to string
+// Helper to safely serialize BigInt fields
 function serializeResident(resident: any) {
   return {
     ...resident,
@@ -32,12 +30,12 @@ function serializeResident(resident: any) {
   };
 }
 
+// GET resident info
 export async function GET(req: NextRequest) {
   try {
     const userId = getUserIdFromToken(req);
-    if (!userId) {
+    if (!userId)
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
 
     const resident = await prisma.resident.findFirst({
       where: { user_id: userId },
@@ -54,9 +52,8 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    if (!resident) {
+    if (!resident)
       return NextResponse.json({ error: "Resident not found" }, { status: 404 });
-    }
 
     const data = {
       ...serializeResident(resident),
@@ -73,19 +70,18 @@ export async function GET(req: NextRequest) {
   }
 }
 
-
 // PATCH change password
 export async function PATCH(req: NextRequest) {
   try {
     const userId = getUserIdFromToken(req);
-    if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!userId)
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const data = await req.json();
     const { current_password, new_password } = data;
 
-    if (!current_password || !new_password) {
+    if (!current_password || !new_password)
       return NextResponse.json({ error: "All fields are required" }, { status: 400 });
-    }
 
     const user = await prisma.user.findUnique({ where: { user_id: userId } });
     if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
@@ -95,11 +91,58 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: "Current password is incorrect" }, { status: 401 });
 
     const hashedPassword = await bcrypt.hash(new_password, 10);
-    await prisma.user.update({ where: { user_id: userId }, data: { password: hashedPassword } });
+    await prisma.user.update({
+      where: { user_id: userId },
+      data: { password: hashedPassword },
+    });
 
     return NextResponse.json({ message: "Password updated successfully" });
   } catch (error) {
     console.error(error);
     return NextResponse.json({ error: "Failed to update password" }, { status: 500 });
+  }
+}
+
+// PUT update resident profile
+export async function PUT(req: NextRequest) {
+  try {
+    const userId = getUserIdFromToken(req);
+    if (!userId)
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const body = await req.json();
+    const {
+      first_name,
+      last_name,
+      birthdate,
+      gender,
+      address,
+      contact_no,
+      photo_url,
+      senior_mode,
+    } = body;
+
+    const resident = await prisma.resident.findFirst({ where: { user_id: userId } });
+    if (!resident) return NextResponse.json({ error: "Resident not found" }, { status: 404 });
+
+        const updatedResident = await prisma.resident.update({
+        where: { resident_id: resident.resident_id }, 
+        data: {
+          first_name,
+          last_name,
+          birthdate: birthdate ? new Date(birthdate) : undefined,
+          gender,
+          address,
+          contact_no,
+          photo_url,
+          senior_mode,
+        },
+      });
+
+
+    return NextResponse.json(serializeResident(updatedResident));
+  } catch (err) {
+    console.error(err);
+    return NextResponse.json({ error: "Failed to update resident" }, { status: 500 });
   }
 }
