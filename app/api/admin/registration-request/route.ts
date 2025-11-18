@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/../lib/prisma";
 import bcrypt from "bcryptjs";
@@ -5,12 +6,28 @@ import QRCode from "qrcode";
 import nodemailer from "nodemailer";
 import { RegistrationStatus, Role } from "@prisma/client";
 
+export async function GET(req: NextRequest) {
+  try {
+    const requests = await prisma.registrationRequest.findMany({
+      orderBy: { submitted_at: "desc" },
+    });
+    return NextResponse.json({ requests });
+  } catch (error: any) {
+    console.error("Failed to fetch registration requests:", error);
+    return NextResponse.json(
+      { message: "Failed to fetch registration requests", error: error.message },
+      { status: 500 }
+    );
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { request_id, approve, admin_id }: { request_id: number; approve: boolean; admin_id: number } = await req.json();
 
-    if (!request_id || typeof approve !== "boolean" || !admin_id)
+    if (!request_id || typeof approve !== "boolean" || !admin_id) {
       return NextResponse.json({ message: "Invalid input" }, { status: 400 });
+    }
 
     const request = await prisma.registrationRequest.findUnique({ where: { request_id } });
     if (!request) return NextResponse.json({ message: "Request not found" }, { status: 404 });
@@ -59,10 +76,9 @@ export async function POST(req: NextRequest) {
     const tempPassword = Math.random().toString(36).slice(-8);
     const hashedPassword = await bcrypt.hash(tempPassword, 10);
 
+    // Create a unique username
     let baseUsername = request.email ?? request.last_name ?? `user${Date.now()}`;
     let username = baseUsername;
-
-    // Avoid duplicate usernames
     const existingUser = await prisma.user.findUnique({ where: { username } });
     if (existingUser) username = `${baseUsername}_${Math.floor(Math.random() * 10000)}`;
 
@@ -74,19 +90,22 @@ export async function POST(req: NextRequest) {
     let currentHeadId: number | null = null;
 
     // -------------------
-    // HANDLE HOUSEHOLDS
+    // ASSIGN HOUSEHOLD
     // -------------------
     const assignHousehold = async () => {
       let householdId: number | null = null;
 
+      // CASE 1: Head of family → create new household
       if (request.is_head_of_family) {
         const newHousehold = await prisma.household.create({
           data: { address: request.address ?? "No address provided" },
         });
         householdId = newHousehold.id;
-        householdNumber = householdNumber ?? `HH-${householdId}`;
+        householdNumber = `HH-${householdId}`;
         currentHeadId = user.user_id;
-      } else if (request.head_id) {
+      }
+      // CASE 2: Member submitted head_id
+      else if (request.head_id) {
         if (request.role === Role.RESIDENT) {
           const headResident = await prisma.resident.findUnique({ where: { resident_id: request.head_id } });
           householdId = headResident?.household_id ?? null;
@@ -94,8 +113,19 @@ export async function POST(req: NextRequest) {
           const headStaff = await prisma.staff.findUnique({ where: { staff_id: request.head_id } });
           householdId = headStaff?.household_id ?? null;
         }
-        householdNumber = householdNumber ?? (householdId ? `HH-${householdId}` : null);
+        householdNumber = householdId ? `HH-${householdId}` : request.household_number ?? null;
         currentHeadId = request.head_id;
+      }
+      // CASE 3: Member submitted household_number
+      else if (request.household_number) {
+        const existingHousehold = await prisma.household.findFirst({
+          where: { id: parseInt(request.household_number.replace(/^HH-/, "")) },
+        });
+        if (existingHousehold) {
+          householdId = existingHousehold.id;
+          householdNumber = `HH-${householdId}`;
+          currentHeadId = existingHousehold.head_resident ?? existingHousehold.head_staff ?? null;
+        }
       }
 
       return householdId;
@@ -193,7 +223,7 @@ export async function POST(req: NextRequest) {
     });
 
     // -------------------
-    // SEND EMAIL
+    // SEND APPROVAL EMAIL
     // -------------------
     if (request.email) {
       try {
@@ -235,6 +265,7 @@ export async function POST(req: NextRequest) {
       householdNumber,
       headId: request.is_head_of_family ? currentHeadId : null,
     });
+
   } catch (error: any) {
     console.error("Approval/Rejection failed:", error);
     return NextResponse.json({ message: "Operation failed", error: error.message }, { status: 500 });
