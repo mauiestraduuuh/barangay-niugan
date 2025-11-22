@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import axios from "axios";
 import html2canvas from "html2canvas";
-import NotificationDropdown from "../../components/NotificationDropdown";
 import {
   HomeIcon,
   UserIcon,
@@ -17,6 +17,8 @@ import {
   ArrowDownTrayIcon,
   PrinterIcon,
   ArrowRightOnRectangleIcon,
+  ChevronRightIcon,
+  ChevronLeftIcon,
 } from "@heroicons/react/24/outline";
 
 interface Resident {
@@ -30,6 +32,9 @@ interface Resident {
   issued_at?: string | null;
   issued_by?: string | null;
   qr_code?: string | null;
+  memberships?: string[];
+  is_renter?: boolean;
+  landlord_name?: string | null;
 }
 
 interface Notification {
@@ -41,6 +46,7 @@ interface Notification {
 }
 
 export default function DigitalID() {
+  const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [resident, setResident] = useState<Resident | null>(null);
@@ -56,6 +62,7 @@ export default function DigitalID() {
     typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
   useEffect(() => {
+
     const fetchDigitalID = async () => {
       setLoadingResident(true);
       setErrorResident(null);
@@ -70,7 +77,7 @@ export default function DigitalID() {
           headers: { Authorization: `Bearer ${token}` },
         });
 
-        const { resident, digitalID } = res.data;
+        const { resident, digitalID, household_head } = res.data;
         if (!resident || !digitalID) {
           setErrorResident("Invalid digital ID data received.");
           return;
@@ -87,6 +94,9 @@ export default function DigitalID() {
           issued_at: digitalID.issued_at,
           issued_by: digitalID.issued_by?.toString() || "N/A",
           qr_code: digitalID.qr_code || null,
+          memberships: resident.memberships || [],
+          is_renter: resident.is_renter || false,
+          landlord_name: household_head || "N/A",
         });
       } catch (err: any) {
         const status = err?.response?.status;
@@ -131,69 +141,66 @@ export default function DigitalID() {
     fetchNotifications();
   }, []);
 
- // 🧼 helper to sanitize any oklch() colors before rendering
-const sanitizeOklchColors = (el: HTMLElement) => {
-  const elements = el.querySelectorAll("*");
-  elements.forEach((child) => {
-    const style = window.getComputedStyle(child);
-    const bg = style.backgroundColor;
-    const color = style.color;
-    if (bg.includes("oklch")) (child as HTMLElement).style.backgroundColor = "#fff";
-    if (color.includes("oklch")) (child as HTMLElement).style.color = "#000";
-  });
-};
+  const sanitizeOklchColors = (el: HTMLElement) => {
+    const elements = el.querySelectorAll("*");
+    elements.forEach((child) => {
+      const style = window.getComputedStyle(child);
+      const bg = style.backgroundColor;
+      const color = style.color;
+      if (bg.includes("oklch")) (child as HTMLElement).style.backgroundColor = "#fff";
+      if (color.includes("oklch")) (child as HTMLElement).style.color = "#000";
+    });
+  };
 
-// 🖼️ download the card as PNG
-const handleDownload = async () => {
-  if (!cardRef.current || !resident) return;
+  const handleDownload = async () => {
+    if (!cardRef.current || !resident) return;
 
-  sanitizeOklchColors(cardRef.current); // 🧩 apply fix before capture
+    sanitizeOklchColors(cardRef.current);
 
-  const canvas = await html2canvas(cardRef.current, {
-    useCORS: true,
-    allowTaint: true,
-    scale: 3,
-    backgroundColor: "#ffffff",
-  });
+    const canvas = await html2canvas(cardRef.current, {
+      useCORS: true,
+      allowTaint: true,
+      scale: 3,
+      backgroundColor: "#ffffff",
+    });
 
-  const link = document.createElement("a");
-  link.download = `${resident.first_name}-${resident.last_name}-DigitalID.png`;
-  link.href = canvas.toDataURL("image/png");
-  link.click();
-};
+    const link = document.createElement("a");
+    link.download = `${resident.first_name}-${resident.last_name}-DigitalID.png`;
+    link.href = canvas.toDataURL("image/png");
+    link.click();
+  };
 
-// 🖨️ print the card
-const handlePrint = async () => {
-  if (!cardRef.current || !resident) return;
+  const handlePrint = async () => {
+    if (!cardRef.current || !resident) return;
 
-  sanitizeOklchColors(cardRef.current); // 🧩 apply fix before capture
+    sanitizeOklchColors(cardRef.current);
 
-  const canvas = await html2canvas(cardRef.current, {
-    useCORS: true,
-    allowTaint: true,
-    scale: 3,
-    backgroundColor: "#ffffff",
-  });
+    const canvas = await html2canvas(cardRef.current, {
+      useCORS: true,
+      allowTaint: true,
+      scale: 3,
+      backgroundColor: "#ffffff",
+    });
 
-  const dataUrl = canvas.toDataURL("image/png");
-  const printWindow = window.open("", "_blank");
-  if (printWindow) {
-    printWindow.document.write(`
-      <html>
-        <head><title>${resident.first_name} ${resident.last_name} - Digital ID</title></head>
-        <body style="margin:0;display:flex;justify-content:center;align-items:center;height:100vh;background:#f9f9f9;">
-          <img src="${dataUrl}" style="width:550px;border-radius:12px;box-shadow:0 0 10px rgba(0,0,0,0.2);" />
-        </body>
-      </html>
-    `);
-    printWindow.document.close();
-    printWindow.focus();
-    printWindow.print();
-  }
-};
+    const dataUrl = canvas.toDataURL("image/png");
+    const printWindow = window.open("", "_blank");
+    if (printWindow) {
+      printWindow.document.write(`
+        <html>
+          <head><title>${resident.first_name} ${resident.last_name} - Digital ID</title></head>
+          <body style="margin:0;display:flex;justify-content:center;align-items:center;height:100vh;background:#f9f9f9;">
+            <img src="${dataUrl}" style="width:550px;border-radius:12px;box-shadow:0 0 10px rgba(0,0,0,0.2);" />
+          </body>
+        </html>
+      `);
+      printWindow.document.close();
+      printWindow.focus();
+      printWindow.print();
+    }
+  };
 
   const features = [
-    { name: "home", label: "Home", icon: HomeIcon },
+    { name: "the-dash-resident", label: "Home", icon: HomeIcon },
     { name: "resident", label: "Manage Profile", icon: UserIcon },
     { name: "digital-id", label: "Digital ID", icon: CreditCardIcon },
     { name: "certificate-request", label: "Certificates", icon: ClipboardDocumentIcon },
@@ -219,21 +226,38 @@ const handlePrint = async () => {
 
   if (!resident)
     return <p className="text-center mt-20 text-red-500">Digital ID not found</p>;
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    router.push("/auth-front/login");
+  };
 
   return (
-    <div className="min-h-screen bg-gray-200 p-4 flex gap-4">
+    <div className="min-h-screen bg-gray-200 p-4 flex gap-4 text-black">
       {/* Sidebar */}
       <div
         className={`${
           sidebarOpen ? "w-64" : "w-16"
-        } bg-gray-50 shadow-lg rounded-xl transition-all duration-300 flex flex-col`}
+        } bg-gray-50 shadow-lg rounded-xl transition-all duration-300 ease-in-out flex flex-col fixed inset-y-0 left-0 z-50 md:static`}
       >
-        <div className="p-4 flex items-center justify-between">
-          <img src="/logo.png" alt="Logo" className="w-10 h-10 rounded-full object-cover" />
-          <button onClick={() => setSidebarOpen(!sidebarOpen)} className="md:hidden">
+        {/* Logo + Close */}
+        <div className="p-4 flex items-center justify-center relative">
+          <img
+            src="/niugan-logo.png"
+            alt="Company Logo"
+            className={`rounded-full object-cover transition-all duration-300 ${
+              sidebarOpen ? "w-30 h-30" : "w-8.5 h-8.5"
+            }`}
+          />
+
+          <button
+            onClick={toggleSidebar}
+            className="absolute top-3 right-3 text-black hover:text-red-700 focus:outline-none md:hidden"
+          >
             <XMarkIcon className="w-6 h-6" />
           </button>
         </div>
+
+        {/* Navigation */}
         <nav className="flex-1 mt-6">
           <ul>
             {features.map(({ name, label, icon: Icon }) => {
@@ -243,12 +267,21 @@ const handlePrint = async () => {
                 <li key={name} className="mb-2">
                   <Link href={href}>
                     <span
-                      className={`flex items-center px-4 py-2 ${
-                        isActive ? "text-red-700" : "text-black"
+                      className={`relative flex items-center w-full px-4 py-2 text-left group transition-colors duration-200 ${
+                        isActive ? "text-red-700" : "text-black hover:text-red-700"
                       }`}
                     >
-                      <Icon className="w-6 h-6 mr-2" />
-                      {sidebarOpen && label}
+                      {isActive && (
+                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-700 rounded-r-full" />
+                      )}
+                      <Icon
+                        className={`w-6 h-6 mr-2 ${
+                          isActive
+                            ? "text-red-700"
+                            : "text-gray-600 group-hover:text-red-700"
+                        }`}
+                      />
+                      {sidebarOpen && <span>{label}</span>}
                     </span>
                   </Link>
                 </li>
@@ -256,13 +289,40 @@ const handlePrint = async () => {
             })}
           </ul>
         </nav>
+
+        {/* Logout Button */}
         <div className="p-4">
-          <button className="flex items-center gap-3 text-black hover:text-red-700 w-full">
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-3 text-black hover:text-red-700 transition w-full text-left"
+          >
             <ArrowRightOnRectangleIcon className="w-6 h-6" />
-            {sidebarOpen && "Log Out"}
+            {sidebarOpen && <span>Log Out</span>}
+          </button>
+        </div>
+
+        {/* Sidebar Toggle (desktop only) */}
+        <div className="p-4 flex justify-center hidden md:flex">
+          <button
+            onClick={toggleSidebar}
+            className="w-10 h-10 bg-white hover:bg-red-50 rounded-full flex items-center justify-center focus:outline-none transition-colors duration-200 shadow-sm"
+          >
+            {sidebarOpen ? (
+              <ChevronLeftIcon className="w-5 h-5 text-black" />
+            ) : (
+              <ChevronRightIcon className="w-5 h-5 text-black" />
+            )}
           </button>
         </div>
       </div>
+
+      {/* Overlay (Mobile) */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
+          onClick={toggleSidebar}
+        ></div>
+      )}
 
       {/* Main Section */}
       <div className="flex-1 flex flex-col gap-4">
@@ -272,7 +332,6 @@ const handlePrint = async () => {
           </button>
           <h1 className="text-xl font-semibold text-black">Barangay Digital ID</h1>
           <div className="flex items-center space-x-4">
-            <NotificationDropdown notifications={notifications} />
             <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center shadow-sm">
               <UserIcon className="w-5 h-5 text-black" />
             </div>
@@ -283,7 +342,7 @@ const handlePrint = async () => {
         <main className="flex flex-col items-center justify-center bg-gray-50 rounded-xl p-8 shadow-md">
           <div
             ref={cardRef}
-            className="relative w-[550px] h-[300px] bg-white rounded-xl shadow-md border border-gray-300 overflow-hidden"
+            className="relative w-[550px] h-[300px] bg-white rounded-xl shadow-md border border-gray-700 overflow-hidden text-black"
           >
             <div className="absolute left-0 top-0 h-full w-[15px] bg-gradient-to-b from-red-700 via-white to-blue-700" />
             <div className="flex h-full p-6 pl-10">
@@ -292,7 +351,7 @@ const handlePrint = async () => {
                   src={resident.photo_url || "/default-profile.png"}
                   alt="Profile"
                   crossOrigin="anonymous"
-                  className="w-28 h-28 rounded-md border border-gray-300 object-cover"
+                  className="w-28 h-28 rounded-md border border-gray-700 object-cover"
                 />
                 <div className="text-sm mt-2">
                   <p>Issued: {resident.issued_at || "N/A"}</p>
@@ -301,7 +360,7 @@ const handlePrint = async () => {
               </div>
               <div className="flex-1 pl-6 flex flex-col justify-between">
                 <div>
-                  <p className="text-xs text-gray-500">REPUBLIC OF THE PHILIPPINES</p>
+                  <p className="text-xs text-gray-700">REPUBLIC OF THE PHILIPPINES</p>
                   <h2 className="text-lg font-bold leading-tight">BARANGAY DIGITAL ID</h2>
                   <div className="flex justify-between">
                     <p className="text-xs font-semibold mt-1">ID No.</p>
@@ -311,6 +370,22 @@ const handlePrint = async () => {
                     {resident.first_name} {resident.last_name}
                   </p>
                   <p className="text-sm text-gray-700">{resident.address}</p>
+
+                  {/* Household Head */}
+                  <p className="text-sm text-gray-700">
+                    Household Head: {resident.landlord_name || "N/A"}
+                  </p>
+
+                  {resident.memberships && resident.memberships.length > 0 && (
+                    <div className="text-xs mt-2">
+                      <p className="font-semibold">Memberships:</p>
+                      <ul className="list-disc list-inside">
+                        {resident.memberships.map((m, i) => (
+                          <li key={i}>{m}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </div>
                 <div className="flex justify-end">
                   {resident.qr_code ? (
@@ -321,7 +396,7 @@ const handlePrint = async () => {
                       className="w-[90px] h-[90px] object-contain"
                     />
                   ) : (
-                    <p className="text-xs text-gray-500">QR not available</p>
+                    <p className="text-xs text-gray-700">QR not available</p>
                   )}
                 </div>
               </div>

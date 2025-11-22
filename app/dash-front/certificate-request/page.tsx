@@ -67,7 +67,6 @@ export default function Dashboard() {
     { name: "digital-id", label: "Digital ID", icon: CreditCardIcon },
     { name: "certificate-request", label: "Certificates", icon: ClipboardDocumentIcon },
     { name: "feedback", label: "Feedback / Complain", icon: ChatBubbleLeftEllipsisIcon },
-    { name: "notifications", label: "Notifications", icon: BellIcon },
   ];
 
   useEffect(() => {
@@ -314,7 +313,7 @@ const filterRequests = () => {
 <div className="flex-1 flex flex-col gap-4 overflow-x-auto text-xs sm:text-sm md:text-base lg:text-lg">
 
   {/* Header */}
-  <header className="bg-gray-50 shadow-sm p-4 flex justify-between items-center rounded-xl">
+  <header className="bg-gray-50 shadow-sm p-4 flex justify-between items-center rounded-xl text-black">
     <button
       onClick={toggleSidebar}
       className="block md:hidden text-black hover:text-red-700 focus:outline-none"
