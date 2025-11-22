@@ -45,8 +45,8 @@ interface Announcement {
 
 export default function ManageAnnouncements() {
   const router = useRouter();
+  const [activeItem, setActiveItem] = useState("annoucement");
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
@@ -192,15 +192,12 @@ export default function ManageAnnouncements() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to-slate-50 p-4 flex gap-4">
-      {/* Sidebar */}
+ {/* Sidebar */}
       <div
         className={`${
           sidebarOpen ? "w-64" : "w-16"
-        } bg-gray-50 shadow-lg rounded-xl transition-all duration-300 ease-in-out flex flex-col ${
-          sidebarOpen ? "block" : "hidden"
-        } md:block md:relative md:translate-x-0 ${
-          sidebarOpen ? "fixed inset-y-0 left-0 z-50 md:static md:translate-x-0" : ""
-        }`}
+        } bg-gray-50 shadow-lg rounded-xl transition-all duration-300 ease-in-out flex flex-col 
+        ${sidebarOpen ? "fixed inset-y-0 left-0 z-50 md:static md:translate-x-0" : "hidden md:flex"}`}
       >
         {/* Logo + Close */}
         <div className="p-4 flex items-center justify-center">
@@ -211,7 +208,6 @@ export default function ManageAnnouncements() {
               sidebarOpen ? "w-30 h-30" : "w-8.5 h-8.5"
             }`}
           />
-
           <button
             onClick={toggleSidebar}
             className="absolute top-3 right-3 text-black hover:text-red-700 focus:outline-none md:hidden"
@@ -219,57 +215,59 @@ export default function ManageAnnouncements() {
             <XMarkIcon className="w-6 h-6" />
           </button>
         </div>
-{/* Navigation */}
- <nav className="flex-1 mt-6">
-    <ul>
-      {features.map(({ name, label, icon: Icon }) => {
-        const href = `/admin-front/${name}`;
-        const isActive = name === "announcement";
-        return (
-          <li key={name} className="mb-2">
-            <Link href={href}>
-              <span
-                className={`relative flex items-center w-full px-4 py-2 text-left group transition-colors duration-200 ${
-                  isActive
-                    ? "text-red-700 "
-                    : "text-black hover:text-red-700"
-                }`}
-              >
-                {isActive && (
-                  <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-700 rounded-r-full" />
-                )}
-                <Icon
-                  className={`w-6 h-6 mr-2 ${
-                    isActive ? "text-red-700" : "text-gray-600 group-hover:text-red-700"
-                  }`}
-                />
-                {sidebarOpen && (
-                  <span
-                    className={`${
-                      isActive ? "text-red-700" : "group-hover:text-red-700"
-                    }`}
-                  >
-                    {label}
-                  </span>
-                )}
-              </span>
-            </Link>
-          </li>
-        );
-      })}
-    </ul>
-  </nav>
+          
 
-        {/* Logout Button */}
-        <div className="p-4">
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-3 text-black hover:text-red-700 transition w-full text-left"
-          >
-            <ArrowRightOnRectangleIcon className="w-6 h-6" />
-            {sidebarOpen && <span>Log Out</span>}
-          </button>
-        </div>
+        {/* Navigation */}
+        <nav className="flex-1 mt-6">
+          <ul>
+            {features.map(({ name, label, icon: Icon }) => (
+              <li key={name} className="mb-2">
+                <Link
+                  href={`/admin-front/${name}`}
+                  onClick={() => setActiveItem(name)}
+                  className={`relative flex items-center w-full px-4 py-2 text-left group transition-colors duration-200 ${
+                    activeItem === name
+                      ? "text-red-700 font-semibold"
+                      : "text-black hover:text-red-700"
+                  }`}
+                >
+                  {activeItem === name && (
+                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-700 rounded-r-full" />
+                  )}
+                  <Icon
+                    className={`w-6 h-6 mr-2 ${
+                      activeItem === name
+                        ? "text-red-700"
+                        : "text-gray-600 group-hover:text-red-700"
+                    }`}
+                  />
+                  {sidebarOpen && (
+                    <span
+                      className={`${
+                        activeItem === name
+                          ? "text-red-700"
+                          : "group-hover:text-red-700"
+                      }`}
+                    >
+                      {label}
+                    </span>
+                  )}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
+
+      {/* Functional Logout Button */}
+    <div className="p-4">
+      <button
+        onClick={handleLogout}
+        className="flex items-center gap-3 text-black hover:text-red-700 transition w-full text-left"
+      >
+        <ArrowRightOnRectangleIcon className="w-6 h-6" />
+        {sidebarOpen && <span>Log Out</span>}
+      </button>
+    </div>
 
         {/* Sidebar Toggle (desktop only) */}
         <div className="p-4 flex justify-center hidden md:flex">
@@ -286,13 +284,26 @@ export default function ManageAnnouncements() {
         </div>
       </div>
 
-      {/* Overlay (Mobile) */}
+      {/* Mobile Overlay */}
       {sidebarOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden" onClick={toggleSidebar}></div>
+        <div
+          className="fixed inset-0 bg-white/80 z-40 md:hidden"
+          onClick={toggleSidebar}
+        ></div>
       )}
 
       {/* Main Section */}
       <div className="flex-1 flex flex-col gap-4">
+                <header className="bg-gray-50 shadow-sm p-4 flex justify-between items-center rounded-xl text-black">
+                  <button
+                    onClick={toggleSidebar}
+                    className="block md:hidden text-black hover:text-red-700 focus:outline-none"
+                  >
+                    <Bars3Icon className="w-6 h-6" />
+                  </button>
+                  <h1 className="text-large font-bold ">Manage Announcements</h1>
+                  <div className="flex items-center space-x-4"></div>
+                </header>
         <main className="flex-1 bg-gray-50 rounded-xl p-6 shadow-sm overflow-auto text-black">
   {message && (
     <p className={`text-center p-2 rounded mb-4 ${message.includes("success") ? "bg-green-100" : "bg-red-100"}`}>
@@ -301,7 +312,7 @@ export default function ManageAnnouncements() {
   )}
 
   <div className="flex justify-between items-center mb-6">
-    <h2 className="text-2xl font-semibold text-black">Announcements</h2>
+    <h3 className="text-large font-semibold text-black">Announcement History</h3>
     <button
       onClick={() => { setEditingAnnouncement(null); setFormData({ title: "", content: "", is_public: true }); setShowModal(true); }}
       className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition"

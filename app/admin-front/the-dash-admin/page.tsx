@@ -113,7 +113,7 @@ export default function AdminDashboard() {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-200 p-4 flex gap-4 text-black">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to-black p-4 flex gap-4">
       {/* Sidebar */}
       <div
         className={`${
@@ -216,16 +216,15 @@ export default function AdminDashboard() {
       {/* Main Section */}
       <div className="flex-1 flex flex-col gap-4">
         {/* Header */}
-        <header className="bg-gray-50 shadow-sm p-4 flex justify-between items-center rounded-xl">
+        <header className="bg-gray-50 shadow-sm p-4 flex justify-between items-center rounded-xl text-black">
           <button
             onClick={toggleSidebar}
-            className="block md:hidden hover:text-red-700 focus:outline-none"
+            className="block md:hidden text-black hover:text-red-700 focus:outline-none"
           >
-            <Bars3Icon className="w-6 h-6 text-red-900" />
+            <Bars3Icon className="w-6 h-6" />
           </button>
-          <h1 className="text-xl font-semibold">Admin Dashboard</h1>
-          <div className="flex items-center space-x-4">
-          </div>
+          <h1 className="text-large font-bold ">Admin Dashboard</h1>
+          <div className="flex items-center space-x-4"></div>
         </header>
 
         {/* Main Content */}
