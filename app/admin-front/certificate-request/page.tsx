@@ -403,7 +403,7 @@ if (type === "SCHEDULE") {
                 index % 2 === 0 ? "bg-white" : "bg-gray-50"
               }`}
             >
-              <td className="px-3 py-2 font-medium">
+              <td className="px-3 py-2 font-medium text-black">
                 {req.resident.first_name} {req.resident.last_name}
               </td>
               <td className="px-3 py-2 text-gray-700 hidden sm:table-cell">
