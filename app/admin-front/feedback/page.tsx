@@ -265,9 +265,6 @@ export default function AdminFeedbackPage() {
           </button>
           <h1 className="text-xl font-semibold text-black">Complaints Management</h1>
           <div className="flex items-center space-x-4">
-            <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center shadow-sm">
-              <UserIcon className="w-5 h-5 text-black" />
-            </div>
           </div>
         </header>
 

@@ -339,7 +339,7 @@ if (type === "SCHEDULE") {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col gap-4">
-        <header className="bg-gray-50 shadow-sm p-4 flex justify-between items-center rounded-xl">
+        <header className="bg-gray-50 shadow-sm p-4 flex justify-between items-center rounded-xl text-black">
           <button
             onClick={toggleSidebar}
             className="block md:hidden text-black hover:text-red-700 focus:outline-none"
@@ -356,7 +356,7 @@ if (type === "SCHEDULE") {
   )}
 
   {/* Filter/Search */}
-  <div className="flex flex-col md:flex-row gap-2 mb-4">
+  <div className="flex flex-col md:flex-row gap-2 mb-4 text-black">
     <input
       type="text"
       placeholder="Search by name, ID, or request ID"
@@ -494,7 +494,7 @@ if (type === "SCHEDULE") {
 
                 {/* Modal */}
           {modalOpen && selectedRequest && modalType && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 text-black">
               <div className="bg-white p-6 rounded-xl w-96">
 
                 {/* Titles */}

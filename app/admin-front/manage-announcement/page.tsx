@@ -75,22 +75,8 @@ export default function ManageAnnouncements() {
   ];
 
   useEffect(() => {
-    fetchNotifications();
     fetchAnnouncements();
   }, []);
-
-  const fetchNotifications = async () => {
-    try {
-      const res = await fetch("/api/dash/notifications", {
-        headers: token ? { Authorization: `Bearer ${token}` } : {}, // Added auth header
-      });
-      if (!res.ok) throw new Error("Failed to fetch notifications");
-      const data: Notification[] = await res.json();
-      setNotifications(data);
-    } catch (error) {
-      console.error(error);
-    }
-  };
 
   const fetchAnnouncements = async () => {
     setLoading(true);
