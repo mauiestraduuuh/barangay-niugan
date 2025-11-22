@@ -26,6 +26,7 @@
     "react-calendar": "^6.0.0",
     "react-dom": "19.1.0",
     "react-qr-code": "^2.0.18",
+    "recharts": "^3.4.1",
     "supabase": "^2.48.3"
   },
   "devDependencies": {
