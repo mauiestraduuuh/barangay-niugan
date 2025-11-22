@@ -43,13 +43,7 @@ export async function GET(req: NextRequest) {
       take: 5,
     });
 
-    const notifications = await prisma.notification.findMany({
-      where: { user_id: userId },
-      orderBy: { created_at: "desc" },
-      take: 10,
-    });
-
-    return NextResponse.json({ resident, announcements, notifications });
+    return NextResponse.json({ resident, announcements });
   } catch (error) {
     console.error(error);
     return NextResponse.json({ message: "Failed to fetch dashboard" }, { status: 500 });

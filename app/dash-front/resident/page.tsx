@@ -15,6 +15,7 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   XMarkIcon,
+  ArrowRightOnRectangleIcon,
 } from "@heroicons/react/24/outline";
 
 interface ResidentProfile {
@@ -132,13 +133,17 @@ export default function ResidentProfilePage() {
     { name: "digital-id", label: "Digital ID", icon: CreditCardIcon },
     { name: "certificate-request", label: "Certificates", icon: ClipboardDocumentIcon },
     { name: "feedback", label: "Feedback / Complain", icon: ChatBubbleLeftEllipsisIcon },
-    { name: "notifications", label: "Notifications", icon: BellIcon },
   ];
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
+    const handleLogout = () => {
+    localStorage.removeItem("token");
+    router.push("/auth-front/login");
+  };
+
   return (
-    <div className="min-h-screen bg-gray-200 p-4 flex gap-4">
+    <div className="min-h-screen bg-gray-200 p-4 flex gap-4 text-black">
       {/* Sidebar */}
       <div
         className={`${
@@ -149,53 +154,80 @@ export default function ResidentProfilePage() {
           sidebarOpen ? "fixed inset-y-0 left-0 z-50 md:static md:translate-x-0" : ""
         }`}
       >
-        <div className="p-4 flex items-center justify-between">
-          <img src="/logo.png" alt="Logo" className="w-10 h-10 rounded-full object-cover" />
+        {/* Logo + Close */}
+        <div className="p-4 flex items-center justify-center">
+          <img
+            src="/niugan-logo.png"
+            alt="Company Logo"
+            className={`rounded-full object-cover transition-all duration-300 ${
+              sidebarOpen ? "w-30 h-30" : "w-8.5 h-8.5"
+            }`}
+          />
+
           <button
             onClick={toggleSidebar}
-            className="block md:hidden text-black hover:text-red-700 focus:outline-none"
+            className="absolute top-3 right-3 text-black hover:text-red-700 focus:outline-none md:hidden"
           >
             <XMarkIcon className="w-6 h-6" />
           </button>
         </div>
-
-        {/* Navigation */}
-        <nav className="flex-1 mt-6">
-          <ul>
-            {features.map(({ name, label, icon: Icon }) => (
-              <li key={name} className="mb-2">
-                <Link
-                  href={`/dash-front/${name}`}
-                  className={`relative flex items-center w-full px-4 py-2 text-left group transition-colors duration-200 ${
-                    activeItem === name ? "text-red-700" : "text-black hover:text-red-700"
+{/* Navigation */}
+ <nav className="flex-1 mt-6">
+    <ul>
+      {features.map(({ name, label, icon: Icon }) => {
+        const href = `/dash-front/${name}`;
+        const isActive = name === "resident";
+        return (
+          <li key={name} className="mb-2">
+            <Link href={href}>
+              <span
+                className={`relative flex items-center w-full px-4 py-2 text-left group transition-colors duration-200 ${
+                  isActive
+                    ? "text-red-700 "
+                    : "text-black hover:text-red-700"
+                }`}
+              >
+                {isActive && (
+                  <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-700 rounded-r-full" />
+                )}
+                <Icon
+                  className={`w-6 h-6 mr-2 ${
+                    isActive ? "text-red-700" : "text-gray-600 group-hover:text-red-700"
                   }`}
-                  onClick={() => setActiveItem(name)}
-                >
-                  <div
-                    className={`absolute left-0 top-0 bottom-0 w-1 bg-red-700 rounded-r-full ${
-                      activeItem === name ? "block" : "hidden"
+                />
+                {sidebarOpen && (
+                  <span
+                    className={`${
+                      isActive ? "text-red-700" : "group-hover:text-red-700"
                     }`}
-                  />
-                  <Icon className="w-6 h-6 mr-2 group-hover:text-red-700" />
-                  {sidebarOpen && <span className="group-hover:text-red-700">{label}</span>}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </nav>
+                  >
+                    {label}
+                  </span>
+                )}
+              </span>
+            </Link>
+          </li>
+        );
+      })}
+    </ul>
+  </nav>
 
-        {/* Logout */}
+        {/* Logout Button */}
         <div className="p-4">
-          <button className="flex items-center gap-3 text-red-500 hover:text-red-700 transition w-full text-left">
-            Log Out
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-3 text-black hover:text-red-700 transition w-full text-left"
+          >
+            <ArrowRightOnRectangleIcon className="w-6 h-6" />
+            {sidebarOpen && <span>Log Out</span>}
           </button>
         </div>
 
-        {/* Collapse Toggle */}
+        {/* Sidebar Toggle (desktop only) */}
         <div className="p-4 flex justify-center hidden md:flex">
           <button
             onClick={toggleSidebar}
-            className="w-10 h-10 bg-white hover:bg-red-50 rounded-full flex items-center justify-center shadow-sm"
+            className="w-10 h-10 bg-white hover:bg-red-50 rounded-full flex items-center justify-center focus:outline-none transition-colors duration-200 shadow-sm"
           >
             {sidebarOpen ? (
               <ChevronLeftIcon className="w-5 h-5 text-black" />
@@ -211,26 +243,25 @@ export default function ResidentProfilePage() {
         <div className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden" onClick={toggleSidebar}></div>
       )}
 
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col gap-4">
-        {/* Header */}
-        <header className="bg-gray-50 shadow-sm p-4 flex justify-between items-center rounded-xl">
-          <button
-            onClick={toggleSidebar}
-            className="block md:hidden text-black hover:text-red-700 focus:outline-none"
-          >
-            <Bars3Icon className="w-6 h-6" />
-          </button>
-          <h1 className="text-xl font-semibold text-black">Manage Profile</h1>
-          <div className="flex items-center space-x-4">
-            <BellIcon className="w-6 h-6 text-black hover:text-red-700" />
-            <img
-              src={profile.photo_url || "/default-profile.png"}
-              alt="Profile"
-              className="w-8 h-8 rounded-full object-cover border"
-            />
-          </div>
-        </header>
+    {/* Main Content */}
+    <div className="flex-1 flex flex-col gap-4">
+      {/* Header */}
+      <header className="bg-gray-50 shadow-sm p-4 flex justify-between items-center rounded-xl">
+        <button
+          onClick={toggleSidebar}
+          className="block md:hidden text-black hover:text-red-700 focus:outline-none"
+        >
+          <Bars3Icon className="w-6 h-6" />
+        </button>
+        <h1 className="text-xl font-semibold text-black">Manage Profile</h1>
+        <div className="flex items-center space-x-4">
+          <img
+            src={profile.photo_url || "/default-profile.png"}
+            alt="Profile"
+            className="w-8 h-8 rounded-full object-cover border"
+          />
+        </div>
+      </header>
 
         {/* Body */}
         <main className="bg-gray-50 rounded-xl p-6 shadow-sm overflow-auto">

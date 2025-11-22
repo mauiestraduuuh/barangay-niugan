@@ -2,17 +2,18 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   HomeIcon,
   UserIcon,
   CreditCardIcon,
   ClipboardDocumentIcon,
   ChatBubbleLeftEllipsisIcon,
-  BellIcon,
   Bars3Icon,
   ChevronLeftIcon,
   ChevronRightIcon,
   XMarkIcon,
+  ArrowRightOnRectangleIcon,
 } from "@heroicons/react/24/outline";
 
 interface Resident {
@@ -30,8 +31,8 @@ interface Announcement {
 }
 
 export default function Dashboard() {
+  const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [activeItem, setActiveItem] = useState('home');
   const [resident, setResident] = useState<Resident | null>(null);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
 
@@ -71,33 +72,35 @@ export default function Dashboard() {
     { name: 'digital-id', label: 'Digital ID', icon: CreditCardIcon },
     { name: 'certificates', label: 'Certificates', icon: ClipboardDocumentIcon },
     { name: 'feedback', label: 'Feedback / Complain', icon: ChatBubbleLeftEllipsisIcon },
-    { name: 'notifications', label: 'Notifications', icon: BellIcon },
   ];
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    router.push("/auth-front/login");
+  };
 
   return (
-    <div className="min-h-screen bg-gray-200 p-4 flex gap-4">
+    <div className="min-h-screen bg-gray-200 p-4 flex gap-4 text-black">
       {/* Sidebar */}
       <div
         className={`${
-          sidebarOpen ? 'w-64' : 'w-16'
-        } bg-gray-50 shadow-lg rounded-xl transition-all duration-300 ease-in-out flex flex-col ${
-          sidebarOpen ? 'block' : 'hidden'
-        } md:block md:relative md:translate-x-0 ${
-          sidebarOpen ? 'fixed inset-y-0 left-0 z-50 md:static md:translate-x-0' : ''
-        }`}
+          sidebarOpen ? "w-64" : "w-16"
+        } bg-gray-50 shadow-lg rounded-xl transition-all duration-300 ease-in-out flex flex-col fixed inset-y-0 left-0 z-50 md:static`}
       >
-        {/* Top Section */}
-        <div className="p-4 flex items-center justify-between">
+        {/* Logo + Close */}
+        <div className="p-4 flex items-center justify-center relative">
           <img
-            src="/logo.png"
+            src="/niugan-logo.png"
             alt="Company Logo"
-            className="w-10 h-10 rounded-full object-cover"
+            className={`rounded-full object-cover transition-all duration-300 ${
+              sidebarOpen ? "w-30 h-30" : "w-8.5 h-8.5"
+            }`}
           />
+
           <button
             onClick={toggleSidebar}
-            className="block md:hidden text-black hover:text-red-700 focus:outline-none"
+            className="absolute top-3 right-3 text-black hover:text-red-700 focus:outline-none md:hidden"
           >
             <XMarkIcon className="w-6 h-6" />
           </button>
@@ -106,40 +109,48 @@ export default function Dashboard() {
         {/* Navigation */}
         <nav className="flex-1 mt-6">
           <ul>
-            {features.map(({ name, label, icon: Icon }) => (
-              <li key={name} className="mb-2">
-                <Link
-                  href={`/dash-front/${name.replace('-', '-')}`} // Adjust paths as needed
-                  className={`relative flex items-center w-full px-4 py-2 text-left group transition-colors duration-200 ${
-                    activeItem === name
-                      ? 'text-red-700'
-                      : 'text-black hover:text-red-700'
-                  }`}
-                  onClick={() => setActiveItem(name)}
-                >
-                  <div
-                    className={`absolute left-0 top-0 bottom-0 w-1 bg-red-700 rounded-r-full ${
-                      activeItem === name ? 'block' : 'hidden'
-                    }`}
-                  />
-                  <Icon className="w-6 h-6 mr-2 group-hover:text-red-700" />
-                  {sidebarOpen && (
-                    <span className="group-hover:text-red-700">{label}</span>
-                  )}
-                </Link>
-              </li>
-            ))}
+            {features.map(({ name, label, icon: Icon }) => {
+              const href = `/dash-front/${name}`;
+              const isActive = name === "the-dash-resident";
+              return (
+                <li key={name} className="mb-2">
+                  <Link href={href}>
+                    <span
+                      className={`relative flex items-center w-full px-4 py-2 text-left group transition-colors duration-200 ${
+                        isActive ? "text-red-700" : "text-black hover:text-red-700"
+                      }`}
+                    >
+                      {isActive && (
+                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-700 rounded-r-full" />
+                      )}
+                      <Icon
+                        className={`w-6 h-6 mr-2 ${
+                          isActive
+                            ? "text-red-700"
+                            : "text-gray-600 group-hover:text-red-700"
+                        }`}
+                      />
+                      {sidebarOpen && <span>{label}</span>}
+                    </span>
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
         </nav>
 
         {/* Logout Button */}
         <div className="p-4">
-          <button className="flex items-center gap-3 text-red-500 hover:text-red-700 transition w-full text-left">
-            Log Out
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-3 text-black hover:text-red-700 transition w-full text-left"
+          >
+            <ArrowRightOnRectangleIcon className="w-6 h-6" />
+            {sidebarOpen && <span>Log Out</span>}
           </button>
         </div>
 
-        {/* Toggle Button (Desktop Only) - At the Bottom */}
+        {/* Sidebar Toggle (desktop only) */}
         <div className="p-4 flex justify-center hidden md:flex">
           <button
             onClick={toggleSidebar}
@@ -154,7 +165,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Overlay for Mobile */}
+      {/* Overlay (Mobile) */}
       {sidebarOpen && (
         <div
           className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
@@ -174,9 +185,6 @@ export default function Dashboard() {
           </button>
           <h1 className="text-xl font-semibold text-black">Resident Dashboard</h1>
           <div className="flex items-center space-x-4">
-            <button className="text-black hover:text-red-700 focus:outline-none">
-              <BellIcon className="w-6 h-6" />
-            </button>
             <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center shadow-sm">
               <img
                 src={resident?.photo_url || "/default-profile.png"}
@@ -217,7 +225,7 @@ export default function Dashboard() {
                     className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition"
                   >
                     <h3 className="text-xl font-semibold mb-2">{ann.title}</h3>
-                    <p className="text-gray-700">{ann.content ?? "No content provided."}</p>
+                    <p className="text-black">{ann.content ?? "No content provided."}</p>
                     <p className="text-sm text-gray-400 mt-2">
                       Posted at: {new Date(ann.posted_at).toLocaleString()}
                     </p>
