@@ -52,12 +52,14 @@ export async function POST(req: NextRequest) {
         photo_url: true,
         is_head_of_family: true,
         head_id: true,
+        is_renter: true, 
         is_4ps_member: true,
         is_indigenous: true,
         is_slp_beneficiary: true,
         is_pwd: true,
         is_senior: true,
         status: true,
+        temp_password: true,
         approved_by: true,
         submitted_at: true,
         household_number: true, // <-- make sure this is included
@@ -142,6 +144,7 @@ export async function POST(req: NextRequest) {
           head_id: headId,
           household_number: householdNumber,
           household_id: householdId ?? undefined,
+          is_renter: request.is_renter?? false,
           is_4ps_member: request.is_4ps_member ?? false,
           is_pwd: request.is_pwd ?? false,
           is_indigenous: request.is_indigenous ?? false,
@@ -216,6 +219,7 @@ export async function POST(req: NextRequest) {
           head_id: headId,
           household_number: householdNumber,
           household_id: householdId ?? undefined,
+          is_renter: request.is_renter ?? false,
           is_4ps_member: request.is_4ps_member ?? false,
           is_pwd: request.is_pwd ?? false,
           is_indigenous: request.is_indigenous ?? false,
@@ -253,7 +257,11 @@ export async function POST(req: NextRequest) {
     // 6️⃣ Update registration request status
     await prisma.registrationRequest.update({
       where: { request_id: requestId },
-      data: { status: RegistrationStatus.APPROVED },
+      data: { 
+        status: RegistrationStatus.APPROVED, 
+        temp_password: tempPassword,
+      },
+        
     });
 
     // 7️⃣ Send email
@@ -295,9 +303,12 @@ export async function POST(req: NextRequest) {
     // 8️⃣ Success response
     return NextResponse.json({
       message: "Registration approved successfully",
+
+      username: username,
+      tempPassword: tempPassword,
       userId: user.user_id,
       residentId: resident?.resident_id ?? null,
-      staffId: staff?.staff_id ?? null,
+      staffId: staff?.staff_id ?? null,    
     });
   } catch (error: any) {
     console.error("Approval failed:", error);
