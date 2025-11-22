@@ -120,7 +120,7 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center bg-[linear-gradient(90deg,rgba(255,0,0,1)_0%,rgba(0,0,0,1)_50%,rgba(255,255,255,1)_100%)] h-screen">
+    <div className="min-h-screen bg-gradient-to-br from-black via-red-900 to-black flex items-center justify-center p-4">
       <div className="relative z-10 bg-black/80 backdrop-blur-lg shadow-2xl max-w-4xl w-full rounded-2xl p-8 border border-white/40 flex flex-col md:flex-row gap-8">
         <div className="flex-1 flex flex-col justify-center text-center md:text-left">
           <h1 className="text-3xl font-bold font-poppins text-white mb-3">
