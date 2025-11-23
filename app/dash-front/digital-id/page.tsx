@@ -48,12 +48,9 @@ interface Notification {
 export default function DigitalID() {
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [resident, setResident] = useState<Resident | null>(null);
   const [loadingResident, setLoadingResident] = useState(true);
-  const [loadingNotifications, setLoadingNotifications] = useState(true);
   const [errorResident, setErrorResident] = useState<string | null>(null);
-  const [errorNotifications, setErrorNotifications] = useState<string | null>(null);
 
   const cardRef = useRef<HTMLDivElement>(null);
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
@@ -119,26 +116,7 @@ export default function DigitalID() {
       }
     };
 
-    const fetchNotifications = async () => {
-      setLoadingNotifications(true);
-      setErrorNotifications(null);
-      try {
-        const token = getToken();
-        if (!token) return;
-        const res = await axios.get<Notification[]>("/api/dash/notification", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setNotifications(Array.isArray(res.data) ? res.data : []);
-      } catch (err: any) {
-        const apiMsg = err?.response?.data?.error || err?.response?.data?.message;
-        setErrorNotifications(apiMsg || "Failed to fetch notifications");
-      } finally {
-        setLoadingNotifications(false);
-      }
-    };
-
     fetchDigitalID();
-    fetchNotifications();
   }, []);
 
   const sanitizeOklchColors = (el: HTMLElement) => {
