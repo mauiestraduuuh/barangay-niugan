@@ -71,7 +71,6 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchRequests();
-    fetchNotifications();
   }, []);
 
   const fetchRequests = async () => {
@@ -84,17 +83,6 @@ export default function Dashboard() {
     } catch (err) {
       console.error(err);
       setMessage("Failed to fetch certificate requests");
-    }
-  };
-
-  const fetchNotifications = async () => {
-    try {
-      const res = await fetch("/api/dash/notifications");
-      if (!res.ok) throw new Error("Failed to fetch notifications");
-      const data: Notification[] = await res.json();
-      setNotifications(data);
-    } catch (error) {
-      console.error(error);
     }
   };
 
