@@ -101,14 +101,11 @@ export default function StaffDashboard() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to-black p-4 flex gap-4">
       {/* Sidebar */}
-      <div
+            <div
         className={`${
           sidebarOpen ? "w-64" : "w-16"
-        } bg-gray-50 shadow-lg rounded-xl transition-all duration-300 ease-in-out flex flex-col ${
-          sidebarOpen ? "block" : "hidden"
-        } md:block md:relative md:translate-x-0 ${
-          sidebarOpen ? "fixed inset-y-0 left-0 z-50 md:static md:translate-x-0" : ""
-        }`}
+        } bg-gray-50 shadow-lg rounded-xl transition-all duration-300 ease-in-out flex flex-col 
+        ${sidebarOpen ? "fixed inset-y-0 left-0 z-50 md:static md:translate-x-0" : "hidden md:flex"}`}
       >
         {/* Logo + Close */}
         <div className="p-4 flex items-center justify-center">
@@ -119,7 +116,6 @@ export default function StaffDashboard() {
               sidebarOpen ? "w-30 h-30" : "w-8.5 h-8.5"
             }`}
           />
-
           <button
             onClick={toggleSidebar}
             className="absolute top-3 right-3 text-black hover:text-red-700 focus:outline-none md:hidden"
@@ -140,7 +136,7 @@ export default function StaffDashboard() {
                     <span
                       className={`relative flex items-center w-full px-4 py-2 text-left group transition-colors duration-200 ${
                         isActive
-                          ? "text-red-700 "
+                          ? "text-red-700 font-semibold"
                           : "text-black hover:text-red-700"
                       }`}
                     >
@@ -149,13 +145,17 @@ export default function StaffDashboard() {
                       )}
                       <Icon
                         className={`w-6 h-6 mr-2 ${
-                          isActive ? "text-red-700" : "text-gray-600 group-hover:text-red-700"
+                          isActive
+                            ? "text-red-700"
+                            : "text-gray-600 group-hover:text-red-700"
                         }`}
                       />
                       {sidebarOpen && (
                         <span
                           className={`${
-                            isActive ? "text-red-700" : "group-hover:text-red-700"
+                            isActive
+                              ? "text-red-700"
+                              : "group-hover:text-red-700"
                           }`}
                         >
                           {label}
@@ -169,7 +169,7 @@ export default function StaffDashboard() {
           </ul>
         </nav>
 
-        {/* Logout Button */}
+        {/* Functional Logout Button */}
         <div className="p-4">
           <button
             onClick={handleLogout}
@@ -195,10 +195,14 @@ export default function StaffDashboard() {
         </div>
       </div>
 
-      {/* Overlay (Mobile) */}
+      {/* Mobile Overlay */}
       {sidebarOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden" onClick={toggleSidebar}></div>
+        <div
+          className="fixed inset-0 bg-white/80 z-40 md:hidden"
+          onClick={toggleSidebar}
+        ></div>
       )}
+
 
       {/* Main Section */}
       <div className="flex-1 flex flex-col gap-4">
@@ -218,12 +222,7 @@ export default function StaffDashboard() {
         <main className="flex-1 bg-gray-50 rounded-xl p-6 shadow-sm overflow-auto">
           {staff && (
             <div className="flex items-center gap-4 mb-6">
-              <img
-                src="/default-profile.png"
-                alt="Profile"
-                className="w-16 h-16 rounded-full border"
-              />
-              <h1 className="text-3xl font-semibold">{`Welcome back, ${staff.firstName} ${staff.lastName}!`}</h1>
+              <h2 className="text-xl font-semibold">{`Welcome back, ${staff.firstName} ${staff.lastName}!`}</h2>
             </div>
           )}
 
