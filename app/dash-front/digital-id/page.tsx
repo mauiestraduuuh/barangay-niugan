@@ -299,15 +299,15 @@ export default function DigitalID() {
 
       {/* Main Section */}
       <div className="flex-1 flex flex-col gap-4">
-        {/* Header */}
-        <header className="bg-gray-50 shadow-sm p-3 sm:p-4 flex justify-between items-center rounded-xl text-black">
+      {/* Header */}
+         <header className="bg-gray-50 shadow-sm p-4 flex justify-between items-center rounded-xl text-black">
           <button
             onClick={toggleSidebar}
             className="block md:hidden text-black hover:text-red-700 focus:outline-none"
           >
             <Bars3Icon className="w-6 h-6" />
           </button>
-          <h1 className="text-lg sm:text-xl md:text-2xl font-bold">Barangay Digital ID</h1>
+          <h1 className="text-large font-bold ">Barangay Digital ID</h1>
           <div className="flex items-center space-x-4"></div>
         </header>
 
