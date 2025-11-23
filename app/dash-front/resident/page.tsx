@@ -294,19 +294,25 @@ export default function ResidentProfilePage() {
 
               <div className="bg-white shadow-lg rounded-2xl p-8 border border-gray-100">
                 <h3 className="text-xl font-semibold text-black mb-6">Personal Details</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {[
-                    { label: "User ID", value: profile.user_id },
-                    { label: "Birthdate", value: profile.birthdate },
-                    { label: "Email", value: profile.email },
-                    { label: "Address", value: profile.address },
-                    { label: "Contact Number", value: profile.contact_no },
-                  ].map(({ label, value }) => (
-                    <div key={label} className="p-4 bg-gray-50 hover:bg-gray-100 rounded-lg transition border border-gray-200">
-                      <p className="text-xs font-semibold text-black uppercase tracking-wide">{label}</p>
-                      <p className="text-black mt-1">{value}</p>
-                    </div>
-                  ))}
+                <div className="bg-white shadow-lg rounded-2xl p-8 border border-gray-100">
+                  <h3 className="text-xl font-semibold text-black mb-6">Personal Details</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {[
+                      { label: "User ID", value: profile.user_id },
+                      { 
+                        label: "Birthdate", 
+                        value: profile.birthdate ? profile.birthdate.split("T")[0] : "N/A" 
+                      },
+                      { label: "Email", value: profile.email },
+                      { label: "Address", value: profile.address },
+                      { label: "Contact Number", value: profile.contact_no },
+                    ].map(({ label, value }) => (
+                      <div key={label} className="p-4 bg-gray-50 hover:bg-gray-100 rounded-lg transition border border-gray-200">
+                        <p className="text-xs font-semibold text-black uppercase tracking-wide">{label}</p>
+                        <p className="text-black mt-1">{value}</p>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
