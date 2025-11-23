@@ -47,7 +47,6 @@ interface Notification {
 export default function DigitalID() {
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [resident, setResident] = useState<Resident | null>(null);
   const [loadingResident, setLoadingResident] = useState(true);
   const [errorResident, setErrorResident] = useState<string | null>(null);
@@ -118,7 +117,6 @@ export default function DigitalID() {
     fetchDigitalID();
   }, []);
 
-  // --- Improved CSS sanitization for html2canvas ---
   const sanitizeStylesForCanvas = (el: HTMLElement) => {
     const elements = [...el.querySelectorAll("*"), el];
 
@@ -194,16 +192,24 @@ export default function DigitalID() {
     router.push("/auth-front/login");
   };
 
+  const features = [
+    { name: "the-dash-resident", label: "Home", icon: HomeIcon },
+    { name: "resident", label: "Manage Profile", icon: UserIcon },
+    { name: "digital-id", label: "Digital ID", icon: CreditCardIcon },
+    { name: "certificate-request", label: "Certificates", icon: ClipboardDocumentIcon },
+    { name: "feedback", label: "Feedback / Complain", icon: ChatBubbleLeftEllipsisIcon },
+  ];
   return (
-    <div className="min-h-screen bg-gray-200 p-4 flex gap-4 text-black">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to-black p-4 flex gap-4">
       {/* Sidebar */}
       <div
         className={`${
           sidebarOpen ? "w-64" : "w-16"
-        } bg-gray-50 shadow-lg rounded-xl transition-[width] duration-300 ease-in-out flex flex-col fixed inset-y-0 left-0 z-50 md:static`}
+        } bg-gray-50 shadow-lg rounded-xl transition-all duration-300 ease-in-out flex flex-col 
+        ${sidebarOpen ? "fixed inset-y-0 left-0 z-50 md:static md:translate-x-0" : "hidden md:flex"}`}
       >
         {/* Logo + Close */}
-        <div className="p-4 flex items-center justify-center relative">
+        <div className="p-4 flex items-center justify-center">
           <img
             src="/niugan-logo.png"
             alt="Company Logo"
@@ -222,13 +228,7 @@ export default function DigitalID() {
         {/* Navigation */}
         <nav className="flex-1 mt-6">
           <ul>
-            {[
-              { name: "the-dash-resident", label: "Home", icon: HomeIcon },
-              { name: "resident", label: "Manage Profile", icon: UserIcon },
-              { name: "digital-id", label: "Digital ID", icon: CreditCardIcon },
-              { name: "certificate-request", label: "Certificates", icon: ClipboardDocumentIcon },
-              { name: "feedback", label: "Feedback / Complain", icon: ChatBubbleLeftEllipsisIcon },
-            ].map(({ name, label, icon: Icon }) => {
+            {features.map(({ name, label, icon: Icon }) => {
               const href = `/dash-front/${name}`;
               const isActive = name === "digital-id";
               return (
@@ -236,7 +236,9 @@ export default function DigitalID() {
                   <Link href={href}>
                     <span
                       className={`relative flex items-center w-full px-4 py-2 text-left group transition-colors duration-200 ${
-                        isActive ? "text-red-700" : "text-black hover:text-red-700"
+                        isActive
+                          ? "text-red-700 font-semibold"
+                          : "text-black hover:text-red-700"
                       }`}
                     >
                       {isActive && (
@@ -247,7 +249,15 @@ export default function DigitalID() {
                           isActive ? "text-red-700" : "text-gray-600 group-hover:text-red-700"
                         }`}
                       />
-                      {sidebarOpen && <span>{label}</span>}
+                      {sidebarOpen && (
+                        <span
+                          className={`${
+                            isActive ? "text-red-700" : "group-hover:text-red-700"
+                          }`}
+                        >
+                          {label}
+                        </span>
+                      )}
                     </span>
                   </Link>
                 </li>
@@ -282,68 +292,68 @@ export default function DigitalID() {
         </div>
       </div>
 
-      {/* Overlay (Mobile) */}
+      {/* Mobile Overlay */}
       {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
-          onClick={toggleSidebar}
-        />
+        <div className="fixed inset-0 bg-white/80 z-40 md:hidden" onClick={toggleSidebar}></div>
       )}
 
       {/* Main Section */}
       <div className="flex-1 flex flex-col gap-4">
-        <header className="bg-gray-50 shadow-sm p-4 flex justify-between items-center rounded-xl">
-          <button onClick={() => setSidebarOpen(!sidebarOpen)} className="md:hidden">
+        {/* Header */}
+        <header className="bg-gray-50 shadow-sm p-3 sm:p-4 flex justify-between items-center rounded-xl text-black">
+          <button
+            onClick={toggleSidebar}
+            className="block md:hidden text-black hover:text-red-700 focus:outline-none"
+          >
             <Bars3Icon className="w-6 h-6" />
           </button>
-          <h1 className="text-xl font-semibold text-black">Barangay Digital ID</h1>
-          <div className="flex items-center space-x-4">
-            <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center shadow-sm">
-              <UserIcon className="w-5 h-5 text-black" />
-            </div>
-          </div>
+          <h1 className="text-lg sm:text-xl md:text-2xl font-bold">Barangay Digital ID</h1>
+          <div className="flex items-center space-x-4"></div>
         </header>
 
         {/* ID Card */}
-        <main className="flex flex-col items-center justify-center bg-gray-50 rounded-xl p-8 shadow-md">
+        <main className="flex flex-col items-center justify-center bg-gray-50 rounded-xl p-4 sm:p-6 md:p-8 shadow-md">
           <div
             ref={cardRef}
-            className="relative w-[550px] h-[300px] bg-white rounded-xl shadow-md border border-gray-700 overflow-hidden text-black"
+            className="
+              relative w-full max-w-[550px] aspect-[11/6]
+              bg-white rounded-xl shadow-md border border-gray-700 overflow-hidden text-black
+            "
           >
             {/* Left colored stripe gradient */}
             <div
-              className="absolute left-0 top-0 h-full w-[15px]"
+              className="absolute left-0 top-0 h-full w-4 sm:w-[15px]"
               style={{ background: 'linear-gradient(to bottom, #b91c1c, #ffffff, #1d4ed8)' }}
             />
 
-            <div className="flex h-full p-6 pl-10">
+            <div className="flex h-full p-4 pl-6 sm:p-6 sm:pl-10">
               <div className="flex flex-col justify-between">
                 <img
                   src={resident.photo_url || "/default-profile.png"}
                   alt="Profile"
                   crossOrigin="anonymous"
-                  className="w-28 h-28 rounded-md border border-gray-700 object-cover"
+                  className="w-20 h-20 sm:w-28 sm:h-28 rounded-md border border-gray-700 object-cover"
                   loading="lazy"
                 />
-                <div className="text-sm mt-2">
+                <div className="text-xs sm:text-sm mt-2">
                   <p>Issued: {resident.issued_at || "N/A"}</p>
                   <p>Issued by: {resident.issued_by || "N/A"}</p>
                 </div>
               </div>
 
-              <div className="flex-1 pl-6 flex flex-col justify-between">
+              <div className="flex-1 pl-4 sm:pl-6 flex flex-col justify-between">
                 <div>
                   <p className="text-xs text-gray-700">REPUBLIC OF THE PHILIPPINES</p>
-                  <h2 className="text-lg font-bold leading-tight">BARANGAY DIGITAL ID</h2>
+                  <h2 className="text-sm sm:text-lg font-bold leading-tight">BARANGAY DIGITAL ID</h2>
                   <div className="flex justify-between">
                     <p className="text-xs font-semibold mt-1">ID No.</p>
                     <p className="text-xs mt-1">{resident.id_number}</p>
                   </div>
-                  <p className="text-base font-semibold mt-4">
+                  <p className="text-sm sm:text-base font-semibold mt-2 sm:mt-4">
                     {resident.first_name} {resident.last_name}
                   </p>
-                  <p className="text-sm text-gray-700">{resident.address}</p>
-                  <p className="text-sm text-gray-700">
+                  <p className="text-xs sm:text-sm text-gray-700">{resident.address}</p>
+                  <p className="text-xs sm:text-sm text-gray-700">
                     Household Head: {resident.landlord_name || "N/A"}
                   </p>
 
@@ -365,7 +375,7 @@ export default function DigitalID() {
                       src={resident.qr_code}
                       alt="QR Code"
                       crossOrigin="anonymous"
-                      className="w-[90px] h-[90px] object-contain"
+                      className="w-16 h-16 sm:w-[90px] sm:h-[90px] object-contain"
                       loading="lazy"
                     />
                   ) : (
