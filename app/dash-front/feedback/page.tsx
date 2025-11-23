@@ -65,7 +65,7 @@ export default function FeedbackPage() {
   const [statusFilter, setStatusFilter] = useState<"PENDING" | "" | "IN PROGRESS" | "RESOLVED">("PENDING");
   const [selectedCategory, setSelectedCategory] = useState<number | "">("");
   const [language, setLanguage] = useState<"en" | "tl">("en");
-  const [modalImage, setModalImage] = useState(null);
+  const [modalImage, setModalImage] = useState<string | null>(null)
 
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
@@ -484,7 +484,7 @@ const filterRequests = () => {
           <select
             className="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-8 text-sm font-medium text-gray-700 shadow-sm hover:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
+            onChange={(e) => setStatusFilter(e.target.value as any)}
           >
             <option value="">All Statuses</option>
             <option value="PENDING">Pending</option>
@@ -528,7 +528,7 @@ const filterRequests = () => {
               <td className="p-4 border-b border-gray-200 text-center">
                 {fb.proof_file ? (
                   <button
-                    onClick={() => setModalImage(fb.proof_file)}
+                    onClick={() => fb.proof_file && setModalImage(fb.proof_file)}
                     className="text-indigo-600 hover:text-indigo-800 font-medium underline transition-colors duration-200"
                   >
                     View Proof
