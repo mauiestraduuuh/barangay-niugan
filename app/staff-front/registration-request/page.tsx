@@ -232,7 +232,7 @@ export default function StaffRegistrationRequestsPage() {
 
       {/* MAIN CONTENT */}
       <div className="flex-1 flex flex-col gap-4">
-        <header className="bg-gray-50 shadow-sm p-4 flex justify-between items-center rounded-xl">
+        <header className="bg-gray-50 shadow-sm p-4 flex justify-between items-center rounded-xl text-black">
           <button
             onClick={toggleSidebar}
             className="block md:hidden text-black hover:text-red-700"
@@ -305,7 +305,7 @@ export default function StaffRegistrationRequestsPage() {
                           index % 2 === 0 ? "bg-white" : "bg-gray-50"
                         }`}
                       >
-                        <td className="px-3 py-2 font-medium">
+                        <td className="px-3 py-2 font-medium text-black">
                           {req.first_name} {req.last_name}
                         </td>
 
