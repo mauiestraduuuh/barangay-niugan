@@ -12,6 +12,7 @@ import {
   Bars3Icon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  KeyIcon,
   XMarkIcon,
   ArrowRightOnRectangleIcon,
   LockClosedIcon,
@@ -234,6 +235,7 @@ export default function StaffProfilePage() {
     { name: "the-dash-staff", label: "Home", icon: HomeIcon },
     { name: "staff-profile", label: "Manage Profile", icon: UserIcon },
     { name: "registration-request", label: "Registration Requests", icon: ClipboardDocumentIcon },
+    { name: "registration-code", label: "Registration Code", icon: KeyIcon },
     { name: "certificate-request", label: "Certificate Requests", icon: ClipboardDocumentIcon },
     { name: "announcement", label: "Announcements", icon: MegaphoneIcon },
   ];

@@ -20,18 +20,19 @@ function verifyToken(req: NextRequest) {
 
 // ================= HELPER: ENSURE USER IS A STAFF =================
 async function verifyStaffUser(userId: number) {
-  const staff = await prisma.staff.findFirst({ where: { user_id: userId } });
-  return staff !== null;
+  const user = await prisma.user.findUnique({ where: { user_id: userId } });
+  return user?.role === "STAFF";
 }
 
-// ================================== GET STAFF PROFILE ==================================
+// ==================== FETCH STAFF PROFILE ====================
 export async function GET(req: NextRequest) {
   try {
     const decoded = verifyToken(req);
     if (!decoded)
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
 
-    if (decoded.role !== "STAFF" || !(await verifyStaffUser(decoded.userId)))
+    const isStaff = await verifyStaffUser(decoded.userId);
+    if (!isStaff)
       return NextResponse.json({ message: "Access denied" }, { status: 403 });
 
     const user = await prisma.user.findUnique({
@@ -42,165 +43,80 @@ export async function GET(req: NextRequest) {
         role: true,
         created_at: true,
         updated_at: true,
-        staffs: {
-          select: {
+        staffs: { 
+          select: { 
             staff_id: true,
-            first_name: true,
-            last_name: true,
-            birthdate: true,
+            first_name: true, 
+            last_name: true, 
+            contact_no: true, 
+            photo_url: true,
             gender: true,
             address: true,
-            contact_no: true,
-            photo_url: true,
-            senior_mode: true,
-            is_head_of_family: true,
-            head_id: true,
-            household_number: true,
-            is_4ps_member: true,
-            is_indigenous: true,
-            is_slp_beneficiary: true,
-            is_pwd: true,
-            household_id: true,
-            created_at: true,
-          },
+            birthdate: true,
+          } 
         },
       },
     });
 
-    if (!user)
+    if (!user) 
       return NextResponse.json({ message: "Staff not found" }, { status: 404 });
 
     const staffProfile = user.staffs[0] ?? {};
+    const profile = { ...user, ...staffProfile };
 
-    return NextResponse.json(
-      { staff: { ...user, ...staffProfile } },
-      { status: 200 }
-    );
+    return NextResponse.json({ staff: profile }, { status: 200 });
   } catch (err) {
     console.error("GET /staff-profile error:", err);
-    return NextResponse.json(
-      { message: "Internal Server Error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ message: "Internal Server Error" }, { status: 500 });
   }
 }
 
-// ================================== UPDATE STAFF PROFILE ==================================
+// ==================== UPDATE STAFF PROFILE OR PASSWORD ====================
 export async function PUT(req: NextRequest) {
   try {
     const decoded = verifyToken(req);
     if (!decoded)
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
 
-    if (decoded.role !== "STAFF" || !(await verifyStaffUser(decoded.userId)))
+    const isStaff = await verifyStaffUser(decoded.userId);
+    if (!isStaff)
       return NextResponse.json({ message: "Access denied" }, { status: 403 });
 
     const body = await req.json();
+    const { username, first_name, last_name, contact_no, gender, address, password } = body;
 
-    const {
-      username,
-      first_name,
-      last_name,
-      birthdate,
-      gender,
-      address,
-      contact_no,
-      photo_url,
-      senior_mode,
-      is_head_of_family,
-      head_id,
-      household_number,
-      is_4ps_member,
-      is_indigenous,
-      is_slp_beneficiary,
-      is_pwd,
-      household_id,
-      password,
-    } = body;
-
-    // ==================== PASSWORD CHANGE ====================
+    // -------------------- PASSWORD CHANGE --------------------
     if (password) {
       const hashedPassword = await bcrypt.hash(password, 10);
-
       await prisma.user.update({
         where: { user_id: decoded.userId },
         data: { password: hashedPassword },
       });
-
-      return NextResponse.json(
-        { message: "Password updated successfully" },
-        { status: 200 }
-      );
+      return NextResponse.json({ message: "Password updated successfully" }, { status: 200 });
     }
 
-    // ==================== NO UPDATE PROVIDED ====================
-    const hasAnyUpdate =
-      username ||
-      first_name ||
-      last_name ||
-      birthdate ||
-      gender ||
-      address ||
-      contact_no ||
-      photo_url ||
-      senior_mode !== undefined ||
-      is_head_of_family !== undefined ||
-      head_id ||
-      household_number ||
-      is_4ps_member !== undefined ||
-      is_indigenous !== undefined ||
-      is_slp_beneficiary !== undefined ||
-      is_pwd !== undefined ||
-      household_id !== undefined;
-
-    if (!hasAnyUpdate) {
-      return NextResponse.json(
-        { message: "No update data provided" },
-        { status: 400 }
-      );
+    // -------------------- PROFILE UPDATE --------------------
+    if (!username && !first_name && !last_name && !contact_no && !gender && !address) {
+      return NextResponse.json({ message: "No update data provided" }, { status: 400 });
     }
 
-    // ==================== USERNAME VALIDATION ====================
+    // Check username availability
     if (username) {
-      const existingUser = await prisma.user.findUnique({
-        where: { username },
-      });
-
+      const existingUser = await prisma.user.findUnique({ where: { username } });
       if (existingUser && existingUser.user_id !== decoded.userId) {
-        return NextResponse.json(
-          { message: "Username is already taken" },
-          { status: 409 }
-        );
+        return NextResponse.json({ message: "Username is already taken" }, { status: 409 });
       }
     }
 
-    // ==================== BUILD STAFF UPDATE ====================
+    // Update user and staff data
     const staffUpdateData: any = {};
-    if (first_name !== undefined) staffUpdateData.first_name = first_name;
-    if (last_name !== undefined) staffUpdateData.last_name = last_name;
-    if (birthdate !== undefined) staffUpdateData.birthdate = new Date(birthdate);
-    if (gender !== undefined) staffUpdateData.gender = gender;
-    if (address !== undefined) staffUpdateData.address = address;
-    if (contact_no !== undefined) staffUpdateData.contact_no = contact_no;
-    if (photo_url !== undefined) staffUpdateData.photo_url = photo_url;
-    if (senior_mode !== undefined) staffUpdateData.senior_mode = senior_mode;
-    if (is_head_of_family !== undefined)
-      staffUpdateData.is_head_of_family = is_head_of_family;
-    if (head_id !== undefined) staffUpdateData.head_id = head_id;
-    if (household_number !== undefined)
-      staffUpdateData.household_number = household_number;
-    if (is_4ps_member !== undefined)
-      staffUpdateData.is_4ps_member = is_4ps_member;
-    if (is_indigenous !== undefined)
-      staffUpdateData.is_indigenous = is_indigenous;
-    if (is_slp_beneficiary !== undefined)
-      staffUpdateData.is_slp_beneficiary = is_slp_beneficiary;
-    if (is_pwd !== undefined) staffUpdateData.is_pwd = is_pwd;
-    if (household_id !== undefined)
-      staffUpdateData.household_id = household_id;
+    if (first_name) staffUpdateData.first_name = first_name;
+    if (last_name) staffUpdateData.last_name = last_name;
+    if (contact_no) staffUpdateData.contact_no = contact_no;
+    if (gender) staffUpdateData.gender = gender;
+    if (address) staffUpdateData.address = address;
 
-    // ==================== EXECUTE UPDATE ====================
-    const updatedStaff = await prisma.user.update({
+    await prisma.user.update({
       where: { user_id: decoded.userId },
       data: {
         username,
@@ -211,45 +127,11 @@ export async function PUT(req: NextRequest) {
           },
         },
       },
-      select: {
-        user_id: true,
-        username: true,
-        role: true,
-        updated_at: true,
-        staffs: {
-          select: {
-            staff_id: true,
-            first_name: true,
-            last_name: true,
-            birthdate: true,
-            gender: true,
-            address: true,
-            contact_no: true,
-            photo_url: true,
-            senior_mode: true,
-            is_head_of_family: true,
-            head_id: true,
-            household_number: true,
-            is_4ps_member: true,
-            is_indigenous: true,
-            is_slp_beneficiary: true,
-            is_pwd: true,
-            household_id: true,
-            created_at: true,
-          },
-        },
-      },
     });
 
-    return NextResponse.json(
-      { message: "Profile updated successfully", staff: updatedStaff },
-      { status: 200 }
-    );
+    return NextResponse.json({ message: "Profile updated successfully" }, { status: 200 });
   } catch (err) {
     console.error("PUT /staff-profile error:", err);
-    return NextResponse.json(
-      { message: "Internal Server Error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ message: "Internal Server Error" }, { status: 500 });
   }
 }
