@@ -290,15 +290,16 @@ export default function StaffAccounts() {
           <div className="flex items-center space-x-4"></div>
         </header>
 
-        <input
+        
+
+         <main className="bg-gray-50 p-4 sm:p-6 rounded-xl shadow-sm overflow-auto">
+          <input
           type="text"
           placeholder="Search by name..."
           className="px-3 py-2 border border-gray-300 rounded mb-4 w-full text-black"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
         />
-
-         <main className="bg-gray-50 p-4 sm:p-6 rounded-xl shadow-sm overflow-auto">
           {loading ? (
             <p className="text-center">Loading staff data...</p>
           ) : (
@@ -354,8 +355,7 @@ export default function StaffAccounts() {
             </table>
             </div>
           )}
-        </main>
-
+          
         {/*Pagination Controls */}
         <div className="w-full mt-5 flex justify-center">
           <div className="flex items-center gap-2 px-3 py-1.5">
@@ -430,6 +430,9 @@ export default function StaffAccounts() {
 
           </div>
         </div>
+        </main>
+
+        
 
         {/* View Modal */}
         {showViewModal && selectedStaff && (
