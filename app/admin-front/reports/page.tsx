@@ -86,23 +86,46 @@ export default function ReportsSection() {
     { name: "reports", label: "Reports", icon: ChartBarIcon },
   ];
 
-  // Fetch stats
   const fetchStats = async () => {
-    setLoading(true);
-    try {
-      const res = await axios.get("/api/admin/reports", {
-        headers: { Authorization: `Bearer ${token}` },
-        params: { from: dateRange.from, to: dateRange.to },
-      });
+  if (!token) {
+    setMessage("You are not logged in.");
+    setLoading(false);
+    return;
+  }
+
+  setLoading(true);
+  try {
+    // Use absolute URL if needed; relative works if API is same domain
+    const res = await axios.get(`${window.location.origin}/api/admin/reports`, {
+      headers: { Authorization: `Bearer ${token}` },
+      params: { from: dateRange.from, to: dateRange.to },
+      timeout: 5000, // optional: fail if request takes too long
+    });
+
+    if (res.data.stats) {
       setStats(res.data.stats);
       setLastUpdated(new Date().toLocaleString());
-    } catch (error) {
-      console.error(error);
-      setMessage("Failed to fetch reports");
-    } finally {
-      setLoading(false);
+      setMessage("");
+    } else {
+      setMessage("No data received from server.");
     }
-  };
+  } catch (err: any) {
+    console.error("Axios fetchStats error:", err);
+
+    if (err.response) {
+      // Server responded with status outside 2xx
+      setMessage(`Server Error: ${err.response.status}`);
+    } else if (err.request) {
+      // Request made but no response
+      setMessage("Network Error: Could not reach server.");
+    } else {
+      // Something else
+      setMessage("Unexpected Error: " + err.message);
+    }
+  } finally {
+    setLoading(false);
+  }
+};
 
   useEffect(() => {
     fetchStats();
