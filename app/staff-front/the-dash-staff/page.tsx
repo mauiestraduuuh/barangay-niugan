@@ -1,4 +1,5 @@
 "use client";
+
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -10,9 +11,9 @@ import {
   BellIcon,
   Bars3Icon,
   ChevronLeftIcon,
+  KeyIcon,
   ArrowRightOnRectangleIcon,
   ChevronRightIcon,
-  KeyIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
 
@@ -67,28 +68,26 @@ export default function StaffDashboard() {
     try {
       const token = localStorage.getItem("token");
       if (!token) {
-        console.error("No token found in localStorage");
         router.push("/auth-front/login");
         return;
       }
+
       const res = await fetch("/api/staff/the-dash-staff", {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
-      if (!res.ok) {
-        console.error("API Error:", data);
-        throw new Error(data.message || "Failed to fetch staff dashboard");
-      }
+
+      if (!res.ok) throw new Error(data.message || "Failed to fetch staff dashboard");
+
       setStaff(data.staff);
       setPendingTasks(data.pendingTasks);
-      setRecentActivity(data.recentActivity);
-      setRecentAnnouncements(data.recentAnnouncements);
+      setRecentActivity(data.recentActivity || []);
+      setRecentAnnouncements(data.recentAnnouncements || []);
     } catch (err) {
       console.error(err);
     }
   };
 
-  // Staff features - NO analytics/reports/feedback/staff accounts (Requirement E)
   const features = [
     { name: "the-dash-staff", label: "Home", icon: HomeIcon },
     { name: "staff-profile", label: "Manage Profile", icon: UserIcon },
@@ -101,17 +100,20 @@ export default function StaffDashboard() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to-black p-4 flex gap-4">
       {/* Sidebar */}
-            <div
+      <div
         className={`${
           sidebarOpen ? "w-64" : "w-16"
-        } bg-gray-50 shadow-lg rounded-xl transition-all duration-300 ease-in-out flex flex-col 
-        ${sidebarOpen ? "fixed inset-y-0 left-0 z-50 md:static md:translate-x-0" : "hidden md:flex"}`}
+        } bg-gray-50 shadow-lg rounded-xl transition-all duration-300 ease-in-out flex flex-col ${
+          sidebarOpen ? "block" : "hidden"
+        } md:block md:relative md:translate-x-0 ${
+          sidebarOpen ? "fixed inset-y-0 left-0 z-50 md:static md:translate-x-0" : ""
+        }`}
       >
         {/* Logo + Close */}
         <div className="p-4 flex items-center justify-center">
           <img
             src="/niugan-logo.png"
-            alt="Company Logo"
+            alt="Logo"
             className={`rounded-full object-cover transition-all duration-300 ${
               sidebarOpen ? "w-30 h-30" : "w-8.5 h-8.5"
             }`}
@@ -135,9 +137,7 @@ export default function StaffDashboard() {
                   <Link href={href}>
                     <span
                       className={`relative flex items-center w-full px-4 py-2 text-left group transition-colors duration-200 ${
-                        isActive
-                          ? "text-red-700 font-semibold"
-                          : "text-black hover:text-red-700"
+                        isActive ? "text-red-700" : "text-black hover:text-red-700"
                       }`}
                     >
                       {isActive && (
@@ -145,19 +145,11 @@ export default function StaffDashboard() {
                       )}
                       <Icon
                         className={`w-6 h-6 mr-2 ${
-                          isActive
-                            ? "text-red-700"
-                            : "text-gray-600 group-hover:text-red-700"
+                          isActive ? "text-red-700" : "text-gray-600 group-hover:text-red-700"
                         }`}
                       />
                       {sidebarOpen && (
-                        <span
-                          className={`${
-                            isActive
-                              ? "text-red-700"
-                              : "group-hover:text-red-700"
-                          }`}
-                        >
+                        <span className={`${isActive ? "text-red-700" : "group-hover:text-red-700"}`}>
                           {label}
                         </span>
                       )}
@@ -169,7 +161,7 @@ export default function StaffDashboard() {
           </ul>
         </nav>
 
-        {/* Functional Logout Button */}
+        {/* Logout */}
         <div className="p-4">
           <button
             onClick={handleLogout}
@@ -180,7 +172,7 @@ export default function StaffDashboard() {
           </button>
         </div>
 
-        {/* Sidebar Toggle (desktop only) */}
+        {/* Sidebar Toggle */}
         <div className="p-4 flex justify-center hidden md:flex">
           <button
             onClick={toggleSidebar}
@@ -195,18 +187,11 @@ export default function StaffDashboard() {
         </div>
       </div>
 
-      {/* Mobile Overlay */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-white/80 z-40 md:hidden"
-          onClick={toggleSidebar}
-        ></div>
-      )}
-
+      {/* Overlay */}
+      {sidebarOpen && <div className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden" onClick={toggleSidebar}></div>}
 
       {/* Main Section */}
       <div className="flex-1 flex flex-col gap-4">
-        {/* Header */}
         <header className="bg-gray-50 shadow-sm p-4 flex justify-between items-center rounded-xl text-black">
           <button
             onClick={toggleSidebar}
@@ -215,15 +200,28 @@ export default function StaffDashboard() {
             <Bars3Icon className="w-6 h-6" />
           </button>
           <h1 className="text-large font-bold">Staff Dashboard</h1>
-          <div className="flex items-center space-x-4"></div>
         </header>
 
-        {/* Main Content */}
-        <main className="flex-1 bg-gray-50 rounded-xl p-6 shadow-sm overflow-auto">
+        <main className="flex-1 bg-gray-50 rounded-xl p-6 shadow-sm overflow-auto text-black">
           {staff && (
             <div className="flex items-center gap-4 mb-6">
               <h2 className="text-xl font-semibold">{`Welcome back, ${staff.firstName} ${staff.lastName}!`}</h2>
             </div>
+          )}
+
+          {/* Overview Cards */}
+          {pendingTasks && (
+            <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+              {[
+                { label: "Pending Registrations", value: pendingTasks.pendingRegistrations },
+                { label: "Pending Certificates", value: pendingTasks.pendingCertificates },
+              ].map((item) => (
+                <div key={item.label} className="bg-white rounded-xl shadow p-6 hover:shadow-lg transition">
+                  <h3 className="text-red-900">{item.label}</h3>
+                  <p className="text-3xl font-bold text-red-700">{item.value}</p>
+                </div>
+              ))}
+            </section>
           )}
 
           {/* Quick Actions */}
@@ -233,25 +231,19 @@ export default function StaffDashboard() {
               <Link href="/staff-front/registration-request">
                 <div className="bg-red-50 border border-red-200 p-4 rounded-lg hover:bg-red-100 transition cursor-pointer">
                   <h4 className="font-semibold text-red-800">Review Registrations</h4>
-                  <p className="text-sm text-red-600">
-                    Approve or reject pending resident registrations
-                  </p>
+                  <p className="text-sm text-red-600">Approve or reject pending resident registrations</p>
                 </div>
               </Link>
               <Link href="/staff-front/certificate-request">
                 <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg hover:bg-blue-100 transition cursor-pointer">
                   <h4 className="font-semibold text-red-800">Process Certificates</h4>
-                  <p className="text-sm text-red-600">
-                    Approve, schedule pickup, and manage certificates
-                  </p>
+                  <p className="text-sm text-red-600">Manage certificate requests and pickups</p>
                 </div>
               </Link>
               <Link href="/staff-front/announcement">
                 <div className="bg-green-50 border border-green-200 p-4 rounded-lg hover:bg-green-100 transition cursor-pointer">
                   <h4 className="font-semibold text-red-800">Manage Announcements</h4>
-                  <p className="text-sm text-red-600">
-                    Create, edit, or delete announcements
-                  </p>
+                  <p className="text-sm text-red-600">Create, edit, or delete announcements</p>
                 </div>
               </Link>
             </div>
@@ -261,45 +253,18 @@ export default function StaffDashboard() {
           <section className="mt-8">
             <h2 className="text-2xl font-semibold mb-4">Recent Activity</h2>
             <div className="bg-white rounded-xl shadow p-6">
-              {!recentActivity || recentActivity.length === 0 ? (
+              {recentActivity.length === 0 ? (
                 <p>No recent requests.</p>
               ) : (
                 <ul className="space-y-3">
                   {recentActivity.map((req) => (
-                    <li
-                      key={req.request_id}
-                      className="border-b last:border-none pb-2 flex justify-between"
-                    >
+                    <li key={req.request_id} className="border-b last:border-none pb-2 flex justify-between">
                       <span>
                         <strong className="text-red-900">{req.resident.first_name} {req.resident.last_name}</strong> requested a{" "}
                         <span className="text-red-600 font-medium">{req.certificate_type}</span>
                       </span>
                       <span className="text-sm text-red-900">
                         {new Date(req.requested_at).toLocaleDateString()}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </section>
-
-          {/* Recent Announcements */}
-          <section className="mt-8">
-            <h2 className="text-2xl font-semibold mb-4">Recent Announcements</h2>
-            <div className="bg-white rounded-xl shadow p-6">
-              {!recentAnnouncements || recentAnnouncements.length === 0 ? (
-                <p>No recent announcements.</p>
-              ) : (
-                <ul className="space-y-3">
-                  {recentAnnouncements.map((announcement) => (
-                    <li
-                      key={announcement.announcement_id}
-                      className="border-b last:border-none pb-2 flex justify-between"
-                    >
-                      <span className="font-medium text-gray-800">{announcement.title}</span>
-                      <span className="text-sm text-red-900">
-                        {new Date(announcement.posted_at).toLocaleDateString()}
                       </span>
                     </li>
                   ))}

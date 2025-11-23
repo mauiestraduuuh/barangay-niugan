@@ -9,6 +9,33 @@ interface JwtPayload {
   role: string;
 }
 
+interface StaffDashboardResponse {
+  staff: {
+    id: number;
+    username: string;
+    role: string;
+    firstName: string;
+    lastName: string;
+  };
+  pendingTasks: {
+    pendingRegistrations: number;
+    pendingCertificates: number;
+  };
+  recentActivity: {
+    request_id: number;
+    certificate_type: string;
+    status: string;
+    resident: { first_name: string; last_name: string };
+    requested_at: string;
+  }[];
+  recentAnnouncements: {
+    announcement_id: number;
+    title: string;
+    posted_at: string;
+    is_public: boolean;
+  }[];
+}
+
 // ===================== HELPER: VERIFY TOKEN =====================
 function verifyToken(req: NextRequest): JwtPayload | null {
   const authHeader = req.headers.get("authorization");
@@ -62,49 +89,56 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    // ===================== OPERATIONAL DATA (NO ANALYTICS) =====================
+    // ===================== OPERATIONAL DATA =====================
+      // Recent certificate activity
+      const recentActivityRaw = await prisma.certificateRequest.findMany({
+        orderBy: { requested_at: "desc" },
+        take: 10,
+        include: { resident: { select: { first_name: true, last_name: true } } },
+      });
 
-    // RECENT CERTIFICATE ACTIVITY
-    const recentActivityRaw = await prisma.certificateRequest.findMany({
-      orderBy: { requested_at: "desc" },
-      take: 10,
-      include: { resident: { select: { first_name: true, last_name: true } } },
-    });
+      const recentActivity = recentActivityRaw.map((req) => ({
+        request_id: req.request_id,
+        certificate_type: req.certificate_type,
+        status: req.status,
+        resident: req.resident,
+        requested_at: req.requested_at.toISOString(),
+      }));
 
-    const recentActivity = recentActivityRaw.map(req => ({
-      request_id: req.request_id,
-      certificate_type: req.certificate_type,
-      status: req.status,
-      resident: req.resident,
-      requested_at: req.requested_at,
-    }));
+      // Recent announcements
+      const recentAnnouncementsRaw = await prisma.announcement.findMany({
+        orderBy: { posted_at: "desc" },
+        take: 5,
+        select: {
+          announcement_id: true,
+          title: true,
+          posted_at: true,
+          is_public: true,
+        },
+      });
 
-    // PENDING RESIDENT REGISTRATION REQUESTS (Requirement C)
+      const recentAnnouncements = recentAnnouncementsRaw.map((ann) => ({
+        announcement_id: ann.announcement_id,
+        title: ann.title,
+        posted_at: ann.posted_at.toISOString(),
+        is_public: ann.is_public,
+      }));
+
+
+    // Pending resident registration requests
     const pendingRegistrations = await prisma.registrationRequest.count({
-      where: {
-        status: "PENDING",
-        role: "RESIDENT",       // Ensures STAFF CANNOT APPROVE STAFF ACCOUNTS
-      },
+      where: { status: "PENDING", role: "RESIDENT" },
     });
 
-    // PENDING CERTIFICATE REQUESTS
+    // Pending certificate requests
     const pendingCertificates = await prisma.certificateRequest.count({
       where: { status: "PENDING" },
     });
 
-    // RECENT ANNOUNCEMENTS
-    const recentAnnouncements = await prisma.announcement.findMany({
-      orderBy: { posted_at: "desc" },
-      take: 5,
-      select: {
-        announcement_id: true,
-        title: true,
-        posted_at: true,
-        is_public: true,
-      },
-    });
+  
 
-    return NextResponse.json({
+    // ===================== RESPONSE =====================
+    const response: StaffDashboardResponse = {
       staff: {
         id: staffUser!.user_id,
         username: staffUser!.username,
@@ -112,18 +146,15 @@ export async function GET(req: NextRequest) {
         firstName: staffUser!.staffs[0]?.first_name || "",
         lastName: staffUser!.staffs[0]?.last_name || "",
       },
-
-      // NO ANALYTICS → operational tasks only
       pendingTasks: {
-        registrations: pendingRegistrations,
-        certificates: pendingCertificates,
+        pendingRegistrations,
+        pendingCertificates,
       },
+      recentActivity,
+      recentAnnouncements,
+    };
 
-      recent: {
-        announcements: recentAnnouncements,
-        activity: recentActivity,
-      },
-    });
+    return NextResponse.json(response);
   } catch (err) {
     console.error(err);
     return NextResponse.json({ message: "Server error" }, { status: 500 });
