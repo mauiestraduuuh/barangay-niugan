@@ -66,6 +66,21 @@ export default function AdminFeedbackPage() {
   const [replyFile, setReplyFile] = useState<File | null>(null);
   const [modalImage, setModalImage] = useState<string | null | undefined>(null);
   const [categories, setCategories] = useState<{ category_id: string; english_name: string; tagalog_name: string; group?: string }[]>([]);
+  const filteredFeedbacks = feedbacks.filter((f) => {
+    return (
+      (!statusFilter || f.status === statusFilter) &&
+      (!groupFilter || f.category?.group === groupFilter) &&
+      (!categoryFilter || f.category?.category_id === categoryFilter)
+    );
+  });
+
+  const [ITEMS_PER_PAGE, setITEMS_PER_PAGE] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
+  const totalPages = Math.ceil(filteredFeedbacks.length / ITEMS_PER_PAGE);
+  const paginatedFeedbacks = filteredFeedbacks.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
 
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
@@ -153,14 +168,6 @@ export default function AdminFeedbackPage() {
   };
 
   const groups = Array.from(new Set(categories.map((c) => c.group).filter(Boolean)));
-
-  const filteredFeedbacks = feedbacks.filter((f) => {
-    return (
-      (!statusFilter || f.status === statusFilter) &&
-      (!groupFilter || f.category?.group === groupFilter) &&
-      (!categoryFilter || f.category?.category_id === categoryFilter)
-    );
-  });
 
   const handleLogout = () => {
     if (window.confirm("Are you sure you want to log out?")) {
@@ -379,7 +386,7 @@ export default function AdminFeedbackPage() {
                     </tr>
                   </thead>
                   <tbody className="text-sm text-black divide-y divide-gray-200">
-                    {filteredFeedbacks.map((f) => (
+                    {paginatedFeedbacks.map((f) => (
                       <tr key={f.feedback_id} className="hover:bg-gray-50 transition">
                         <td className="px-4 py-3 font-medium whitespace-nowrap">
                           {f.resident?.first_name} {f.resident?.last_name}
@@ -433,10 +440,9 @@ export default function AdminFeedbackPage() {
                   </tbody>
                 </table>
               </div>
-
               {/* Mobile Cards */}
               <div className="md:hidden space-y-4">
-                {filteredFeedbacks.map((f) => (
+                {paginatedFeedbacks.map((f) => (
                   <div key={f.feedback_id} className="bg-gray-50 p-4 rounded-lg shadow-sm border">
                     <div className="flex justify-between items-start mb-2">
                       <h3 className="font-semibold text-black">{f.resident?.first_name} {f.resident?.last_name}</h3>
@@ -487,6 +493,81 @@ export default function AdminFeedbackPage() {
                     </div>
                   </div>
                 ))}
+              </div>
+                                          {/* PAGINATION CONTROLS */}
+              <div className="w-full mt-5 flex justify-center">
+                <div className="flex items-center gap-2 px-3 py-1.5 ">
+
+                  {/* Previous Button */}
+                  <button
+                    onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                    disabled={currentPage === 1}
+                    className="px-2 py-1 text-3xl text-gray-500 hover:text-gray-700 disabled:opacity-30"
+                  >
+                    ‹
+                  </button>
+
+                  {/* Page Numbers */}
+                  {Array.from({ length: totalPages }).map((_, i) => {
+                    const page = i + 1;
+
+                    // Show only near numbers + first + last + ellipsis
+                    if (
+                      page === 1 ||
+                      page === totalPages ||
+                      (page >= currentPage - 1 && page <= currentPage + 1)
+                    ) {
+                      return (
+                        <button
+                          key={i}
+                          onClick={() => setCurrentPage(page)}
+                          className={`w-8 h-8 flex items-center justify-center rounded-full text-sm font-medium transition-all ${
+                            currentPage === page
+                              ? "bg-red-100 text-red-700"
+                              : "text-gray-700 hover:bg-gray-100"
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      );
+                    }
+
+                    // Ellipsis (only render once)
+                    if (page === currentPage - 2 || page === currentPage + 2) {
+                      return (
+                        <div key={i} className="px-1 text-gray-400">
+                          ...
+                        </div>
+                      );
+                    }
+
+                    return null;
+                  })}
+
+                  {/* Next Button */}
+                  <button
+                    onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                    disabled={currentPage === totalPages}
+                    className="px-2 py-1 text-3xl text-gray-500 hover:text-gray-700 disabled:opacity-30"
+                  >
+                    ›
+                  </button>
+
+                  {/* Rows Per Page Dropdown */}
+                  <select
+                    value={ITEMS_PER_PAGE}
+                    onChange={(e) => {
+                      setCurrentPage(1);
+                      setITEMS_PER_PAGE(Number(e.target.value));
+                    }}
+                    className="ml-3 bg-white border border-gray-300 text-sm rounded-xl px-3 py-1 focus:ring-0"
+                  >
+                    <option value={2}>2 / page</option>
+                    <option value={10}>10 / page</option>
+                    <option value={20}>20 / page</option>
+                    <option value={50}>50 / page</option>
+                  </select>
+                </div>
               </div>
             </>
           )}

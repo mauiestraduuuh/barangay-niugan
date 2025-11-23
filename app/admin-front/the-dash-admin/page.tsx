@@ -231,12 +231,7 @@ export default function AdminDashboard() {
         <main className="flex-1 bg-gray-50 rounded-xl p-6 shadow-sm overflow-auto">
           {admin && (
             <div className="flex items-center gap-4 mb-6">
-              <img
-                src={admin.photo_url || "/default-profile.png"}
-                alt="Profile"
-                className="w-16 h-16 rounded-full border"
-              />
-              <h1 className="text-3xl font-semibold">{`Welcome back, ${admin.name}!`}</h1>
+              <h2 className="text-xl font-semibold">{`Welcome back, ${admin.name}!`}</h2>
             </div>
           )}
 

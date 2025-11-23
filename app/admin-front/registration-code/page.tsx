@@ -37,6 +37,14 @@ export default function RegistrationCodePage() {
   const [loading, setLoading] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const router = useRouter();
+  const filteredCodes = codes.filter((c) => (filter === "unused" ? !c.isUsed : c.isUsed));
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const totalPages = Math.ceil(filteredCodes.length / itemsPerPage);
+  const indexOfLast = currentPage * itemsPerPage;
+  const indexOfFirst = indexOfLast - itemsPerPage;
+  const currentItems = filteredCodes.slice(indexOfFirst, indexOfLast);
+
 
   // Fetch all registration codes
   const fetchCodes = async () => {
@@ -89,8 +97,6 @@ export default function RegistrationCodePage() {
       setMessage("Failed to delete code");
     }
   };
-
-  const filteredCodes = codes.filter((c) => (filter === "unused" ? !c.isUsed : c.isUsed));
 
   const features = [
     { name: "the-dash-admin", label: "Home", icon: HomeIcon },
@@ -215,7 +221,7 @@ export default function RegistrationCodePage() {
              ></div>
            )}
 
-      {/* Main Section */}
+            {/* Main Section */}
       <div className="flex-1 flex flex-col gap-4">
         <header className="bg-gray-50 shadow-sm p-4 flex justify-between items-center rounded-xl text-black">
           <button
@@ -224,13 +230,12 @@ export default function RegistrationCodePage() {
           >
             <Bars3Icon className="w-6 h-6" />
           </button>
-          <h1 className="text-large font-bold ">Registration Code</h1>
+          <h1 className="text-large font-bold">Registration Codes</h1>
           <div className="flex items-center space-x-4"></div>
         </header>
 
-        <main className="flex-1 bg-gray-50 rounded-xl p-6 shadow-sm">
-          <h1 className="text-2xl font-semibold mb-4 text-black">Registration Codes</h1>
-
+        <main className="flex-1 bg-gray-50 rounded-xl p-6 shadow-sm overflow-auto">
+          <h3 className="text-large font-semibold mb-4 text-black">Registration History</h3>
           {message && (
             <div className="bg-green-100 text-green-800 px-4 py-2 rounded mb-4">{message}</div>
           )}
@@ -245,7 +250,7 @@ export default function RegistrationCodePage() {
             />
             <button
               onClick={generateCode}
-              className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
+              className="bg-black text-white px-4 py-2 rounded-xl hover:bg-red-700"
             >
               Generate
             </button>
@@ -274,38 +279,128 @@ export default function RegistrationCodePage() {
 
           {loading ? (
             <p className="text-black">Loading...</p>
+          ) : filteredCodes.length === 0 ? (
+            <p className="text-center text-black py-10">No {filter} codes found</p>
           ) : (
-            <table className="min-w-full border-collapse bg-white shadow-sm rounded-xl overflow-hidden text-sm sm:text-base">
-              <thead className="bg-gradient-to-br from-black via-red-800 to-black text-white">
-                <tr>
-                  <th className="px-4 py-2 text-left">Code</th>
-                  <th className="px-4 py-2 text-left">Owner</th>
-                  <th className="px-4 py-2 text-center">Status</th>
-                  <th className="px-4 py-2 text-center">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredCodes.map((c) => (
-                  <tr key={c.id} className="border-t hover:bg-gray-50 transition">
-                    <td className="px-4 py-2 font-medium text-black">{c.code}</td>
-                    <td className="px-4 py-2 text-black">{c.ownerName}</td>
-                    <td className="px-4 py-2 text-center text-black">
-                      {c.isUsed ? "USED" : "UNUSED"}
-                    </td>
-                    <td className="px-4 py-2 text-center">
-                      {!c.isUsed && (
-                        <button
-                          onClick={() => deleteCode(c.id)}
-                          className="bg-gray-600 text-white px-3 py-1 rounded hover:bg-gray-700"
-                        >
-                          Delete
-                        </button>
-                      )}
-                    </td>
+            <div className="overflow-x-auto">
+              <table className="min-w-full border-collapse bg-white shadow-sm rounded-xl overflow-hidden text-sm sm:text-base">
+                <thead className="bg-gradient-to-br from-black via-red-800 to-black text-white">
+                  <tr>
+                    <th className="px-4 py-2 text-left">Code</th>
+                    <th className="px-4 py-2 text-left">Owner</th>
+                    <th className="px-4 py-2 text-center">Status</th>
+                    <th className="px-4 py-2 text-center">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {currentItems.map((c, index) => (
+                    <tr
+                      key={c.id}
+                      className={`border-t hover:bg-red-50 transition ${
+                        index % 2 === 0 ? "bg-white" : "bg-gray-50"
+                      }`}
+                    >
+                      <td className="px-4 py-2 font-medium text-black">{c.code}</td>
+                      <td className="px-4 py-2 text-black">{c.ownerName}</td>
+                      <td className="px-4 py-2 text-center">
+                        <span
+                          className={`px-2 py-1 rounded-full text-xs sm:text-sm font-semibold ${
+                            c.isUsed
+                              ? "bg-green-200 text-green-800"
+                              : "bg-yellow-200 text-yellow-800"
+                          }`}
+                        >
+                          {c.isUsed ? "USED" : "UNUSED"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2 text-center">
+                        {!c.isUsed && (
+                          <button
+                            onClick={() => deleteCode(c.id)}
+                            className="bg-gray-600 text-white px-3 py-1 rounded hover:bg-gray-700 text-xs sm:text-sm"
+                          >
+                            Delete
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {/* Pagination */}
+              <div className="w-full mt-4 flex justify-center">
+                <div className="flex items-center gap-2 px-3 py-1.5 ">
+
+                  {/* Prev */}
+                  <button
+                    onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                    disabled={currentPage === 1}
+                    className="px-2 py-1 text-3xl text-gray-600 hover:text-black disabled:opacity-30 leading-none"
+                  >
+                    ‹
+                  </button>
+
+                  {/* Page numbers with ellipsis */}
+                  {Array.from({ length: totalPages }).map((_, i) => {
+                    const page = i + 1;
+
+                    if (
+                      page === 1 ||
+                      page === totalPages ||
+                      (page >= currentPage - 1 && page <= currentPage + 1)
+                    ) {
+                      return (
+                        <button
+                          key={i}
+                          onClick={() => setCurrentPage(page)}
+                          className={`w-8 h-8 flex items-center justify-center rounded-full text-sm font-medium transition-all ${
+                            currentPage === page
+                              ? "bg-red-200 text-red-800"
+                              : "text-gray-700 hover:bg-gray-100"
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      );
+                    }
+
+                    if (page === currentPage - 2 || page === currentPage + 2) {
+                      return (
+                        <span key={i} className="px-1 text-gray-400">
+                          ...
+                        </span>
+                      );
+                    }
+
+                    return null;
+                  })}
+
+                  {/* Next */}
+                  <button
+                    onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                    disabled={currentPage === totalPages}
+                    className="px-2 py-1 text-3xl text-gray-600 hover:text-black disabled:opacity-30  leading-none"
+                  >
+                    ›
+                  </button>
+
+                  {/* Rows per page */}
+                  <select
+                    value={itemsPerPage}
+                    onChange={(e) => {
+                      setItemsPerPage(Number(e.target.value));
+                      setCurrentPage(1);
+                    }}
+                    className="ml-2 bg-white border border-gray-300 text-sm rounded-lg px-2 py-1"
+                  >
+                    <option value={5}>5 / page</option>
+                    <option value={10}>10 / page</option>
+                    <option value={20}>20 / page</option>
+                    <option value={50}>50 / page</option>
+                  </select>
+                </div>
+              </div>
+            </div>
           )}
         </main>
       </div>
