@@ -156,7 +156,7 @@ export default function StaffAccounts() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to-slate-50 p-4 flex gap-4 text-black">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to-black p-4 flex gap-4">
     {/* Sidebar */}
       <div
         className={`${
@@ -258,7 +258,7 @@ export default function StaffAccounts() {
       )}
 
       {/* Main */}
-      <div className="flex-1 flex flex-col gap-4">
+      <div className="flex-1 flex flex-col gap-4 w-full overflow-hidden">
         <header className="bg-gray-50 shadow-sm p-4 flex justify-between items-center rounded-xl text-black">
           <button
             onClick={toggleSidebar}
@@ -278,13 +278,13 @@ export default function StaffAccounts() {
           onChange={(e) => setSearchQuery(e.target.value)}
         />
 
-        <main className="bg-white p-6 rounded-xl shadow-md overflow-x-auto">
+         <main className="bg-gray-50 p-4 sm:p-6 rounded-xl shadow-sm overflow-auto">
           {loading ? (
             <p className="text-center">Loading staff data...</p>
           ) : (
-            
-            <table className="w-full table-auto border-collapse text-left">
-              <thead>
+            <div className="overflow-x-auto w-full">
+            <table className="min-w-full border-collapse text-left bg-white shadow-sm rounded-xl overflow-hidden text-sm sm:text-base">
+              <thead className="bg-gradient-to-br from-black via-red-800 to-black text-white rounded-xl">
                 <tr className="border-b border-gray-300">
                   <th className="py-3 px-4">Staff ID</th>
                   <th className="py-3 px-4">Name</th>
@@ -332,6 +332,7 @@ export default function StaffAccounts() {
                 )}
               </tbody>
             </table>
+            </div>
           )}
         </main>
 
