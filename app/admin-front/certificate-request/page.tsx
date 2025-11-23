@@ -336,6 +336,14 @@ if (type === "SCHEDULE") {
           </button>
         </div>
       </div>
+      
+            {/* Mobile Overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-white/80 z-40 md:hidden"
+          onClick={toggleSidebar}
+        ></div>
+      )}
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col gap-4">

@@ -224,9 +224,8 @@ export default function RegistrationCodePage() {
           >
             <Bars3Icon className="w-6 h-6" />
           </button>
-          <h1 className="text-xl font-semibold text-black">Resident Dashboard</h1>
-          <div className="flex items-center space-x-4">
-          </div>
+          <h1 className="text-large font-bold ">Registration Code</h1>
+          <div className="flex items-center space-x-4"></div>
         </header>
 
         <main className="flex-1 bg-gray-50 rounded-xl p-6 shadow-sm">
