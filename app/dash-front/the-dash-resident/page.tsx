@@ -70,7 +70,7 @@ export default function Dashboard() {
     { name: 'the-dash-resident', label: 'Home', icon: HomeIcon },
     { name: 'resident', label: 'Manage Profile', icon: UserIcon },
     { name: 'digital-id', label: 'Digital ID', icon: CreditCardIcon },
-    { name: 'certificates', label: 'Certificates', icon: ClipboardDocumentIcon },
+    { name: 'certificate-request', label: 'Certificates', icon: ClipboardDocumentIcon },
     { name: 'feedback', label: 'Feedback / Complain', icon: ChatBubbleLeftEllipsisIcon },
   ];
 
