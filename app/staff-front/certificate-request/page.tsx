@@ -58,6 +58,15 @@ export default function StaffCertificateRequestsPage() {
   const [pickupTime, setPickupTime] = useState("");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"PENDING" | "" | "APPROVED" | "REJECTED" | "CLAIMED">("PENDING");
+  // Pagination
+  const [ITEMS_PER_PAGE, setITEMS_PER_PAGE] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
+  const totalPages = Math.ceil(filteredRequests.length / ITEMS_PER_PAGE);
+  const paginatedRequests = filteredRequests.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
+
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
   // Staff navigation - NO Feedback, Reports, Staff Accounts (Requirement E)
@@ -122,6 +131,7 @@ export default function StaffCertificateRequestsPage() {
     }
     if (statusFilter !== "") filtered = filtered.filter((r) => r.status === statusFilter);
     setFilteredRequests(filtered);
+    setCurrentPage(1);
   };
 
   // Approve request (Requirement D)
@@ -235,7 +245,7 @@ export default function StaffCertificateRequestsPage() {
   };
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
-
+ 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to-black p-4 flex gap-4">
       {/* Sidebar */}
@@ -392,7 +402,7 @@ export default function StaffCertificateRequestsPage() {
                 </thead>
 
                 <tbody>
-                  {filteredRequests.map((req, index) => (
+                 {paginatedRequests.map((req, index) => ( 
                     <tr
                       key={req.request_id}
                       className={`border-b hover:bg-red-50 transition ${
@@ -484,6 +494,81 @@ export default function StaffCertificateRequestsPage() {
                   ))}
                 </tbody>
               </table>
+                              {/* PAGINATION CONTROLS */}
+              <div className="w-full mt-5 flex justify-center">
+                <div className="flex items-center gap-2 bg-white shadow-md px-3 py-1.5 rounded-full border border-gray-200">
+
+                  {/* Previous Button */}
+                  <button
+                    onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                    disabled={currentPage === 1}
+                    className="px-2 py-1 text-3xl text-gray-500 hover:text-gray-700 disabled:opacity-30"
+                  >
+                    ‹
+                  </button>
+
+                  {/* Page Numbers */}
+                  {Array.from({ length: totalPages }).map((_, i) => {
+                    const page = i + 1;
+
+                    // Show only near numbers + first + last + ellipsis
+                    if (
+                      page === 1 ||
+                      page === totalPages ||
+                      (page >= currentPage - 1 && page <= currentPage + 1)
+                    ) {
+                      return (
+                        <button
+                          key={i}
+                          onClick={() => setCurrentPage(page)}
+                          className={`w-8 h-8 flex items-center justify-center rounded-full text-sm font-medium transition-all ${
+                            currentPage === page
+                              ? "bg-red-100 text-red-700"
+                              : "text-gray-700 hover:bg-gray-100"
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      );
+                    }
+
+                    // Ellipsis (only render once)
+                    if (page === currentPage - 2 || page === currentPage + 2) {
+                      return (
+                        <div key={i} className="px-1 text-gray-400">
+                          ...
+                        </div>
+                      );
+                    }
+
+                    return null;
+                  })}
+
+                  {/* Next Button */}
+                  <button
+                    onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                    disabled={currentPage === totalPages}
+                    className="px-2 py-1 text-3xl text-gray-500 hover:text-gray-700 disabled:opacity-30"
+                  >
+                    ›
+                  </button>
+
+                  {/* Rows Per Page Dropdown */}
+                  <select
+                    value={ITEMS_PER_PAGE}
+                    onChange={(e) => {
+                      setCurrentPage(1);
+                      setITEMS_PER_PAGE(Number(e.target.value));
+                    }}
+                    className="ml-3 bg-white border border-gray-300 text-sm rounded-xl px-3 py-1 focus:ring-0"
+                  >
+                    <option value={5}>5 / page</option>
+                    <option value={10}>10 / page</option>
+                    <option value={20}>20 / page</option>
+                    <option value={50}>50 / page</option>
+                  </select>
+                </div>
+              </div>
             </div>
           )}
         </main>
