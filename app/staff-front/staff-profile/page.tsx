@@ -512,6 +512,19 @@ export default function StaffProfilePage() {
               <h2 className="text-2xl font-semibold mb-6 text-gray-800">Change Password</h2>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Current Password</label>
+                  <input
+                    type="password"
+                    name="current_password"
+                    value={passwords.current_password}
+                    onChange={handlePasswordChange}
+                    placeholder="Enter current password"
+                    className="border border-gray-300 p-3 rounded-md focus:ring-2 focus:ring-red-500 w-full transition"
+                  />
+                </div>
+
+              
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">New Password</label>
                   <input
