@@ -43,7 +43,13 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ message: "Access denied" }, { status: 403 });
 
   try {
+    const fourteenDaysAgo = new Date();
+    fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
+
     const announcements = await prisma.announcement.findMany({
+      where: {
+        posted_at: { gte: fourteenDaysAgo },
+      },
       orderBy: { posted_at: "desc" },
     });
     return NextResponse.json(announcements);
@@ -55,6 +61,7 @@ export async function GET(req: NextRequest) {
     );
   }
 }
+
 
 // POST: Create a new announcement
 export async function POST(req: NextRequest) {
