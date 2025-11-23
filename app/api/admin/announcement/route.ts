@@ -9,12 +9,28 @@ interface AnnouncementBody {
   is_public?: boolean;
 }
 
-// GET: Fetch all announcements
-export async function GET() {
+// GET: Fetch announcements (active or expired)
+export async function GET(req: NextRequest) {
   try {
+    const { searchParams } = new URL(req.url);
+    let type = searchParams.get("type") || "active";
+
+    // Enforce allowed values
+    if (type !== "active" && type !== "expired") type = "active";
+
+    const now = new Date();
+    const cutoff = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+
+    const filter =
+      type === "active"
+        ? { posted_at: { gte: cutoff } }
+        : { posted_at: { lt: cutoff } };
+
     const announcements = await prisma.announcement.findMany({
+      where: filter,
       orderBy: { posted_at: "desc" },
     });
+
     return NextResponse.json(announcements);
   } catch (error) {
     console.error("Fetch announcements failed:", error);
@@ -25,10 +41,12 @@ export async function GET() {
   }
 }
 
+
 // POST: Create a new announcement
 export async function POST(req: NextRequest) {
   try {
-    const { title, content, posted_by, is_public }: AnnouncementBody = await req.json();
+    const { title, content, posted_by, is_public }: AnnouncementBody =
+      await req.json();
 
     if (!title || !content || !posted_by) {
       return NextResponse.json(
@@ -51,10 +69,12 @@ export async function POST(req: NextRequest) {
   }
 }
 
+
 // PUT: Update an existing announcement
 export async function PUT(req: NextRequest) {
   try {
-    const { id, title, content, is_public }: AnnouncementBody = await req.json();
+    const { id, title, content, is_public }: AnnouncementBody =
+      await req.json();
 
     if (!id || !title || !content) {
       return NextResponse.json(
@@ -78,6 +98,7 @@ export async function PUT(req: NextRequest) {
   }
 }
 
+
 // DELETE: Remove an announcement
 export async function DELETE(req: NextRequest) {
   try {
@@ -90,7 +111,9 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
-    await prisma.announcement.delete({ where: { announcement_id: id } });
+    await prisma.announcement.delete({
+      where: { announcement_id: id },
+    });
 
     return NextResponse.json({ message: "Announcement deleted" });
   } catch (error) {

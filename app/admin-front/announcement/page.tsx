@@ -57,6 +57,7 @@ export default function ManageAnnouncements() {
     content: "",
     is_public: true,
   });
+  const [filterType, setFilterType] = useState<"active" | "expired">("active"); // Added filter state
 
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
@@ -74,16 +75,11 @@ export default function ManageAnnouncements() {
     { name: "reports", label: "Reports", icon: ChartBarIcon },
   ];
 
-  // Fetch notifications
-  useEffect(() => {
-    fetchAnnouncements();
-  }, []);
-
   // Fetch announcements
-  const fetchAnnouncements = async () => {
+  const fetchAnnouncements = async (type: "active" | "expired" = "active") => {
     setLoading(true);
     try {
-      const res = await fetch("/api/admin/announcement", { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+      const res = await fetch(`/api/admin/announcement?type=${type}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
       if (!res.ok) {
         console.error("Fetch failed", res.status, await res.text());
         throw new Error("Failed to fetch announcements");
@@ -97,6 +93,11 @@ export default function ManageAnnouncements() {
       setLoading(false);
     }
   };
+
+  // Fetch on load or filter change
+  useEffect(() => {
+    fetchAnnouncements(filterType);
+  }, [filterType]);
 
   // Form changes
   const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -134,7 +135,7 @@ export default function ManageAnnouncements() {
       setShowModal(false);
       setEditingAnnouncement(null);
       setFormData({ title: "", content: "", is_public: true });
-      fetchAnnouncements();
+      fetchAnnouncements(filterType);
     } catch (error) {
       console.error("Submit error:", error);
       setMessage("Failed to save announcement");
@@ -173,7 +174,7 @@ export default function ManageAnnouncements() {
       if (!res.ok) throw new Error(await res.text());
 
       setMessage("Announcement deleted");
-      fetchAnnouncements();
+      fetchAnnouncements(filterType);
     } catch (error) {
       console.error("Delete error:", error);
       setMessage("Failed to delete announcement");
@@ -294,57 +295,69 @@ export default function ManageAnnouncements() {
 
       {/* Main Section */}
       <div className="flex-1 flex flex-col gap-4">
-                <header className="bg-gray-50 shadow-sm p-4 flex justify-between items-center rounded-xl text-black">
-                  <button
-                    onClick={toggleSidebar}
-                    className="block md:hidden text-black hover:text-red-700 focus:outline-none"
-                  >
-                    <Bars3Icon className="w-6 h-6" />
-                  </button>
-                  <h1 className="text-large font-bold ">Manage Announcements</h1>
-                  <div className="flex items-center space-x-4"></div>
-                </header>
+        <header className="bg-gray-50 shadow-sm p-4 flex justify-between items-center rounded-xl text-black">
+          <button onClick={toggleSidebar} className="block md:hidden text-black hover:text-red-700 focus:outline-none">
+            <Bars3Icon className="w-6 h-6" />
+          </button>
+          <h1 className="text-large font-bold ">Manage Announcements</h1>
+        </header>
         <main className="flex-1 bg-gray-50 rounded-xl p-6 shadow-sm overflow-auto text-black">
-  {message && (
-    <p className={`text-center p-2 rounded mb-4 ${message.includes("success") ? "bg-green-100" : "bg-red-100"}`}>
-      {message}
-    </p>
-  )}
+          {message && (
+            <p className={`text-center p-2 rounded mb-4 ${message.includes("success") ? "bg-green-100" : "bg-red-100"}`}>
+              {message}
+            </p>
+          )}
 
-  <div className="flex justify-between items-center mb-6">
-    <h3 className="text-large font-semibold text-black">Announcement History</h3>
-    <button
-      onClick={() => { setEditingAnnouncement(null); setFormData({ title: "", content: "", is_public: true }); setShowModal(true); }}
-      className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition"
-    >
-      <PlusIcon className="w-5 h-5 text-black" /> Add Announcement
-    </button>
-  </div>
-
-  {loading ? (
-    <div className="text-center py-10 text-black">Loading...</div>
-  ) : announcements.length === 0 ? (
-    <div className="text-center py-10 text-black">No announcements yet.</div>
-  ) : (
-    <div className="space-y-4">
-      {announcements.map(a => (
-        <div key={a.announcement_id} className="bg-white p-6 rounded-lg shadow-md text-black">
-          <div className="flex justify-between items-start mb-4">
-            <div>
-              <h3 className="text-xl font-semibold text-black">{a.title}</h3>
-              <p className="text-sm text-black">Posted on {new Date(a.posted_at).toLocaleDateString()} • {a.is_public ? "Public" : "Private"}</p>
-            </div>
-            <div className="flex gap-2">
-              <button onClick={() => handleEdit(a)} className="text-black hover:text-gray-800 p-2 rounded transition">
-                <PencilIcon className="w-5 h-5" />
+          {/* Announcement History Header + Filter Buttons */}
+          <div className="flex justify-between items-center mb-6">
+            <div className="flex items-center gap-4">
+              <h3 className="text-large font-semibold text-black">Announcement History</h3>
+              <button
+                onClick={() => setFilterType("active")}
+                className={`px-3 py-1 rounded ${filterType === "active" ? "bg-red-700 text-white" : "bg-gray-200 text-black"}`}
+              >
+                Active
               </button>
-              <button onClick={() => handleDelete(a.announcement_id)} className="text-black hover:text-gray-800 p-2 rounded transition">
-                <TrashIcon className="w-5 h-5" />
+              <button
+                onClick={() => setFilterType("expired")}
+                className={`px-3 py-1 rounded ${filterType === "expired" ? "bg-red-700 text-white" : "bg-gray-200 text-black"}`}
+              >
+                Expired
               </button>
             </div>
+            <button
+              onClick={() => { setEditingAnnouncement(null); setFormData({ title: "", content: "", is_public: true }); setShowModal(true); }}
+              className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition"
+            >
+              <PlusIcon className="w-5 h-5 text-black" /> Add Announcement
+            </button>
           </div>
-          <p className="text-black">{a.content}</p>
-        </div>
+
+          {/* Announcement List */}
+          {loading ? (
+            <div className="text-center py-10 text-black">Loading...</div>
+          ) : announcements.length === 0 ? (
+            <div className="text-center py-10 text-black">No announcements yet.</div>
+          ) : (
+            <div className="space-y-4">
+              {announcements.map(a => (
+                <div key={a.announcement_id} className="bg-white p-6 rounded-lg shadow-md text-black">
+                  <div className="flex justify-between items-start mb-4">
+                    <div>
+                      <h3 className="text-xl font-semibold text-black">{a.title}</h3>
+                      <p className="text-sm text-black">Posted on {new Date(a.posted_at).toLocaleDateString()} • {a.is_public ? "Public" : "Private"}</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={() => handleEdit(a)} className="text-black hover:text-gray-800 p-2 rounded transition">
+                        <PencilIcon className="w-5 h-5" />
+                      </button>
+                      <button onClick={() => handleDelete(a.announcement_id)} className="text-black hover:text-gray-800 p-2 rounded transition">
+                        <TrashIcon className="w-5 h-5" />
+                      </button>
+                    </div>
+                  </div>
+                  <p className="text-black">{a.content}</p>
+                </div>
               ))}
             </div>
           )}
