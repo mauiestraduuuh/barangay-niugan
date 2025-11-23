@@ -258,7 +258,7 @@ export default function StaffAccounts() {
       )}
 
       {/* Main */}
-      <div className="flex-1 flex flex-col gap-4 w-full overflow-hidden">
+      <div className="flex-1 flex flex-col gap-4 w-full overflow-hidden text-black">
         <header className="bg-gray-50 shadow-sm p-4 flex justify-between items-center rounded-xl text-black">
           <button
             onClick={toggleSidebar}

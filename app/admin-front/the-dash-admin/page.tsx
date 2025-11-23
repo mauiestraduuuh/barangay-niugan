@@ -223,12 +223,12 @@ export default function AdminDashboard() {
           >
             <Bars3Icon className="w-6 h-6" />
           </button>
-          <h1 className="text-large font-bold ">Admin Dashboard</h1>
+          <h1 className="text-large font-bold text-black">Admin Dashboard</h1>
           <div className="flex items-center space-x-4"></div>
         </header>
 
         {/* Main Content */}
-        <main className="flex-1 bg-gray-50 rounded-xl p-6 shadow-sm overflow-auto">
+        <main className="flex-1 bg-gray-50 rounded-xl p-6 shadow-sm overflow-auto text-black">
           {admin && (
             <div className="flex items-center gap-4 mb-6">
               <h2 className="text-xl font-semibold">{`Welcome back, ${admin.name}!`}</h2>
