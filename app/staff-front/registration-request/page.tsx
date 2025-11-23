@@ -246,7 +246,7 @@ export default function StaffRegistrationRequestsPage() {
           {/* Filter */}
           <div className="flex items-center justify-between">
             <h1 className="text-medium font-bold text-gray-800 tracking-tight">
-              Registration History (Residents Only)
+              Registration History
             </h1>
 
             <div className="flex items-center gap-3">
