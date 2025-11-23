@@ -283,18 +283,17 @@ const filterRequests = () => {
       </div>
 
       {/* Main Section */} 
-      <div className="flex-1 flex flex-col gap-4">
-        {/* Header */}
-        <header className="bg-gray-50 shadow-sm p-4 flex justify-between items-center rounded-xl">
-          <button onClick={toggleSidebar} className="block md:hidden text-black hover:text-red-700 focus:outline-none">
+      <div className="flex-1 flex flex-col gap-4 w-full overflow-hidden">
+      {/* Header */}
+         <header className="bg-gray-50 shadow-sm p-4 flex justify-between items-center rounded-xl text-black">
+          <button
+            onClick={toggleSidebar}
+            className="block md:hidden text-black hover:text-red-700 focus:outline-none"
+          >
             <Bars3Icon className="w-6 h-6" />
           </button>
-          <h1 className="text-xl font-semibold text-black">Complaints</h1>
-          <div className="flex items-center space-x-4">
-            <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center shadow-sm">
-              <img src={resident?.photo_url || "/default-profile.png"} alt="Profile" className="w-8 h-8 rounded-full object-cover" />
-            </div>
-          </div>
+          <h1 className="text-large font-bold ">Complaints Management</h1>
+          <div className="flex items-center space-x-4"></div>
         </header>
 
 
@@ -474,15 +473,17 @@ const filterRequests = () => {
  {/* HISTORY TAB */}
 {activeTab === "history" && (
   <div className="space-y-6">
-    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 ">
-      <h1 className="text-2xl font-bold text-gray-800 tracking-tight">Complaint History</h1>
-      
+    <div className="flex flex-col lg:flex-row sm:items-center sm:justify-between gap-4">
+      <h1 className="text-xl sm:text-2xl font-bold text-gray-800 tracking-tight">
+        Complaint History
+      </h1>
+
       <div className="flex items-center gap-3">
-        <label className="text-sm font-semibold text-gray-600">Filter Status:</label>
-        
+        <label className="text-xs sm:text-sm font-semibold text-gray-600">Filter Status:</label>
+
         <div className="relative">
           <select
-            className="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-8 text-sm font-medium text-gray-700 shadow-sm hover:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
+            className="appearance-none bg-white border border-gray-300 rounded-lg px-3 sm:px-4 py-1 sm:py-2 pr-8 text-xs sm:text-sm font-medium text-gray-700 shadow-sm hover:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as any)}
           >
@@ -492,7 +493,7 @@ const filterRequests = () => {
             <option value="RESOLVED">Resolved</option>
           </select>
           <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-3 sm:w-4 h-3 sm:h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
             </svg>
           </div>
@@ -502,34 +503,32 @@ const filterRequests = () => {
 
     {/* Table */}
     <div className="overflow-x-auto bg-white rounded-xl shadow-lg border border-gray-200">
-      <table className="min-w-full text-gray-700">
+      <table className="min-w-full border-collapse text-left bg-white shadow-sm rounded-xl overflow-hidden text-xs sm:text-sm md:text-base">
         <thead>
-          <tr className="bg-gradient-to-br from-black via-red-800 to-black text-white uppercase text-sm font-semibold">
-            <th className="p-4 border-b border-gray-200">Category</th>
-            <th className="p-4 border-b border-gray-200">Status</th>
-            <th className="p-4 border-b border-gray-200">Response</th>
-            <th className="p-4 border-b border-gray-200">Proof</th>
-            <th className="p-4 border-b border-gray-200">Submitted At</th>
-            <th className="p-4 border-b border-gray-200">Responded At</th>
+          <tr className="bg-gradient-to-br from-black via-red-800 to-black text-white uppercase font-semibold text-xs sm:text-sm">
+            <th className="p-3 sm:p-4 border-b border-gray-200">Category</th>
+            <th className="p-3 sm:p-4 border-b border-gray-200">Status</th>
+            <th className="p-3 sm:p-4 border-b border-gray-200">Response</th>
+            <th className="p-3 sm:p-4 border-b border-gray-200">Proof</th>
+            <th className="p-3 sm:p-4 border-b border-gray-200">Submitted At</th>
+            <th className="p-3 sm:p-4 border-b border-gray-200">Responded At</th>
           </tr>
         </thead>
         <tbody>
           {filteredFeedbacks.map((fb) => (
-            <tr key={fb.feedback_id} className="hover:bg-gray-50 transition-colors duration-200">
-              <td className="p-4 border-b border-gray-200">
-                {fb.category
-                  ? (language === "en" ? fb.category.english_name : fb.category.tagalog_name)
-                  : "-"}
+            <tr key={fb.feedback_id} className="hover:bg-gray-50 transition-colors duration-200 text-xs sm:text-sm md:text-base">
+              <td className="p-2 sm:p-4 border-b border-gray-200">
+                {fb.category ? (language === "en" ? fb.category.english_name : fb.category.tagalog_name) : "-"}
               </td>
-              <td className={`p-4 border-b border-gray-200 font-semibold text-center rounded-md ${statusColor(fb.status)}`}>
+              <td className={`p-2 sm:p-4 border-b border-gray-200 font-semibold text-center rounded-md ${statusColor(fb.status)}`}>
                 {fb.status.replace("_", " ")}
               </td>
-              <td className="p-4 border-b border-gray-200">{fb.response || "-"}</td>
-              <td className="p-4 border-b border-gray-200 text-center">
+              <td className="p-2 sm:p-4 border-b border-gray-200">{fb.response || "-"}</td>
+              <td className="p-2 sm:p-4 border-b border-gray-200 text-center">
                 {fb.proof_file ? (
                   <button
                     onClick={() => fb.proof_file && setModalImage(fb.proof_file)}
-                    className="text-indigo-600 hover:text-indigo-800 font-medium underline transition-colors duration-200"
+                    className="text-indigo-600 hover:text-indigo-800 font-medium underline transition-colors duration-200 text-xs sm:text-sm"
                   >
                     View Proof
                   </button>
@@ -537,8 +536,8 @@ const filterRequests = () => {
                   "-"
                 )}
               </td>
-              <td className="p-4 border-b border-gray-200">{new Date(fb.submitted_at).toLocaleString()}</td>
-              <td className="p-4 border-b border-gray-200">
+              <td className="p-2 sm:p-4 border-b border-gray-200">{new Date(fb.submitted_at).toLocaleString()}</td>
+              <td className="p-2 sm:p-4 border-b border-gray-200">
                 {fb.responded_at ? new Date(fb.responded_at).toLocaleString() : "-"}
               </td>
             </tr>

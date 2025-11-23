@@ -81,7 +81,7 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-200 p-4 flex gap-4 text-black">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to-black p-4 flex gap-4">
       {/* Sidebar */}
       <div
         className={`${
