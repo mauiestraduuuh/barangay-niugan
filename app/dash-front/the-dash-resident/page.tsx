@@ -33,6 +33,7 @@ interface Announcement {
 export default function Dashboard() {
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [activeItem, setActiveItem] = useState("the-dash-resident");
   const [resident, setResident] = useState<Resident | null>(null);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
 
@@ -86,10 +87,11 @@ export default function Dashboard() {
       <div
         className={`${
           sidebarOpen ? "w-64" : "w-16"
-        } bg-gray-50 shadow-lg rounded-xl transition-all duration-300 ease-in-out flex flex-col fixed inset-y-0 left-0 z-50 md:static`}
+        } bg-gray-50 shadow-lg rounded-xl transition-all duration-300 ease-in-out flex flex-col 
+        ${sidebarOpen ? "fixed inset-y-0 left-0 z-50 md:static md:translate-x-0" : "hidden md:flex"}`}
       >
         {/* Logo + Close */}
-        <div className="p-4 flex items-center justify-center relative">
+        <div className="p-4 flex items-center justify-center">
           <img
             src="/niugan-logo.png"
             alt="Company Logo"
@@ -97,7 +99,6 @@ export default function Dashboard() {
               sidebarOpen ? "w-30 h-30" : "w-8.5 h-8.5"
             }`}
           />
-
           <button
             onClick={toggleSidebar}
             className="absolute top-3 right-3 text-black hover:text-red-700 focus:outline-none md:hidden"
@@ -105,50 +106,59 @@ export default function Dashboard() {
             <XMarkIcon className="w-6 h-6" />
           </button>
         </div>
+          
 
         {/* Navigation */}
         <nav className="flex-1 mt-6">
           <ul>
-            {features.map(({ name, label, icon: Icon }) => {
-              const href = `/dash-front/${name}`;
-              const isActive = name === "the-dash-resident";
-              return (
-                <li key={name} className="mb-2">
-                  <Link href={href}>
+            {features.map(({ name, label, icon: Icon }) => (
+              <li key={name} className="mb-2">
+                <Link
+                  href={`/dash-front/${name}`}
+                  onClick={() => setActiveItem(name)}
+                  className={`relative flex items-center w-full px-4 py-2 text-left group transition-colors duration-200 ${
+                    activeItem === name
+                      ? "text-red-700 font-semibold"
+                      : "text-black hover:text-red-700"
+                  }`}
+                >
+                  {activeItem === name && (
+                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-700 rounded-r-full" />
+                  )}
+                  <Icon
+                    className={`w-6 h-6 mr-2 ${
+                      activeItem === name
+                        ? "text-red-700"
+                        : "text-gray-600 group-hover:text-red-700"
+                    }`}
+                  />
+                  {sidebarOpen && (
                     <span
-                      className={`relative flex items-center w-full px-4 py-2 text-left group transition-colors duration-200 ${
-                        isActive ? "text-red-700" : "text-black hover:text-red-700"
+                      className={`${
+                        activeItem === name
+                          ? "text-red-700"
+                          : "group-hover:text-red-700"
                       }`}
                     >
-                      {isActive && (
-                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-700 rounded-r-full" />
-                      )}
-                      <Icon
-                        className={`w-6 h-6 mr-2 ${
-                          isActive
-                            ? "text-red-700"
-                            : "text-gray-600 group-hover:text-red-700"
-                        }`}
-                      />
-                      {sidebarOpen && <span>{label}</span>}
+                      {label}
                     </span>
-                  </Link>
-                </li>
-              );
-            })}
+                  )}
+                </Link>
+              </li>
+            ))}
           </ul>
         </nav>
 
-        {/* Logout Button */}
-        <div className="p-4">
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-3 text-black hover:text-red-700 transition w-full text-left"
-          >
-            <ArrowRightOnRectangleIcon className="w-6 h-6" />
-            {sidebarOpen && <span>Log Out</span>}
-          </button>
-        </div>
+      {/* Functional Logout Button */}
+    <div className="p-4">
+      <button
+        onClick={handleLogout}
+        className="flex items-center gap-3 text-black hover:text-red-700 transition w-full text-left"
+      >
+        <ArrowRightOnRectangleIcon className="w-6 h-6" />
+        {sidebarOpen && <span>Log Out</span>}
+      </button>
+    </div>
 
         {/* Sidebar Toggle (desktop only) */}
         <div className="p-4 flex justify-center hidden md:flex">
@@ -167,32 +177,22 @@ export default function Dashboard() {
 
       {/* Overlay (Mobile) */}
       {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
-          onClick={toggleSidebar}
-        ></div>
+        <div className="fixed inset-0 bg-white/75 z-40 md:hidden" onClick={toggleSidebar}></div>
       )}
 
       {/* Main Section */}
       <div className="flex-1 flex flex-col gap-4">
         {/* Header */}
-        <header className="bg-gray-50 shadow-sm p-4 flex justify-between items-center rounded-xl">
+      {/* Header */}
+         <header className="bg-gray-50 shadow-sm p-4 flex justify-between items-center rounded-xl text-black">
           <button
             onClick={toggleSidebar}
             className="block md:hidden text-black hover:text-red-700 focus:outline-none"
           >
             <Bars3Icon className="w-6 h-6" />
           </button>
-          <h1 className="text-xl font-semibold text-black">Resident Dashboard</h1>
-          <div className="flex items-center space-x-4">
-            <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center shadow-sm">
-              <img
-                src={resident?.photo_url || "/default-profile.png"}
-                alt="Profile"
-                className="w-8 h-8 rounded-full object-cover"
-              />
-            </div>
-          </div>
+          <h1 className="text-large font-bold ">Resident Dashboard</h1>
+          <div className="flex items-center space-x-4"></div>
         </header>
 
         {/* Main Content */}
@@ -212,7 +212,7 @@ export default function Dashboard() {
 
           <section>
             <header className="mb-6">
-              <h2 className="text-3xl font-semibold">Announcements</h2>
+              <h3 className="text-xl font-semibold">Announcements</h3>
             </header>
 
             {announcements.length === 0 ? (
