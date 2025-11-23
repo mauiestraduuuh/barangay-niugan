@@ -3,35 +3,22 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import NotificationDropdown from "../../components/NotificationDropdown";
 import {
   BellIcon,
   UserIcon,
   HomeIcon,
   ClipboardDocumentIcon,
-  ChatBubbleLeftEllipsisIcon,
-  ChartBarIcon,
   MegaphoneIcon,
   Bars3Icon,
   ChevronLeftIcon,
   ChevronRightIcon,
-  XMarkIcon,
   KeyIcon,
+  XMarkIcon,
   ArrowRightOnRectangleIcon,
   PlusIcon,
   PencilIcon,
   TrashIcon,
-  UsersIcon,
 } from "@heroicons/react/24/outline";
-
-// Notification type
-interface Notification {
-  notification_id: number;
-  type: string;
-  message: string;
-  is_read: boolean;
-  created_at: string;
-}
 
 // Announcement type
 interface Announcement {
@@ -45,7 +32,7 @@ interface Announcement {
 
 export default function ManageAnnouncements() {
   const router = useRouter();
-  const [activeItem, setActiveItem] = useState("annoucement");
+  const [activeItem, setActiveItem] = useState("announcement");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(false);
@@ -57,29 +44,31 @@ export default function ManageAnnouncements() {
     content: "",
     is_public: true,
   });
-  const [filterType, setFilterType] = useState<"active" | "expired">("active"); // Added filter state
+  const [showExpired, setShowExpired] = useState(false); // toggle for active/expired
 
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
   const features = [
-    { name: "the-dash-admin", label: "Home", icon: HomeIcon },
-    { name: "admin-profile", label: "Manage Profile", icon: UserIcon },
+    { name: "the-dash-staff", label: "Home", icon: HomeIcon },
+    { name: "staff-profile", label: "Manage Profile", icon: UserIcon },
     { name: "registration-request", label: "Registration Requests", icon: ClipboardDocumentIcon },
     { name: "registration-code", label: "Registration Code", icon: KeyIcon },
     { name: "certificate-request", label: "Certificate Requests", icon: ClipboardDocumentIcon },
-    { name: "feedback", label: "Feedback", icon: ChatBubbleLeftEllipsisIcon },
-    { name: "staff-acc", label: "Staff Accounts", icon: UsersIcon },
     { name: "announcement", label: "Announcements", icon: MegaphoneIcon },
-    { name: "reports", label: "Reports", icon: ChartBarIcon },
   ];
 
   // Fetch announcements
-  const fetchAnnouncements = async (type: "active" | "expired" = "active") => {
+  useEffect(() => {
+    fetchAnnouncements();
+  }, []);
+
+  const fetchAnnouncements = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/admin/announcement?type=${type}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+      const res = await fetch("/api/staff/announcement", {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
       if (!res.ok) {
         console.error("Fetch failed", res.status, await res.text());
         throw new Error("Failed to fetch announcements");
@@ -93,11 +82,6 @@ export default function ManageAnnouncements() {
       setLoading(false);
     }
   };
-
-  // Fetch on load or filter change
-  useEffect(() => {
-    fetchAnnouncements(filterType);
-  }, [filterType]);
 
   // Form changes
   const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -118,9 +102,9 @@ export default function ManageAnnouncements() {
       const method = editingAnnouncement ? "PUT" : "POST";
       const body = editingAnnouncement
         ? { id: editingAnnouncement.announcement_id, ...formData }
-        : { ...formData, posted_by: 1 };
+        : formData;
 
-      const res = await fetch("/api/admin/announcement", {
+      const res = await fetch("/api/staff/announcement", {
         method,
         headers: {
           "Content-Type": "application/json",
@@ -135,7 +119,7 @@ export default function ManageAnnouncements() {
       setShowModal(false);
       setEditingAnnouncement(null);
       setFormData({ title: "", content: "", is_public: true });
-      fetchAnnouncements(filterType);
+      fetchAnnouncements();
     } catch (error) {
       console.error("Submit error:", error);
       setMessage("Failed to save announcement");
@@ -162,7 +146,7 @@ export default function ManageAnnouncements() {
 
     setLoading(true);
     try {
-      const res = await fetch("/api/admin/announcement", {
+      const res = await fetch("/api/staff/announcement", {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
@@ -174,7 +158,7 @@ export default function ManageAnnouncements() {
       if (!res.ok) throw new Error(await res.text());
 
       setMessage("Announcement deleted");
-      fetchAnnouncements(filterType);
+      fetchAnnouncements();
     } catch (error) {
       console.error("Delete error:", error);
       setMessage("Failed to delete announcement");
@@ -185,15 +169,22 @@ export default function ManageAnnouncements() {
 
   // Logout
   const handleLogout = () => {
-    if (window.confirm("Are you sure you want to log out?")) {
-      localStorage.removeItem("token");
-      router.push("/auth-front/login");
-    }
+    localStorage.removeItem("token");
+    router.push("/auth-front/login");
   };
 
+  // Filter announcements for Active / Expired
+  const fourteenDaysAgo = new Date();
+  fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
+
+  const filteredAnnouncements = announcements.filter(a => {
+    const postedDate = new Date(a.posted_at);
+    return showExpired ? postedDate < fourteenDaysAgo : postedDate >= fourteenDaysAgo;
+  });
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to-slate-50 p-4 flex gap-4">
- {/* Sidebar */}
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to-black p-4 flex gap-4">
+      {/* Sidebar */}
       <div
         className={`${
           sidebarOpen ? "w-64" : "w-16"
@@ -216,7 +207,6 @@ export default function ManageAnnouncements() {
             <XMarkIcon className="w-6 h-6" />
           </button>
         </div>
-          
 
         {/* Navigation */}
         <nav className="flex-1 mt-6">
@@ -224,7 +214,7 @@ export default function ManageAnnouncements() {
             {features.map(({ name, label, icon: Icon }) => (
               <li key={name} className="mb-2">
                 <Link
-                  href={`/admin-front/${name}`}
+                  href={`/staff-front/${name}`}
                   onClick={() => setActiveItem(name)}
                   className={`relative flex items-center w-full px-4 py-2 text-left group transition-colors duration-200 ${
                     activeItem === name
@@ -259,16 +249,16 @@ export default function ManageAnnouncements() {
           </ul>
         </nav>
 
-      {/* Functional Logout Button */}
-    <div className="p-4">
-      <button
-        onClick={handleLogout}
-        className="flex items-center gap-3 text-black hover:text-red-700 transition w-full text-left"
-      >
-        <ArrowRightOnRectangleIcon className="w-6 h-6" />
-        {sidebarOpen && <span>Log Out</span>}
-      </button>
-    </div>
+        {/* Functional Logout Button */}
+        <div className="p-4">
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-3 text-black hover:text-red-700 transition w-full text-left"
+          >
+            <ArrowRightOnRectangleIcon className="w-6 h-6" />
+            {sidebarOpen && <span>Log Out</span>}
+          </button>
+        </div>
 
         {/* Sidebar Toggle (desktop only) */}
         <div className="p-4 flex justify-center hidden md:flex">
@@ -288,7 +278,7 @@ export default function ManageAnnouncements() {
       {/* Mobile Overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-white/80 z-40 md:hidden"
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
           onClick={toggleSidebar}
         ></div>
       )}
@@ -296,11 +286,16 @@ export default function ManageAnnouncements() {
       {/* Main Section */}
       <div className="flex-1 flex flex-col gap-4">
         <header className="bg-gray-50 shadow-sm p-4 flex justify-between items-center rounded-xl text-black">
-          <button onClick={toggleSidebar} className="block md:hidden text-black hover:text-red-700 focus:outline-none">
+          <button
+            onClick={toggleSidebar}
+            className="block md:hidden text-black hover:text-red-700 focus:outline-none"
+          >
             <Bars3Icon className="w-6 h-6" />
           </button>
-          <h1 className="text-large font-bold ">Manage Announcements</h1>
+          <h1 className="text-large font-bold">Manage Announcements</h1>
+          <div className="flex items-center space-x-4"></div>
         </header>
+
         <main className="flex-1 bg-gray-50 rounded-xl p-6 shadow-sm overflow-auto text-black">
           {message && (
             <p className={`text-center p-2 rounded mb-4 ${message.includes("success") ? "bg-green-100" : "bg-red-100"}`}>
@@ -308,50 +303,61 @@ export default function ManageAnnouncements() {
             </p>
           )}
 
-          {/* Announcement History Header + Filter Buttons */}
+          {/* Toggle Active / Expired + Add Button */}
           <div className="flex justify-between items-center mb-6">
-            <div className="flex items-center gap-4">
-              <h3 className="text-large font-semibold text-black">Announcement History</h3>
+            <h3 className="text-large font-semibold text-black">Announcement History</h3>
+            <div className="flex gap-2">
               <button
-                onClick={() => setFilterType("active")}
-                className={`px-3 py-1 rounded ${filterType === "active" ? "bg-red-700 text-white" : "bg-gray-200 text-black"}`}
+                onClick={() => setShowExpired(false)}
+                className={`px-4 py-2 rounded ${!showExpired ? "bg-red-500 text-white" : "bg-gray-300 text-black"}`}
               >
                 Active
               </button>
               <button
-                onClick={() => setFilterType("expired")}
-                className={`px-3 py-1 rounded ${filterType === "expired" ? "bg-red-700 text-white" : "bg-gray-200 text-black"}`}
+                onClick={() => setShowExpired(true)}
+                className={`px-4 py-2 rounded ${showExpired ? "bg-red-500 text-white" : "bg-gray-300 text-black"}`}
               >
                 Expired
               </button>
+              <button
+                onClick={() => {
+                  setEditingAnnouncement(null);
+                  setFormData({ title: "", content: "", is_public: true });
+                  setShowModal(true);
+                }}
+                className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition"
+              >
+                <PlusIcon className="w-5 h-5" /> Add Announcement
+              </button>
             </div>
-            <button
-              onClick={() => { setEditingAnnouncement(null); setFormData({ title: "", content: "", is_public: true }); setShowModal(true); }}
-              className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition"
-            >
-              <PlusIcon className="w-5 h-5 text-black" /> Add Announcement
-            </button>
           </div>
 
-          {/* Announcement List */}
           {loading ? (
             <div className="text-center py-10 text-black">Loading...</div>
-          ) : announcements.length === 0 ? (
-            <div className="text-center py-10 text-black">No announcements yet.</div>
+          ) : filteredAnnouncements.length === 0 ? (
+            <div className="text-center py-10 text-black">No announcements found.</div>
           ) : (
             <div className="space-y-4">
-              {announcements.map(a => (
+              {filteredAnnouncements.map(a => (
                 <div key={a.announcement_id} className="bg-white p-6 rounded-lg shadow-md text-black">
                   <div className="flex justify-between items-start mb-4">
                     <div>
                       <h3 className="text-xl font-semibold text-black">{a.title}</h3>
-                      <p className="text-sm text-black">Posted on {new Date(a.posted_at).toLocaleDateString()} • {a.is_public ? "Public" : "Private"}</p>
+                      <p className="text-sm text-black">
+                        Posted on {new Date(a.posted_at).toLocaleDateString()} • {a.is_public ? "Public" : "Private"}
+                      </p>
                     </div>
                     <div className="flex gap-2">
-                      <button onClick={() => handleEdit(a)} className="text-black hover:text-gray-800 p-2 rounded transition">
+                      <button 
+                        onClick={() => handleEdit(a)} 
+                        className="text-black hover:text-gray-800 p-2 rounded transition"
+                      >
                         <PencilIcon className="w-5 h-5" />
                       </button>
-                      <button onClick={() => handleDelete(a.announcement_id)} className="text-black hover:text-gray-800 p-2 rounded transition">
+                      <button 
+                        onClick={() => handleDelete(a.announcement_id)} 
+                        className="text-black hover:text-gray-800 p-2 rounded transition"
+                      >
                         <TrashIcon className="w-5 h-5" />
                       </button>
                     </div>
@@ -368,23 +374,57 @@ export default function ManageAnnouncements() {
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md text-black">
-            <h3 className="text-xl font-semibold mb-4">{editingAnnouncement ? "Edit Announcement" : "Add Announcement"}</h3>
+            <h3 className="text-xl font-semibold mb-4">
+              {editingAnnouncement ? "Edit Announcement" : "Add Announcement"}
+            </h3>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
-                <input type="text" name="title" value={formData.title} onChange={handleFormChange} required className="w-full border border-gray-300 p-2 rounded focus:ring-2 focus:ring-red-500" />
+                <input 
+                  type="text" 
+                  name="title" 
+                  value={formData.title} 
+                  onChange={handleFormChange} 
+                  required 
+                  className="w-full border border-gray-300 p-2 rounded focus:ring-2 focus:ring-red-500" 
+                />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Content</label>
-                <textarea name="content" value={formData.content} onChange={handleFormChange} required rows={4} className="w-full border border-gray-300 p-2 rounded focus:ring-2 focus:ring-red-500" />
+                <textarea 
+                  name="content" 
+                  value={formData.content} 
+                  onChange={handleFormChange} 
+                  required 
+                  rows={4} 
+                  className="w-full border border-gray-300 p-2 rounded focus:ring-2 focus:ring-red-500" 
+                />
               </div>
               <div className="flex items-center">
-                <input type="checkbox" name="is_public" checked={formData.is_public} onChange={handleFormChange} className="mr-2" />
+                <input 
+                  type="checkbox" 
+                  name="is_public" 
+                  checked={formData.is_public} 
+                  onChange={handleFormChange} 
+                  className="mr-2" 
+                />
                 <label className="text-sm font-medium text-gray-700">Public</label>
               </div>
               <div className="flex gap-4">
-                <button type="submit" disabled={loading} className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded transition disabled:opacity-50">{loading ? "Saving..." : editingAnnouncement ? "Update" : "Create"}</button>
-                <button type="button" onClick={() => setShowModal(false)} className="bg-gray-300 hover:bg-gray-400 text-black px-4 py-2 rounded transition">Cancel</button>
+                <button 
+                  type="submit" 
+                  disabled={loading} 
+                  className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded transition disabled:opacity-50"
+                >
+                  {loading ? "Saving..." : editingAnnouncement ? "Update" : "Create"}
+                </button>
+                <button 
+                  type="button" 
+                  onClick={() => setShowModal(false)} 
+                  className="bg-gray-300 hover:bg-gray-400 text-black px-4 py-2 rounded transition"
+                >
+                  Cancel
+                </button>
               </div>
             </form>
           </div>

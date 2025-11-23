@@ -70,14 +70,13 @@ export default function RegisterPage() {
         return;
       }
 
-      // If backend returns a reference number, set it
       if (data.request?.reference_number) {
         setReferenceNumber(data.request.reference_number);
         setMessage(
           `Registration submitted successfully! Your reference number is ${data.request.reference_number}`
         );
 
-        // Automatically generate PDF
+        // Generate PDF automatically
         const doc = new jsPDF();
         doc.setFontSize(16);
         doc.text("Registration Reference Number", 20, 20);
@@ -120,37 +119,48 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center bg-[linear-gradient(90deg,rgba(255,0,0,1)_0%,rgba(0,0,0,1)_50%,rgba(255,255,255,1)_100%)] h-screen">
+    <div className="min-h-screen bg-gradient-to-br from-black via-red-900 to-black flex items-center justify-center p-4">
       <div className="relative z-10 bg-black/80 backdrop-blur-lg shadow-2xl max-w-4xl w-full rounded-2xl p-8 border border-white/40 flex flex-col md:flex-row gap-8">
         <div className="flex-1 flex flex-col justify-center text-center md:text-left">
           <h1 className="text-3xl font-bold font-poppins text-white mb-3">
             Register
           </h1>
           <p className="text-white text-sm leading-relaxed">
-            Fill in your details to keep our community database updated and
-            accessible.
+            Fill in your details to keep our community database updated and accessible.
           </p>
         </div>
 
         <div className="flex-1 bg-white rounded-xl p-5 shadow-md">
+          {/* MESSAGE */}
           {message && (
-            <p
-              className={`mb-4 text-center text-sm font-medium ${
-                message.toLowerCase().includes("household") ||
-                message.toLowerCase().includes("failed")
-                  ? "text-red-600"
-                  : "text-green-600"
-              }`}
-            >
-              {message}
-            </p>
+            <div className="mb-4 text-center text-sm font-medium">
+              <p
+                className={`${
+                  message.toLowerCase().includes("household") ||
+                  message.toLowerCase().includes("failed")
+                    ? "text-red-600"
+                    : "text-green-600"
+                }`}
+              >
+                {message}
+              </p>
+
+              {/* 'Check Status' button if registration successful */}
+              {!message.toLowerCase().includes("failed") &&
+                !message.toLowerCase().includes("household") && (
+                  <a
+                    href="http://localhost:3000/auth-front/no-email"
+                    className="mt-2 inline-block px-4 py-2 bg-red-600 text-white text-sm rounded-md hover:bg-red-700 transition"
+                  >
+                    Check Status
+                  </a>
+                )}
+            </div>
           )}
 
-          <form
-            onSubmit={handleSubmit}
-            className="grid grid-cols-2 gap-3 text-sm"
-          >
-            {/* FORM INPUTS */}
+          {/* FORM */}
+          <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-3 text-sm">
+            {/* --- form inputs --- */}
             <input
               type="text"
               name="first_name"
@@ -222,7 +232,7 @@ export default function RegisterPage() {
               className="col-span-2 px-3 py-2 rounded-md border border-gray-300 focus:ring-2 focus:ring-red-600 focus:outline-none resize-none"
             ></textarea>
 
-            {/* Head of Family logic */}
+            {/* Head of Family */}
             <div className="col-span-2 text-xs text-gray-700">
               <label className="block font-medium mb-1">
                 Are you head of the family?
@@ -252,7 +262,6 @@ export default function RegisterPage() {
                 </label>
               </div>
 
-              {/* Show registration code input if head */}
               {form.is_head_of_family && (
                 <input
                   type="text"
@@ -265,7 +274,6 @@ export default function RegisterPage() {
                 />
               )}
 
-              {/* Show household number only if NOT head */}
               {!form.is_head_of_family && (
                 <input
                   type="text"
@@ -315,6 +323,7 @@ export default function RegisterPage() {
               </label>
             </div>
 
+            {/* Upload Photo */}
             <div className="col-span-2">
               <label className="block text-xs font-medium mb-1">Upload Photo</label>
               <input

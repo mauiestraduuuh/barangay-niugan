@@ -67,8 +67,8 @@ interface Staff {
 
 export default function StaffAccounts() {
   const router = useRouter();
+  const [activeItem, setActiveItem] = useState("staff-acc");
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [staffList, setStaffList] = useState<Staff[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedStaff, setSelectedStaff] = useState<Staff | null>(null);
@@ -90,22 +90,11 @@ export default function StaffAccounts() {
   ];
 
   useEffect(() => {
-    fetchNotifications();
     fetchStaff();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const fetchNotifications = async () => {
-    try {
-      const res = await fetch("/api/dash/notifications");
-      if (res.ok) {
-        const data = await res.json();
-        setNotifications(data);
-      }
-    } catch (error) {
-      console.error("Notification fetch failed:", error);
-    }
-  };
+
 
   const fetchStaff = async () => {
     try {
@@ -187,16 +176,13 @@ export default function StaffAccounts() {
   }, [searchQuery]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to-slate-50 p-4 flex gap-4 text-black">
-      {/* Sidebar */}
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to-black p-4 flex gap-4">
+    {/* Sidebar */}
       <div
         className={`${
           sidebarOpen ? "w-64" : "w-16"
-        } bg-gray-50 shadow-lg rounded-xl transition-all duration-300 ease-in-out flex flex-col ${
-          sidebarOpen ? "block" : "hidden"
-        } md:block md:relative md:translate-x-0 ${
-          sidebarOpen ? "fixed inset-y-0 left-0 z-50 md:static md:translate-x-0" : ""
-        }`}
+        } bg-gray-50 shadow-lg rounded-xl transition-all duration-300 ease-in-out flex flex-col 
+        ${sidebarOpen ? "fixed inset-y-0 left-0 z-50 md:static md:translate-x-0" : "hidden md:flex"}`}
       >
         {/* Logo + Close */}
         <div className="p-4 flex items-center justify-center">
@@ -207,7 +193,6 @@ export default function StaffAccounts() {
               sidebarOpen ? "w-30 h-30" : "w-8.5 h-8.5"
             }`}
           />
-
           <button
             onClick={toggleSidebar}
             className="absolute top-3 right-3 text-black hover:text-red-700 focus:outline-none md:hidden"
@@ -215,57 +200,59 @@ export default function StaffAccounts() {
             <XMarkIcon className="w-6 h-6" />
           </button>
         </div>
-{/* Navigation */}
- <nav className="flex-1 mt-6">
-    <ul>
-      {features.map(({ name, label, icon: Icon }) => {
-        const href = `/admin-front/${name}`;
-        const isActive = name === "staff-acc";
-        return (
-          <li key={name} className="mb-2">
-            <Link href={href}>
-              <span
-                className={`relative flex items-center w-full px-4 py-2 text-left group transition-colors duration-200 ${
-                  isActive
-                    ? "text-red-700 "
-                    : "text-black hover:text-red-700"
-                }`}
-              >
-                {isActive && (
-                  <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-700 rounded-r-full" />
-                )}
-                <Icon
-                  className={`w-6 h-6 mr-2 ${
-                    isActive ? "text-red-700" : "text-gray-600 group-hover:text-red-700"
-                  }`}
-                />
-                {sidebarOpen && (
-                  <span
-                    className={`${
-                      isActive ? "text-red-700" : "group-hover:text-red-700"
-                    }`}
-                  >
-                    {label}
-                  </span>
-                )}
-              </span>
-            </Link>
-          </li>
-        );
-      })}
-    </ul>
-  </nav>
+          
 
-        {/* Logout Button */}
-        <div className="p-4">
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-3 text-black hover:text-red-700 transition w-full text-left"
-          >
-            <ArrowRightOnRectangleIcon className="w-6 h-6" />
-            {sidebarOpen && <span>Log Out</span>}
-          </button>
-        </div>
+        {/* Navigation */}
+        <nav className="flex-1 mt-6">
+          <ul>
+            {features.map(({ name, label, icon: Icon }) => (
+              <li key={name} className="mb-2">
+                <Link
+                  href={`/admin-front/${name}`}
+                  onClick={() => setActiveItem(name)}
+                  className={`relative flex items-center w-full px-4 py-2 text-left group transition-colors duration-200 ${
+                    activeItem === name
+                      ? "text-red-700 font-semibold"
+                      : "text-black hover:text-red-700"
+                  }`}
+                >
+                  {activeItem === name && (
+                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-700 rounded-r-full" />
+                  )}
+                  <Icon
+                    className={`w-6 h-6 mr-2 ${
+                      activeItem === name
+                        ? "text-red-700"
+                        : "text-gray-600 group-hover:text-red-700"
+                    }`}
+                  />
+                  {sidebarOpen && (
+                    <span
+                      className={`${
+                        activeItem === name
+                          ? "text-red-700"
+                          : "group-hover:text-red-700"
+                      }`}
+                    >
+                      {label}
+                    </span>
+                  )}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
+
+      {/* Functional Logout Button */}
+    <div className="p-4">
+      <button
+        onClick={handleLogout}
+        className="flex items-center gap-3 text-black hover:text-red-700 transition w-full text-left"
+      >
+        <ArrowRightOnRectangleIcon className="w-6 h-6" />
+        {sidebarOpen && <span>Log Out</span>}
+      </button>
+    </div>
 
         {/* Sidebar Toggle (desktop only) */}
         <div className="p-4 flex justify-center hidden md:flex">
@@ -282,24 +269,25 @@ export default function StaffAccounts() {
         </div>
       </div>
 
-      {/* Overlay (Mobile) */}
+      {/* Mobile Overlay */}
       {sidebarOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden" onClick={toggleSidebar}></div>
+        <div
+          className="fixed inset-0 bg-white/80 z-40 md:hidden"
+          onClick={toggleSidebar}
+        ></div>
       )}
 
       {/* Main */}
-      <div className="flex-1 flex flex-col gap-4">
-        <header className="bg-white shadow-sm p-4 flex justify-between items-center rounded-xl">
-          <button onClick={toggleSidebar} className="block md:hidden hover:text-red-700">
+      <div className="flex-1 flex flex-col gap-4 w-full overflow-hidden text-black">
+        <header className="bg-gray-50 shadow-sm p-4 flex justify-between items-center rounded-xl text-black">
+          <button
+            onClick={toggleSidebar}
+            className="block md:hidden text-black hover:text-red-700 focus:outline-none"
+          >
             <Bars3Icon className="w-6 h-6" />
           </button>
-          <h1 className="text-xl font-semibold">Staff Management</h1>
-          <div className="flex items-center space-x-4">
-            <NotificationDropdown notifications={notifications} />
-            <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center shadow-sm">
-              <UserIcon className="w-5 h-5" />
-            </div>
-          </div>
+          <h1 className="text-large font-bold ">Staff Management</h1>
+          <div className="flex items-center space-x-4"></div>
         </header>
 
         <input
@@ -310,13 +298,13 @@ export default function StaffAccounts() {
           onChange={(e) => setSearchQuery(e.target.value)}
         />
 
-        <main className="bg-white p-6 rounded-xl shadow-md overflow-x-auto">
+         <main className="bg-gray-50 p-4 sm:p-6 rounded-xl shadow-sm overflow-auto">
           {loading ? (
             <p className="text-center">Loading staff data...</p>
           ) : (
-            
-            <table className="w-full table-auto border-collapse text-left">
-              <thead>
+            <div className="overflow-x-auto w-full">
+            <table className="min-w-full border-collapse text-left bg-white shadow-sm rounded-xl overflow-hidden text-sm sm:text-base">
+              <thead className="bg-gradient-to-br from-black via-red-800 to-black text-white rounded-xl">
                 <tr className="border-b border-gray-300">
                   <th className="py-3 px-4">Staff ID</th>
                   <th className="py-3 px-4">Name</th>
@@ -364,6 +352,7 @@ export default function StaffAccounts() {
                 )}
               </tbody>
             </table>
+            </div>
           )}
         </main>
 

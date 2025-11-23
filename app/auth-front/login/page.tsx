@@ -84,7 +84,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center bg-[linear-gradient(90deg,rgba(2,0,36,1)_0%,rgba(156,11,11,1)_43%,rgba(255,255,255,1)_100%)] h-screen">
+    <div className="min-h-screen bg-gradient-to-br from-black via-red-900 to-black flex items-center justify-center p-4">
       <div className="bg-white backdrop-blur-md rounded-2xl shadow-lg flex w-[800px] overflow-hidden">
         {/* Left side */}
         <div className="w-1/2 bg-black text-white flex flex-col items-center justify-center p-10">
