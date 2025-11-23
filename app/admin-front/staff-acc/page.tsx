@@ -155,6 +155,26 @@ export default function StaffAccounts() {
     }
   };
 
+  //Pagination Logic
+  const filteredStaff = staffList.filter((s) =>
+    `${s.first_name} ${s.last_name}`.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const [ITEMS_PER_PAGE, setITEMS_PER_PAGE] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const totalPages = Math.ceil(filteredStaff.length / ITEMS_PER_PAGE);
+
+  const paginatedStaff = filteredStaff.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
+
+  // Reset page if search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to-black p-4 flex gap-4">
     {/* Sidebar */}
@@ -335,6 +355,81 @@ export default function StaffAccounts() {
             </div>
           )}
         </main>
+
+        {/*Pagination Controls */}
+        <div className="w-full mt-5 flex justify-center">
+          <div className="flex items-center gap-2 px-3 py-1.5">
+
+            {/* Prev */}
+            <button
+              onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+              disabled={currentPage === 1}
+              className="px-2 py-1 text-3xl text-gray-500 hover:text-gray-700 disabled:opacity-30"
+            >
+              ‹
+            </button>
+
+            {/* Page numbers */}
+            {Array.from({ length: totalPages }).map((_, i) => {
+              const page = i + 1;
+
+              if (
+                page === 1 ||
+                page === totalPages ||
+                (page >= currentPage - 1 && page <= currentPage + 1)
+              ) {
+                return (
+                  <button
+                    key={i}
+                    onClick={() => setCurrentPage(page)}
+                    className={`w-8 h-8 flex items-center justify-center rounded-full text-sm font-medium transition-all ${
+                      currentPage === page
+                        ? "bg-red-100 text-red-700"
+                        : "text-gray-700 hover:bg-gray-100"
+                    }`}
+                  >
+                    {page}
+                  </button>
+                );
+              }
+
+              if (page === currentPage - 2 || page === currentPage + 2) {
+                return (
+                  <div key={i} className="px-1 text-gray-400">
+                    ...
+                  </div>
+                );
+              }
+
+              return null;
+            })}
+
+            {/* Next */}
+            <button
+              onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+              disabled={currentPage === totalPages}
+              className="px-2 py-1 text-3xl text-gray-500 hover:text-gray-700 disabled:opacity-30"
+            >
+              ›
+            </button>
+
+            {/* Items per page */}
+            <select
+              value={ITEMS_PER_PAGE}
+              onChange={(e) => {
+                setCurrentPage(1);
+                setITEMS_PER_PAGE(Number(e.target.value));
+              }}
+              className="ml-3 bg-white border border-gray-300 text-sm rounded-xl px-3 py-1"
+            >
+              <option value={5}>5 / page</option>
+              <option value={10}>10 / page</option>
+              <option value={20}>20 / page</option>
+              <option value={50}>50 / page</option>
+            </select>
+
+          </div>
+        </div>
 
         {/* View Modal */}
         {showViewModal && selectedStaff && (

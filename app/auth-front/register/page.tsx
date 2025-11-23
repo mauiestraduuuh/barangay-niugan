@@ -70,14 +70,13 @@ export default function RegisterPage() {
         return;
       }
 
-      // If backend returns a reference number, set it
       if (data.request?.reference_number) {
         setReferenceNumber(data.request.reference_number);
         setMessage(
           `Registration submitted successfully! Your reference number is ${data.request.reference_number}`
         );
 
-        // Automatically generate PDF
+        // Generate PDF automatically
         const doc = new jsPDF();
         doc.setFontSize(16);
         doc.text("Registration Reference Number", 20, 20);
@@ -127,30 +126,41 @@ export default function RegisterPage() {
             Register
           </h1>
           <p className="text-white text-sm leading-relaxed">
-            Fill in your details to keep our community database updated and
-            accessible.
+            Fill in your details to keep our community database updated and accessible.
           </p>
         </div>
 
         <div className="flex-1 bg-white rounded-xl p-5 shadow-md">
+          {/* MESSAGE */}
           {message && (
-            <p
-              className={`mb-4 text-center text-sm font-medium ${
-                message.toLowerCase().includes("household") ||
-                message.toLowerCase().includes("failed")
-                  ? "text-red-600"
-                  : "text-green-600"
-              }`}
-            >
-              {message}
-            </p>
+            <div className="mb-4 text-center text-sm font-medium">
+              <p
+                className={`${
+                  message.toLowerCase().includes("household") ||
+                  message.toLowerCase().includes("failed")
+                    ? "text-red-600"
+                    : "text-green-600"
+                }`}
+              >
+                {message}
+              </p>
+
+              {/* 'Check Status' button if registration successful */}
+              {!message.toLowerCase().includes("failed") &&
+                !message.toLowerCase().includes("household") && (
+                  <a
+                    href="http://localhost:3000/auth-front/no-email"
+                    className="mt-2 inline-block px-4 py-2 bg-red-600 text-white text-sm rounded-md hover:bg-red-700 transition"
+                  >
+                    Check Status
+                  </a>
+                )}
+            </div>
           )}
 
-          <form
-            onSubmit={handleSubmit}
-            className="grid grid-cols-2 gap-3 text-sm"
-          >
-            {/* FORM INPUTS */}
+          {/* FORM */}
+          <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-3 text-sm">
+            {/* --- form inputs --- */}
             <input
               type="text"
               name="first_name"
@@ -222,7 +232,7 @@ export default function RegisterPage() {
               className="col-span-2 px-3 py-2 rounded-md border border-gray-300 focus:ring-2 focus:ring-red-600 focus:outline-none resize-none"
             ></textarea>
 
-            {/* Head of Family logic */}
+            {/* Head of Family */}
             <div className="col-span-2 text-xs text-gray-700">
               <label className="block font-medium mb-1">
                 Are you head of the family?
@@ -252,7 +262,6 @@ export default function RegisterPage() {
                 </label>
               </div>
 
-              {/* Show registration code input if head */}
               {form.is_head_of_family && (
                 <input
                   type="text"
@@ -265,7 +274,6 @@ export default function RegisterPage() {
                 />
               )}
 
-              {/* Show household number only if NOT head */}
               {!form.is_head_of_family && (
                 <input
                   type="text"
@@ -315,6 +323,7 @@ export default function RegisterPage() {
               </label>
             </div>
 
+            {/* Upload Photo */}
             <div className="col-span-2">
               <label className="block text-xs font-medium mb-1">Upload Photo</label>
               <input
