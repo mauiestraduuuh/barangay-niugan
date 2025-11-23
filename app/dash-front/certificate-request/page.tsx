@@ -297,6 +297,11 @@ const filterRequests = () => {
         </div>
       </div>
 
+            {/* Mobile Overlay */}
+      {sidebarOpen && (
+        <div className="fixed inset-0 bg-white/80 z-40 md:hidden" onClick={toggleSidebar}></div>
+      )}
+
 {/* MAIN */}
 <div className="flex-1 flex flex-col gap-4 overflow-x-auto text-xs sm:text-sm md:text-base lg:text-lg">
 

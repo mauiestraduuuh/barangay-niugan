@@ -165,15 +165,23 @@ useEffect(() => {
           </button>
         </div>
       </div>
+            {/* Mobile Overlay */}
+      {sidebarOpen && (
+        <div className="fixed inset-0 bg-white/80 z-40 md:hidden" onClick={toggleSidebar}></div>
+      )}
 
       {/* Main Section */}
       <div className="flex-1 flex flex-col gap-4">
-        {/* Header */}
-        <header className="bg-gray-50 shadow-sm p-4 flex justify-between items-center rounded-xl text-black">
-          <button onClick={toggleSidebar} className="block md:hidden text-black hover:text-red-700 focus:outline-none">
+      {/* Header */}
+         <header className="bg-gray-50 shadow-sm p-4 flex justify-between items-center rounded-xl text-black">
+          <button
+            onClick={toggleSidebar}
+            className="block md:hidden text-black hover:text-red-700 focus:outline-none"
+          >
             <Bars3Icon className="w-6 h-6" />
           </button>
-          <h1 className="text-large font-bold text-black">Resident Dashboard</h1>
+          <h1 className="text-large font-bold ">Resident Dashboard</h1>
+          <div className="flex items-center space-x-4"></div>
         </header>
 
         {/* Main Content */}
