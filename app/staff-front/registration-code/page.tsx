@@ -340,78 +340,78 @@ export default function StaffRegistrationCodePage() {
                 </tbody>
               </table>
               {/* Pagination */}
-<div className="w-full mt-4 flex justify-center">
-  <div className="flex items-center gap-2 bg-white shadow-md px-4 py-2 rounded-full border border-gray-200">
+              <div className="w-full mt-4 flex justify-center">
+                <div className="flex items-center gap-2 px-3 py-1.5 ">
 
-    {/* Prev */}
-    <button
-      onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-      disabled={currentPage === 1}
-      className="px-2 py-1 text-gray-600 hover:text-black disabled:opacity-30 text-2xl leading-none"
-    >
-      ‹
-    </button>
+                  {/* Prev */}
+                  <button
+                    onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                    disabled={currentPage === 1}
+                    className="px-2 py-1 text-3xl text-gray-600 hover:text-black disabled:opacity-30 leading-none"
+                  >
+                    ‹
+                  </button>
 
-    {/* Page numbers with ellipsis */}
-    {Array.from({ length: totalPages }).map((_, i) => {
-      const page = i + 1;
+                  {/* Page numbers with ellipsis */}
+                  {Array.from({ length: totalPages }).map((_, i) => {
+                    const page = i + 1;
 
-      if (
-        page === 1 ||
-        page === totalPages ||
-        (page >= currentPage - 1 && page <= currentPage + 1)
-      ) {
-        return (
-          <button
-            key={i}
-            onClick={() => setCurrentPage(page)}
-            className={`w-8 h-8 flex items-center justify-center rounded-full text-sm font-medium transition-all ${
-              currentPage === page
-                ? "bg-red-200 text-red-800"
-                : "text-gray-700 hover:bg-gray-100"
-            }`}
-          >
-            {page}
-          </button>
-        );
-      }
+                    if (
+                      page === 1 ||
+                      page === totalPages ||
+                      (page >= currentPage - 1 && page <= currentPage + 1)
+                    ) {
+                      return (
+                        <button
+                          key={i}
+                          onClick={() => setCurrentPage(page)}
+                          className={`w-8 h-8 flex items-center justify-center rounded-full text-sm font-medium transition-all ${
+                            currentPage === page
+                              ? "bg-red-200 text-red-800"
+                              : "text-gray-700 hover:bg-gray-100"
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      );
+                    }
 
-      if (page === currentPage - 2 || page === currentPage + 2) {
-        return (
-          <span key={i} className="px-1 text-gray-400">
-            ...
-          </span>
-        );
-      }
+                    if (page === currentPage - 2 || page === currentPage + 2) {
+                      return (
+                        <span key={i} className="px-1 text-gray-400">
+                          ...
+                        </span>
+                      );
+                    }
 
-      return null;
-    })}
+                    return null;
+                  })}
 
-    {/* Next */}
-    <button
-      onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-      disabled={currentPage === totalPages}
-      className="px-2 py-1 text-gray-600 hover:text-black disabled:opacity-30 text-2xl leading-none"
-    >
-      ›
-    </button>
+                  {/* Next */}
+                  <button
+                    onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                    disabled={currentPage === totalPages}
+                    className="px-2 py-1 text-3xl text-gray-600 hover:text-black disabled:opacity-30  leading-none"
+                  >
+                    ›
+                  </button>
 
-    {/* Rows per page */}
-    <select
-      value={itemsPerPage}
-      onChange={(e) => {
-        setItemsPerPage(Number(e.target.value));
-        setCurrentPage(1);
-      }}
-      className="ml-2 bg-white border border-gray-300 text-sm rounded-lg px-2 py-1"
-    >
-      <option value={5}>5 / page</option>
-      <option value={10}>10 / page</option>
-      <option value={20}>20 / page</option>
-      <option value={50}>50 / page</option>
-    </select>
-  </div>
-</div>
+                  {/* Rows per page */}
+                  <select
+                    value={itemsPerPage}
+                    onChange={(e) => {
+                      setItemsPerPage(Number(e.target.value));
+                      setCurrentPage(1);
+                    }}
+                    className="ml-2 bg-white border border-gray-300 text-sm rounded-lg px-2 py-1"
+                  >
+                    <option value={5}>5 / page</option>
+                    <option value={10}>10 / page</option>
+                    <option value={20}>20 / page</option>
+                    <option value={50}>50 / page</option>
+                  </select>
+                </div>
+              </div>
             </div>
           )}
         </main>

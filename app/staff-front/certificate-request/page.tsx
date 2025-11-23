@@ -494,10 +494,9 @@ export default function StaffCertificateRequestsPage() {
                   ))}
                 </tbody>
               </table>
-                              {/* PAGINATION CONTROLS */}
+        {/* PAGINATION CONTROLS */}
               <div className="w-full mt-5 flex justify-center">
-                <div className="flex items-center gap-2 bg-white shadow-md px-3 py-1.5 rounded-full border border-gray-200">
-
+                <div className="flex items-center gap-2 px-3 py-1.5 ">
                   {/* Previous Button */}
                   <button
                     onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
