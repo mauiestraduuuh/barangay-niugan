@@ -13,9 +13,11 @@ import {
   BellIcon,
   Bars3Icon,
   ChevronLeftIcon,
+  LockClosedIcon,
   ChevronRightIcon,
   XMarkIcon,
   ArrowRightOnRectangleIcon,
+  PencilIcon,
 } from "@heroicons/react/24/outline";
 
 interface ResidentProfile {
@@ -34,7 +36,7 @@ interface ResidentProfile {
 export default function ResidentProfilePage() {
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [activeItem, setActiveItem] = useState("manage-profile");
+  const [activeItem, setActiveItem] = useState("resident");
   const [profile, setProfile] = useState<ResidentProfile>({
     resident_id: 0,
     user_id: 0,
@@ -143,16 +145,13 @@ export default function ResidentProfilePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-200 p-4 flex gap-4 text-black">
-      {/* Sidebar */}
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to-black p-4 flex gap-4">
+{/* Sidebar */}
       <div
         className={`${
           sidebarOpen ? "w-64" : "w-16"
-        } bg-gray-50 shadow-lg rounded-xl transition-all duration-300 ease-in-out flex flex-col ${
-          sidebarOpen ? "block" : "hidden"
-        } md:block md:relative md:translate-x-0 ${
-          sidebarOpen ? "fixed inset-y-0 left-0 z-50 md:static md:translate-x-0" : ""
-        }`}
+        } bg-gray-50 shadow-lg rounded-xl transition-all duration-300 ease-in-out flex flex-col 
+        ${sidebarOpen ? "fixed inset-y-0 left-0 z-50 md:static md:translate-x-0" : "hidden md:flex"}`}
       >
         {/* Logo + Close */}
         <div className="p-4 flex items-center justify-center">
@@ -163,7 +162,6 @@ export default function ResidentProfilePage() {
               sidebarOpen ? "w-30 h-30" : "w-8.5 h-8.5"
             }`}
           />
-
           <button
             onClick={toggleSidebar}
             className="absolute top-3 right-3 text-black hover:text-red-700 focus:outline-none md:hidden"
@@ -171,57 +169,59 @@ export default function ResidentProfilePage() {
             <XMarkIcon className="w-6 h-6" />
           </button>
         </div>
-{/* Navigation */}
- <nav className="flex-1 mt-6">
-    <ul>
-      {features.map(({ name, label, icon: Icon }) => {
-        const href = `/dash-front/${name}`;
-        const isActive = name === "resident";
-        return (
-          <li key={name} className="mb-2">
-            <Link href={href}>
-              <span
-                className={`relative flex items-center w-full px-4 py-2 text-left group transition-colors duration-200 ${
-                  isActive
-                    ? "text-red-700 "
-                    : "text-black hover:text-red-700"
-                }`}
-              >
-                {isActive && (
-                  <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-700 rounded-r-full" />
-                )}
-                <Icon
-                  className={`w-6 h-6 mr-2 ${
-                    isActive ? "text-red-700" : "text-gray-600 group-hover:text-red-700"
-                  }`}
-                />
-                {sidebarOpen && (
-                  <span
-                    className={`${
-                      isActive ? "text-red-700" : "group-hover:text-red-700"
-                    }`}
-                  >
-                    {label}
-                  </span>
-                )}
-              </span>
-            </Link>
-          </li>
-        );
-      })}
-    </ul>
-  </nav>
+          
 
-        {/* Logout Button */}
-        <div className="p-4">
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-3 text-black hover:text-red-700 transition w-full text-left"
-          >
-            <ArrowRightOnRectangleIcon className="w-6 h-6" />
-            {sidebarOpen && <span>Log Out</span>}
-          </button>
-        </div>
+        {/* Navigation */}
+        <nav className="flex-1 mt-6">
+          <ul>
+            {features.map(({ name, label, icon: Icon }) => (
+              <li key={name} className="mb-2">
+                <Link
+                  href={`/dash-front/${name}`}
+                  onClick={() => setActiveItem(name)}
+                  className={`relative flex items-center w-full px-4 py-2 text-left group transition-colors duration-200 ${
+                    activeItem === name
+                      ? "text-red-700 font-semibold"
+                      : "text-black hover:text-red-700"
+                  }`}
+                >
+                  {activeItem === name && (
+                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-700 rounded-r-full" />
+                  )}
+                  <Icon
+                    className={`w-6 h-6 mr-2 ${
+                      activeItem === name
+                        ? "text-red-700"
+                        : "text-gray-600 group-hover:text-red-700"
+                    }`}
+                  />
+                  {sidebarOpen && (
+                    <span
+                      className={`${
+                        activeItem === name
+                          ? "text-red-700"
+                          : "group-hover:text-red-700"
+                      }`}
+                    >
+                      {label}
+                    </span>
+                  )}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
+
+      {/* Functional Logout Button */}
+    <div className="p-4">
+      <button
+        onClick={handleLogout}
+        className="flex items-center gap-3 text-black hover:text-red-700 transition w-full text-left"
+      >
+        <ArrowRightOnRectangleIcon className="w-6 h-6" />
+        {sidebarOpen && <span>Log Out</span>}
+      </button>
+    </div>
 
         {/* Sidebar Toggle (desktop only) */}
         <div className="p-4 flex justify-center hidden md:flex">
@@ -240,28 +240,22 @@ export default function ResidentProfilePage() {
 
       {/* Overlay (Mobile) */}
       {sidebarOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden" onClick={toggleSidebar}></div>
+        <div className="fixed inset-0 bg-white/75 z-40 md:hidden" onClick={toggleSidebar}></div>
       )}
 
     {/* Main Content */}
     <div className="flex-1 flex flex-col gap-4">
       {/* Header */}
-      <header className="bg-gray-50 shadow-sm p-4 flex justify-between items-center rounded-xl">
-        <button
-          onClick={toggleSidebar}
-          className="block md:hidden text-black hover:text-red-700 focus:outline-none"
-        >
-          <Bars3Icon className="w-6 h-6" />
-        </button>
-        <h1 className="text-xl font-semibold text-black">Manage Profile</h1>
-        <div className="flex items-center space-x-4">
-          <img
-            src={profile.photo_url || "/default-profile.png"}
-            alt="Profile"
-            className="w-8 h-8 rounded-full object-cover border"
-          />
-        </div>
-      </header>
+         <header className="bg-gray-50 shadow-sm p-4 flex justify-between items-center rounded-xl text-black">
+          <button
+            onClick={toggleSidebar}
+            className="block md:hidden text-black hover:text-red-700 focus:outline-none"
+          >
+            <Bars3Icon className="w-6 h-6" />
+          </button>
+          <h1 className="text-large font-bold ">Manage Profile</h1>
+          <div className="flex items-center space-x-4"></div>
+        </header>
 
         {/* Body */}
         <main className="bg-gray-50 rounded-xl p-6 shadow-sm overflow-auto">
@@ -269,143 +263,222 @@ export default function ResidentProfilePage() {
             <p className="text-center text-white bg-gray-900 p-2 rounded mb-4">{message}</p>
           )}
 
-          {activeSection === "overview" && (
-            <div className="text-center space-y-4">
-              <img
-                src={profile.photo_url || "/default-profile.png"}
-                alt="Profile"
-                className="w-32 h-32 rounded-full mx-auto border object-cover"
-              />
-              <h2 className="text-2xl font-bold text-gray-800">
-                {profile.first_name} {profile.last_name}
-              </h2>
-              <p className="text-gray-600">{profile.email || "No email provided"}</p>
-              <p className="text-gray-600">{profile.address || "No address provided"}</p>
-              <div className="flex justify-center gap-4 mt-6">
-                <button
+           {activeSection === "overview" && (
+            <div className="space-y-8">
+              <div className="flex flex-col md:flex-row items-center md:items-start bg-white shadow-lg rounded-2xl p-8 border border-gray-100 gap-6">
+                <div className="flex-shrink-0 relative">
+                  <img
+                    src={profile.photo_url || "/default-profile.png"}
+                    alt="Profile"
+                    className="w-36 h-36 rounded-full object-cover border-2 border-red-500 shadow-md"
+                  />
+                </div>
+                <div className="flex-1 text-center md:text-left">
+                  <h2 className="text-3xl font-bold text-black">{profile.first_name} {profile.last_name}</h2>
+                  <div className="mt-4 flex flex-wrap gap-3 justify-center md:justify-start">
+                    <button
+                      onClick={() => setActiveSection("password")}
+                      className="flex items-center gap-2 bg-gray-900 hover:bg-gray-800 text-white font-semibold px-5 py-2 rounded-full shadow-sm transition"
+                    >
+                      <LockClosedIcon className="w-5 h-5" /> Change Password
+                    </button>
+                  <button
                   onClick={() => setActiveSection("edit")}
-                  className="bg-red-500 hover:bg-red-600 text-white font-semibold px-6 py-3 rounded-lg transition"
+                  className="flex items-center gap-2 bg-red-500 hover:bg-red-600 text-white font-semibold px-5 py-2 rounded-full shadow-sm transition"
                 >
-                  Edit Information
+                  <PencilIcon className="w-5 h-5" /> Edit Information
                 </button>
-                <button
-                  onClick={() => setActiveSection("password")}
-                  className="bg-gray-900 hover:bg-gray-800 text-white font-semibold px-6 py-3 rounded-lg transition"
-                >
-                  Change Password
-                </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white shadow-lg rounded-2xl p-8 border border-gray-100">
+                <h3 className="text-xl font-semibold text-black mb-6">Personal Details</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {[
+                    { label: "User ID", value: profile.user_id },
+                    { label: "Birthdate", value: profile.birthdate },
+                    { label: "Email", value: profile.email },
+                    { label: "Address", value: profile.address },
+                    { label: "Contact Number", value: profile.contact_no },
+                  ].map(({ label, value }) => (
+                    <div key={label} className="p-4 bg-gray-50 hover:bg-gray-100 rounded-lg transition border border-gray-200">
+                      <p className="text-xs font-semibold text-black uppercase tracking-wide">{label}</p>
+                      <p className="text-black mt-1">{value}</p>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           )}
 
-          {activeSection === "edit" && (
-            <div className="space-y-6">
-              <h2 className="text-2xl font-semibold mb-4">Edit Information</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <input
-                  type="text"
-                  name="first_name"
-                  value={profile.first_name}
-                  onChange={handleProfileChange}
-                  placeholder="First Name"
-                  className="border border-gray-300 p-3 rounded-md focus:ring-2 focus:ring-red-500"
-                />
-                <input
-                  type="text"
-                  name="last_name"
-                  value={profile.last_name}
-                  onChange={handleProfileChange}
-                  placeholder="Last Name"
-                  className="border border-gray-300 p-3 rounded-md focus:ring-2 focus:ring-red-500"
-                />
-                <input
-                  type="date"
-                  name="birthdate"
-                  value={profile.birthdate?.split("T")[0]}
-                  onChange={handleProfileChange}
-                  className="border border-gray-300 p-3 rounded-md focus:ring-2 focus:ring-red-500"
-                />
-                <input
-                  type="text"
-                  name="contact_no"
-                  value={profile.contact_no || ""}
-                  onChange={handleProfileChange}
-                  placeholder="Contact Number"
-                  className="border border-gray-300 p-3 rounded-md focus:ring-2 focus:ring-red-500"
-                />
-                <input
-                  type="text"
-                  name="address"
-                  value={profile.address || ""}
-                  onChange={handleProfileChange}
-                  placeholder="Address"
-                  className="border border-gray-300 p-3 rounded-md focus:ring-2 focus:ring-red-500"
-                />
-              </div>
-              <div className="flex gap-3">
-                <button
-                  onClick={updateProfile}
-                  disabled={loading}
-                  className="bg-red-500 hover:bg-red-600 text-white py-3 px-6 rounded-md transition"
-                >
-                  {loading ? "Saving..." : "Save Changes"}
-                </button>
-                <button
-                  onClick={() => setActiveSection("overview")}
-                  className="bg-gray-300 hover:bg-gray-400 text-black py-3 px-6 rounded-md transition"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          )}
 
-          {activeSection === "password" && (
-            <div className="space-y-6">
-              <h2 className="text-2xl font-semibold mb-4">Change Password</h2>
-              <div className="space-y-4">
-                <input
-                  type="password"
-                  name="current_password"
-                  value={passwords.current_password}
-                  onChange={handlePasswordChange}
-                  placeholder="Current Password"
-                  className="border border-gray-300 p-3 rounded-md focus:ring-2 focus:ring-red-500"
-                />
-                <input
-                  type="password"
-                  name="new_password"
-                  value={passwords.new_password}
-                  onChange={handlePasswordChange}
-                  placeholder="New Password"
-                  className="border border-gray-300 p-3 rounded-md focus:ring-2 focus:ring-red-500"
-                />
-                <input
-                  type="password"
-                  name="confirm_password"
-                  value={passwords.confirm_password}
-                  onChange={handlePasswordChange}
-                  placeholder="Confirm New Password"
-                  className="border border-gray-300 p-3 rounded-md focus:ring-2 focus:ring-red-500"
-                />
-              </div>
-              <div className="flex gap-3">
-                <button
-                  onClick={changePassword}
-                  disabled={loading}
-                  className="bg-red-500 hover:bg-red-600 text-white py-3 px-6 rounded-md transition"
-                >
-                  {loading ? "Updating..." : "Change Password"}
-                </button>
-                <button
-                  onClick={() => setActiveSection("overview")}
-                  className="bg-gray-300 hover:bg-gray-400 text-black py-3 px-6 rounded-md transition"
-                >
-                  Cancel
-                </button>
-              </div>
+      {activeSection === "edit" && (
+        <div className="space-y-8 bg-white shadow-lg rounded-xl p-8  mx-auto">
+          <h2 className="text-3xl font-bold text-gray-800">Edit Information</h2>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-gray-600 font-medium mb-1" htmlFor="first_name">
+                First Name
+              </label>
+              <input
+                type="text"
+                id="first_name"
+                name="first_name"
+                value={profile.first_name}
+                onChange={handleProfileChange}
+                placeholder="Enter your first name"
+                className="border border-gray-200 p-4 rounded-xl w-full focus:ring-2 focus:ring-red-500 focus:border-red-400 shadow-sm transition"
+              />
             </div>
-          )}
+
+            <div>
+              <label className="block text-gray-600 font-medium mb-1" htmlFor="last_name">
+                Last Name
+              </label>
+              <input
+                type="text"
+                id="last_name"
+                name="last_name"
+                value={profile.last_name}
+                onChange={handleProfileChange}
+                placeholder="Enter your last name"
+                className="border border-gray-200 p-4 rounded-xl w-full focus:ring-2 focus:ring-red-500 focus:border-red-400 shadow-sm transition"
+              />
+            </div>
+
+            <div>
+              <label className="block text-gray-600 font-medium mb-1" htmlFor="birthdate">
+                Birthdate
+              </label>
+              <input
+                type="date"
+                id="birthdate"
+                name="birthdate"
+                value={profile.birthdate?.split("T")[0]}
+                onChange={handleProfileChange}
+                className="border border-gray-200 p-4 rounded-xl w-full focus:ring-2 focus:ring-red-500 focus:border-red-400 shadow-sm transition"
+              />
+            </div>
+
+            <div>
+              <label className="block text-gray-600 font-medium mb-1" htmlFor="contact_no">
+                Contact Number
+              </label>
+              <input
+                type="text"
+                id="contact_no"
+                name="contact_no"
+                value={profile.contact_no || ""}
+                onChange={handleProfileChange}
+                placeholder="Enter contact number"
+                className="border border-gray-200 p-4 rounded-xl w-full focus:ring-2 focus:ring-red-500 focus:border-red-400 shadow-sm transition"
+              />
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="block text-gray-600 font-medium mb-1" htmlFor="address">
+                Address
+              </label>
+              <input
+                type="text"
+                id="address"
+                name="address"
+                value={profile.address || ""}
+                onChange={handleProfileChange}
+                placeholder="Enter your address"
+                className="border border-gray-200 p-4 rounded-xl w-full focus:ring-2 focus:ring-red-500 focus:border-red-400 shadow-sm transition"
+              />
+            </div>
+          </div>
+
+          <div className="flex gap-4 justify-end">
+            <button
+              onClick={updateProfile}
+              disabled={loading}
+              className="bg-red-500 hover:bg-red-600 text-white py-3 px-8 rounded-xl font-medium shadow-md transition duration-300"
+            >
+              {loading ? "Saving..." : "Save Changes"}
+            </button>
+            <button
+              onClick={() => setActiveSection("overview")}
+              className="bg-gray-100 hover:bg-gray-200 text-gray-800 py-3 px-8 rounded-xl font-medium shadow-md transition duration-300"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+                {activeSection === "password" && (
+                  <div className="space-y-8 bg-white shadow-lg rounded-xl p-8 mx-auto">
+                    <h2 className="text-3xl font-bold text-gray-800">Change Password</h2>
+
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-gray-600 font-medium mb-1" htmlFor="current_password">
+                          Current Password
+                        </label>
+                        <input
+                          type="password"
+                          id="current_password"
+                          name="current_password"
+                          value={passwords.current_password}
+                          onChange={handlePasswordChange}
+                          placeholder="Enter current password"
+                          className="border border-gray-200 p-4 rounded-xl w-full focus:ring-2 focus:ring-red-500 focus:border-red-400 shadow-sm transition"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-gray-600 font-medium mb-1" htmlFor="new_password">
+                          New Password
+                        </label>
+                        <input
+                          type="password"
+                          id="new_password"
+                          name="new_password"
+                          value={passwords.new_password}
+                          onChange={handlePasswordChange}
+                          placeholder="Enter new password"
+                          className="border border-gray-200 p-4 rounded-xl w-full focus:ring-2 focus:ring-red-500 focus:border-red-400 shadow-sm transition"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-gray-600 font-medium mb-1" htmlFor="confirm_password">
+                          Confirm New Password
+                        </label>
+                        <input
+                          type="password"
+                          id="confirm_password"
+                          name="confirm_password"
+                          value={passwords.confirm_password}
+                          onChange={handlePasswordChange}
+                          placeholder="Confirm new password"
+                          className="border border-gray-200 p-4 rounded-xl w-full focus:ring-2 focus:ring-red-500 focus:border-red-400 shadow-sm transition"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex gap-4 justify-end">
+                      <button
+                        onClick={changePassword}
+                        disabled={loading}
+                        className="bg-red-500 hover:bg-red-600 text-white py-3 px-8 rounded-xl font-medium shadow-md transition duration-300"
+                      >
+                        {loading ? "Updating..." : "Change Password"}
+                      </button>
+                      <button
+                        onClick={() => setActiveSection("overview")}
+                        className="bg-gray-100 hover:bg-gray-200 text-gray-800 py-3 px-8 rounded-xl font-medium shadow-md transition duration-300"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
         </main>
       </div>
     </div>

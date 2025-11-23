@@ -48,6 +48,7 @@ interface Notification {
 
 export default function ReportsSection() {
   const router = useRouter();
+  const [activeItem, setActiveItem] = useState("reports");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
@@ -85,23 +86,46 @@ export default function ReportsSection() {
     { name: "reports", label: "Reports", icon: ChartBarIcon },
   ];
 
-  // Fetch stats
   const fetchStats = async () => {
-    setLoading(true);
-    try {
-      const res = await axios.get("/api/admin/reports", {
-        headers: { Authorization: `Bearer ${token}` },
-        params: { from: dateRange.from, to: dateRange.to },
-      });
+  if (!token) {
+    setMessage("You are not logged in.");
+    setLoading(false);
+    return;
+  }
+
+  setLoading(true);
+  try {
+    // Use absolute URL if needed; relative works if API is same domain
+    const res = await axios.get(`${window.location.origin}/api/admin/reports`, {
+      headers: { Authorization: `Bearer ${token}` },
+      params: { from: dateRange.from, to: dateRange.to },
+      timeout: 5000, // optional: fail if request takes too long
+    });
+
+    if (res.data.stats) {
       setStats(res.data.stats);
       setLastUpdated(new Date().toLocaleString());
-    } catch (error) {
-      console.error(error);
-      setMessage("Failed to fetch reports");
-    } finally {
-      setLoading(false);
+      setMessage("");
+    } else {
+      setMessage("No data received from server.");
     }
-  };
+  } catch (err: any) {
+    console.error("Axios fetchStats error:", err);
+
+    if (err.response) {
+      // Server responded with status outside 2xx
+      setMessage(`Server Error: ${err.response.status}`);
+    } else if (err.request) {
+      // Request made but no response
+      setMessage("Network Error: Could not reach server.");
+    } else {
+      // Something else
+      setMessage("Unexpected Error: " + err.message);
+    }
+  } finally {
+    setLoading(false);
+  }
+};
 
   useEffect(() => {
     fetchStats();
@@ -287,16 +311,14 @@ export default function ReportsSection() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to-black p-4 flex gap-4">
-      {/* Sidebar */}
+{/* Sidebar */}
       <div
         className={`${
           sidebarOpen ? "w-64" : "w-16"
-        } bg-gray-50 shadow-lg rounded-xl transition-all duration-300 ease-in-out flex flex-col ${
-          sidebarOpen ? "block" : "hidden"
-        } md:block md:relative md:translate-x-0 ${
-          sidebarOpen ? "fixed inset-y-0 left-0 z-50 md:static md:translate-x-0" : ""
-        }`}
+        } bg-gray-50 shadow-lg rounded-xl transition-all duration-300 ease-in-out flex flex-col 
+        ${sidebarOpen ? "fixed inset-y-0 left-0 z-50 md:static md:translate-x-0" : "hidden md:flex"}`}
       >
+        {/* Logo + Close */}
         <div className="p-4 flex items-center justify-center">
           <img
             src="/niugan-logo.png"
@@ -312,58 +334,61 @@ export default function ReportsSection() {
             <XMarkIcon className="w-6 h-6" />
           </button>
         </div>
+          
 
         {/* Navigation */}
         <nav className="flex-1 mt-6">
           <ul>
-            {features.map(({ name, label, icon: Icon }) => {
-              const href = `/admin-front/${name}`;
-              const isActive = name === "reports";
-              return (
-                <li key={name} className="mb-2">
-                  <Link href={href}>
+            {features.map(({ name, label, icon: Icon }) => (
+              <li key={name} className="mb-2">
+                <Link
+                  href={`/admin-front/${name}`}
+                  onClick={() => setActiveItem(name)}
+                  className={`relative flex items-center w-full px-4 py-2 text-left group transition-colors duration-200 ${
+                    activeItem === name
+                      ? "text-red-700 font-semibold"
+                      : "text-black hover:text-red-700"
+                  }`}
+                >
+                  {activeItem === name && (
+                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-700 rounded-r-full" />
+                  )}
+                  <Icon
+                    className={`w-6 h-6 mr-2 ${
+                      activeItem === name
+                        ? "text-red-700"
+                        : "text-gray-600 group-hover:text-red-700"
+                    }`}
+                  />
+                  {sidebarOpen && (
                     <span
-                      className={`relative flex items-center w-full px-4 py-2 text-left group transition-colors duration-200 ${
-                        isActive ? "text-red-700" : "text-black hover:text-red-700"
+                      className={`${
+                        activeItem === name
+                          ? "text-red-700"
+                          : "group-hover:text-red-700"
                       }`}
                     >
-                      {isActive && (
-                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-700 rounded-r-full" />
-                      )}
-                      <Icon
-                        className={`w-6 h-6 mr-2 ${
-                          isActive ? "text-red-700" : "text-gray-600 group-hover:text-red-700"
-                        }`}
-                      />
-                      {sidebarOpen && (
-                        <span
-                          className={`${
-                            isActive ? "text-red-700" : "group-hover:text-red-700"
-                          }`}
-                        >
-                          {label}
-                        </span>
-                      )}
+                      {label}
                     </span>
-                  </Link>
-                </li>
-              );
-            })}
+                  )}
+                </Link>
+              </li>
+            ))}
           </ul>
         </nav>
 
-        {/* Logout */}
-        <div className="p-4">
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-3 text-black hover:text-red-700 transition w-full text-left"
-          >
-            <ArrowRightOnRectangleIcon className="w-6 h-6" />
-            {sidebarOpen && <span>Log Out</span>}
-          </button>
-        </div>
+      {/* Functional Logout Button */}
+    <div className="p-4">
+      <button
+        onClick={handleLogout}
+        className="flex items-center gap-3 text-black hover:text-red-700 transition w-full text-left"
+      >
+        <ArrowRightOnRectangleIcon className="w-6 h-6" />
+        {sidebarOpen && <span>Log Out</span>}
+      </button>
+    </div>
 
-        {/* Sidebar Toggle */}
+        {/* Sidebar Toggle (desktop only) */}
         <div className="p-4 flex justify-center hidden md:flex">
           <button
             onClick={toggleSidebar}
@@ -378,20 +403,25 @@ export default function ReportsSection() {
         </div>
       </div>
 
-      {/* Overlay for mobile */}
+      {/* Mobile Overlay */}
       {sidebarOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden" onClick={toggleSidebar}></div>
+        <div
+          className="fixed inset-0 bg-white/80 z-40 md:hidden"
+          onClick={toggleSidebar}
+        ></div>
       )}
 
       {/* Main Section */}
       <div className="flex-1 flex flex-col gap-4">
-        <header className="bg-gray-50 shadow-sm p-3 sm:p-4 flex justify-between items-center rounded-xl">
+        <header className="bg-gray-50 shadow-sm p-4 flex justify-between items-center rounded-xl text-black">
           <button
             onClick={toggleSidebar}
-            className="block md:hidden text-black hover:text-red-700"
+            className="block md:hidden text-black hover:text-red-700 focus:outline-none"
           >
             <Bars3Icon className="w-6 h-6" />
           </button>
+          <h1 className="text-large font-bold ">Manage Reports</h1>
+          <div className="flex items-center space-x-4"></div>
         </header>
 
         <main className="flex-1 bg-white/80 backdrop-blur-md shadow-md rounded-xl p-4 sm:p-6">
