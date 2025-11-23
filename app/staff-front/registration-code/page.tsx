@@ -238,8 +238,7 @@ export default function StaffRegistrationCodePage() {
         </header>
 
         <main className="flex-1 bg-gray-50 rounded-xl p-6 shadow-sm overflow-auto">
-          <h1 className="text-2xl font-semibold mb-4 text-black">Registration Codes</h1>
-
+          <h3 className="text-large font-semibold mb-4 text-black">Registration History</h3>
           {message && (
             <div className="bg-green-100 text-green-800 px-4 py-2 rounded mb-4">{message}</div>
           )}
@@ -254,7 +253,7 @@ export default function StaffRegistrationCodePage() {
             />
             <button
               onClick={generateCode}
-              className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
+              className="bg-black text-white px-4 py-2 rounded-xl hover:bg-red-700"
             >
               Generate
             </button>
