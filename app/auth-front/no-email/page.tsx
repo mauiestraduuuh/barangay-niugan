@@ -132,7 +132,7 @@ export default function NoEmailStatusPage() {
                       {/* LOGIN BUTTON */}
                       <div className="mt-4 text-center">
                         <a
-                          href="http://localhost:3000/auth-front/login"
+                          href="https://barangay-niugan-iyf8.vercel.app/barangay-niugan"
                           className="inline-block bg-red-600 text-white px-6 py-2 rounded-xl font-semibold hover:bg-red-700 transition"
                         >
                           Login
