@@ -48,6 +48,7 @@ export default function StaffRegistrationRequestsPage() {
     useState<"PENDING" | "" | "APPROVED" | "REJECTED">("PENDING");
   const [message, setMessage] = useState("");
   const [viewRequest, setViewRequest] = useState<RegistrationRequest | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Pagination
   const [ITEMS_PER_PAGE, setITEMS_PER_PAGE] = useState(10);
@@ -119,15 +120,31 @@ export default function StaffRegistrationRequestsPage() {
 
   useEffect(() => {
     filterRequests();
-  }, [statusFilter, requests]);
+  }, [statusFilter, requests,searchQuery]);
 
   const filterRequests = () => {
-    let filtered = [...requests];
-    if (statusFilter !== "") {
-      filtered = filtered.filter((r) => r.status === statusFilter);
-    }
-    setFilteredRequests(filtered);
-    setCurrentPage(1); // reset to page 1 when filters change
+  let filtered = [...requests];
+  
+  // Filter by status
+  if (statusFilter !== "") {
+    filtered = filtered.filter((r) => r.status === statusFilter);
+  }
+  
+  // Filter by search query
+  if (searchQuery.trim() !== "") {
+    const query = searchQuery.toLowerCase();
+    filtered = filtered.filter(
+      (r) =>
+        r.first_name.toLowerCase().includes(query) ||
+        r.last_name.toLowerCase().includes(query) ||
+        (r.email && r.email.toLowerCase().includes(query)) ||
+        (r.contact_no && r.contact_no.toLowerCase().includes(query)) ||
+        String(r.request_id).includes(query)
+    );
+  }
+  
+  setFilteredRequests(filtered);
+  setCurrentPage(1); // reset to page 1 when filters change
   };
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
@@ -276,6 +293,18 @@ export default function StaffRegistrationRequestsPage() {
           {message && (
             <p className="text-center text-white bg-gray-900 p-2 rounded mb-4 mt-4">{message}</p>
           )}
+
+          <div className="flex flex-col sm:flex-row gap-4 mb-6 mt-4">
+            <input
+              type="text"
+              placeholder="Search by name, email, contact, or request ID..."
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+              }}
+              className="border rounded px-3 py-2 flex-1 text-black"
+            />
+          </div>
 
           {/* TABLE */}
           {loading ? (
