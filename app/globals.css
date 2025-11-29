@@ -19,8 +19,27 @@
   }
 }
 
+html, body, #__next {
+  height: 100%;
+}
+
 body {
-  background: var(--background);
+  background: linear-gradient(135deg, #f1f5f9 0%, #b91c1c 50%, #000000 100%);
+  margin: 0;
+}
+
+body {
+  height: 100%;
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family:'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
+}
+
+@keyframes pulse-slow {
+  0% { opacity: 0.4; }
+  50% { opacity: 0.8; }
+  100% { opacity: 0.4; }
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 6s ease-in-out infinite;
 }
