@@ -125,8 +125,9 @@ export default function StaffCertificateRequestsPage() {
         (r) =>
           r.resident.first_name.toLowerCase().includes(query) ||
           r.resident.last_name.toLowerCase().includes(query) ||
-          r.resident.resident_id.toLowerCase().includes(query) ||
-          r.request_id.toLowerCase().includes(query)
+          // Convert to string first before calling toLowerCase()
+          String(r.resident.resident_id).toLowerCase().includes(query) ||
+          String(r.request_id).toLowerCase().includes(query)
       );
     }
     if (statusFilter !== "") filtered = filtered.filter((r) => r.status === statusFilter);
@@ -221,7 +222,7 @@ export default function StaffCertificateRequestsPage() {
         }
       } else if (modalType === "ATTACH") {
         const formData = new FormData();
-        formData.append("requestId", selectedRequest.request_id);
+        formData.append("request_id", selectedRequest.request_id);
         if (file) formData.append("file", file);
         if (remarks) formData.append("remarks", remarks);
         await axios.post("/api/staff/certificate-request", formData, {

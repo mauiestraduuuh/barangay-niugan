@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/../lib/prisma";
@@ -32,6 +33,87 @@ async function verifyStaffUser(userId: number) {
 // Generate a 6-digit claim code
 function generateClaimCode() {
   return 'CC-' + Math.floor(100000 + Math.random() * 900000);
+}
+
+// POST: Upload attachment for a certificate request
+export async function POST(req: NextRequest) {
+  try {
+    const user = getUserFromToken(req);
+    if (!user || user.role !== "STAFF") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (!(await verifyStaffUser(user.userId))) {
+      return NextResponse.json({ error: "Access denied" }, { status: 403 });
+    }
+
+    const formData = await req.formData();
+    const request_id = formData.get("request_id");
+    const file = formData.get("file") as File | null;
+    
+    if (!request_id) {
+      return NextResponse.json({ error: "request_id is required" }, { status: 400 });
+    }
+
+    // Verify the certificate request exists
+    const existingRequest = await prisma.certificateRequest.findUnique({
+      where: { request_id: Number(request_id) },
+    });
+
+    if (!existingRequest) {
+      return NextResponse.json({ error: "Certificate request not found" }, { status: 404 });
+    }
+
+    // Handle file upload if provided
+    let filePath = existingRequest.file_path; // Keep existing file path if no new file
+
+    if (file) {
+      // Save file to your storage location (adjust path as needed)
+      const bytes = await file.arrayBuffer();
+      const buffer = Buffer.from(bytes);
+
+      // Create upload directory if it doesn't exist
+      const fs = require("fs");
+      const path = require("path");
+      const uploadDir = path.join(process.cwd(), "public", "uploads", "certificates");
+      
+      if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+      }
+
+      // Generate unique filename
+      const timestamp = Date.now();
+      const fileName = `${timestamp}-${file.name}`;
+      const fullPath = path.join(uploadDir, fileName);
+      
+      // Write file
+      fs.writeFileSync(fullPath, buffer);
+      
+      // Store relative path in database
+      filePath = `/uploads/certificates/${fileName}`;
+    }
+
+    // Update the certificate request with file path 
+    const updateData: any = {};
+    
+    if (filePath) {
+      updateData.file_path = filePath;
+    }
+
+    const updatedRequest = await prisma.certificateRequest.update({
+      where: { request_id: Number(request_id) },
+      data: updateData,
+    });
+
+    return NextResponse.json({ 
+      message: "File uploaded successfully", 
+      updatedRequest 
+    });
+
+  } catch (error) {
+    console.error("Error uploading certificate attachment:", error);
+    return NextResponse.json({ error: "Failed to upload attachment" }, { status: 500 });
+  }
 }
 
 // GET: fetch all certificate requests with resident info
