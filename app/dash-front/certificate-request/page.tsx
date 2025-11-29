@@ -334,7 +334,7 @@ const filterRequests = () => {
 
     {/* Filter */}
 <div className="flex items-center justify-between">
-  <h1 className="text-medium font-bold text-gray-800 tracking-tight">Certificate History</h1>
+  <h3 className="text-large font-semibold text-gray-800 mb-4">Certificate History</h3>
   
   <div className="flex items-center gap-3">
     <label className="text-sm font-semibold text-gray-600">Filter Status:</label>

@@ -304,10 +304,10 @@ const filterRequests = () => {
 
 <div className="relative">
   {/* Folder Tabs */}
-  <div className="absolute top-0 right-3 flex space-x-2">
+  <div className="absolute top-0 right-3 flex space-x-2 text-black">
     <button
       className={`px-4 py-1 rounded-t-lg font-medium
-        ${activeTab === 'submit' ? 'bg-white text-black font-semibold border-b-white' : 'bg-gray-100 opacity-70'}`}
+        ${activeTab === 'submit' ? 'bg-white text-red-700 font-semibold border-b-white' : 'bg-gray-100 opacity-70'}`}
       onClick={() => setActiveTab('submit')}
     >
       SUBMIT COMPLAINTS
@@ -315,7 +315,7 @@ const filterRequests = () => {
 
     <button
       className={`px-4 py-1 rounded-t-lg b font-medium
-        ${activeTab === 'history' ? 'bg-white  text-black font-semibold border-b-white' : 'bg-gray-100 opacity-70'}`}
+        ${activeTab === 'history' ? 'bg-white  text-red-700 font-semibold border-b-white' : 'bg-gray-100 opacity-70'}`}
       onClick={() => setActiveTab('history')}
     >
       HISTORY
@@ -341,7 +341,7 @@ const filterRequests = () => {
     <div className="flex flex-col lg:flex-row gap-6">
       {/* Left Container: Complaints Form */}
       <div className="flex-1 bg-gray-50 p-6 rounded-xl shadow-md border border-gray-200">
-        <h2 className="text-xl font-semibold text-gray-800 mb-4">Complaint Details</h2>
+        <h3 className="text-large font-semibold text-gray-800 mb-4">Complaint Details</h3>
 
         {/* Language toggle */}
         <div className="flex gap-3 mb-6">
@@ -411,7 +411,7 @@ const filterRequests = () => {
 
       {/* Right Container: Proof Section */}
       <div className="flex-1 bg-gray-50 p-6 rounded-xl shadow-md border border-gray-200">
-        <h2 className="text-xl font-semibold text-gray-800 mb-4">Proof of Complaint</h2>
+        <h3 className="text-large font-semibold text-gray-800 mb-4">Proof of Complaint</h3>
 
         {/* File upload */}
  <div className="mb-4">
@@ -479,9 +479,9 @@ const filterRequests = () => {
 {activeTab === "history" && (
   <div className="space-y-6">
     <div className="flex flex-col lg:flex-row sm:items-center sm:justify-between gap-4">
-      <h1 className="text-xl sm:text-2xl font-bold text-gray-800 tracking-tight">
+      <h3 className="text-large sm:text-large font-bold text-gray-800 tracking-tight">
         Complaint History
-      </h1>
+      </h3>
 
       <div className="flex items-center gap-3">
         <label className="text-xs sm:text-sm font-semibold text-gray-600">Filter Status:</label>
