@@ -362,7 +362,7 @@ const filterRequests = () => {
 
     {/* Table */}
     <div className="overflow-x-auto bg-white rounded-xl shadow-lg">
-      <table className="w-full text-left border-collapse text-[0.65rem] sm:text-xs md:text-sm lg:text-base">
+      <table className="w-full text-left border-collapse text-black text-[0.65rem] sm:text-xs md:text-sm lg:text-base">
         <thead className="bg-gradient-to-br from-black via-red-800 to-black text-white uppercase">
           <tr>
             <th className="p-4">ID</th>
