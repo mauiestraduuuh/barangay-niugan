@@ -306,7 +306,7 @@ export default function AdminFeedbackPage() {
 
         <main className="bg-white rounded-2xl shadow-lg p-6 transition-all duration-300">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-3">
-            <h2 className="text-xl font-semibold text-black">Resident Complaints</h2>
+            <h3 className="text-large font-semibold text-black">Resident Complaints</h3>
             <div className="flex items-center gap-2 flex-wrap">
               {/* Status filter */}
               <label className="text-sm font-medium">Status:</label>
