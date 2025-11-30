@@ -468,7 +468,7 @@ export default function AdminRegistrationRequestsPage() {
           {/* Modal*/}
           {viewRequest && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 sm:p-0">
-              <div className="bg-white p-4 sm:p-6 rounded-xl shadow-lg w-full sm:w-1/2 relative overflow-auto max-h-[90vh]">
+              <div className="bg-white p-4 sm:p-6 rounded-xl shadow-lg w-full sm:w-1/2 relative overflow-auto max-h-[90vh] text-black">
                 <button
                   onClick={() => setViewRequest(null)}
                   className="absolute top-3 right-3 text-gray-700 hover:text-red-600"
