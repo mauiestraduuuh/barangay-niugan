@@ -334,7 +334,7 @@ const filterRequests = () => {
 
     {/* Filter */}
 <div className="flex items-center justify-between">
-  <h1 className="text-medium font-bold text-gray-800 tracking-tight">Certificate History</h1>
+  <h3 className="text-large font-semibold text-gray-800 mb-4">Certificate History</h3>
   
   <div className="flex items-center gap-3">
     <label className="text-sm font-semibold text-gray-600">Filter Status:</label>
@@ -362,7 +362,7 @@ const filterRequests = () => {
 
     {/* Table */}
     <div className="overflow-x-auto bg-white rounded-xl shadow-lg">
-      <table className="w-full text-left border-collapse text-[0.65rem] sm:text-xs md:text-sm lg:text-base">
+      <table className="w-full text-left border-collapse text-black text-[0.65rem] sm:text-xs md:text-sm lg:text-base">
         <thead className="bg-gradient-to-br from-black via-red-800 to-black text-white uppercase">
           <tr>
             <th className="p-4">ID</th>

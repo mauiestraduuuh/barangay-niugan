@@ -1,14 +1,17 @@
 "use client";
 import { useState } from "react";
 import axios from "axios";
+import { useRouter } from "next/navigation";
 import { MagnifyingGlassIcon, 
   CheckCircleIcon,
   ExclamationTriangleIcon, 
   ArrowPathIcon,
-  HomeIcon } from "@heroicons/react/24/outline";
+  ArrowLeftIcon
+  } from "@heroicons/react/24/outline";
 
 export default function NoEmailStatusPage() {
   const [ref, setRef] = useState("");
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState("");
@@ -32,12 +35,15 @@ export default function NoEmailStatusPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-black via-red-900 to-black flex items-center justify-center p-4">
+      <button
+        className="absolute top-4 left-4 p-2 backdrop-blur-xl rounded-full hover:bg-red-700 transition"
+        onClick={() => router.push("/barangay-niugan")}
+      >
+        <ArrowLeftIcon className="h-6 w-6 text-white" />
+      </button>
       <div className="w-full max-w-4xl bg-white/10 backdrop-blur-lg border border-red-500/50 rounded-3xl shadow-2xl p-8">
         {/* Header */}
         <div className="flex justify-between items-center mb-8">
-          <a href="http://localhost:3000/barangay-niugan">
-            <HomeIcon className="h-8 w-8 text-red-400 hover:text-red-500 transition cursor-pointer" />
-          </a>
           <div className="text-center flex-1">
             <CheckCircleIcon className="mx-auto h-16 w-16 text-red-400 mb-4 animate-pulse" />
             <h1 className="text-3xl font-extrabold text-white mb-2">Resident Registration Status</h1>

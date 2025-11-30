@@ -30,6 +30,13 @@ interface Announcement {
   posted_at: string;
 }
 
+interface PaginationInfo {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
 export default function ManageAnnouncements() {
   const router = useRouter();
   const [activeItem, setActiveItem] = useState("announcement");
@@ -44,7 +51,15 @@ export default function ManageAnnouncements() {
     content: "",
     is_public: true,
   });
-  const [showExpired, setShowExpired] = useState(false); // toggle for active/expired
+  const [showExpired, setShowExpired] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pagination, setPagination] = useState<PaginationInfo>({
+    total: 0,
+    page: 1,
+    limit: 10,
+    totalPages: 0,
+  });
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
@@ -60,21 +75,22 @@ export default function ManageAnnouncements() {
 
   // Fetch announcements
   useEffect(() => {
-    fetchAnnouncements();
-  }, []);
+    fetchAnnouncements(currentPage);
+  }, [currentPage, itemsPerPage]);
 
-  const fetchAnnouncements = async () => {
+  const fetchAnnouncements = async (page: number) => {
     setLoading(true);
     try {
-      const res = await fetch("/api/staff/announcement", {
+      const res = await fetch(`/api/staff/announcement?page=${page}&limit=${itemsPerPage}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (!res.ok) {
         console.error("Fetch failed", res.status, await res.text());
         throw new Error("Failed to fetch announcements");
       }
-      const data: Announcement[] = await res.json();
-      setAnnouncements(data);
+      const data = await res.json();
+      setAnnouncements(data.announcements);
+      setPagination(data.pagination);
     } catch (error) {
       console.error("Error fetching announcements:", error);
       setMessage("Failed to load announcements");
@@ -119,7 +135,7 @@ export default function ManageAnnouncements() {
       setShowModal(false);
       setEditingAnnouncement(null);
       setFormData({ title: "", content: "", is_public: true });
-      fetchAnnouncements();
+      fetchAnnouncements(currentPage);
     } catch (error) {
       console.error("Submit error:", error);
       setMessage("Failed to save announcement");
@@ -158,7 +174,7 @@ export default function ManageAnnouncements() {
       if (!res.ok) throw new Error(await res.text());
 
       setMessage("Announcement deleted");
-      fetchAnnouncements();
+      fetchAnnouncements(currentPage);
     } catch (error) {
       console.error("Delete error:", error);
       setMessage("Failed to delete announcement");
@@ -172,6 +188,15 @@ export default function ManageAnnouncements() {
     localStorage.removeItem("token");
     router.push("/auth-front/login");
   };
+
+  // Pagination handlers
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 1 && newPage <= pagination.totalPages) {
+      setCurrentPage(newPage);
+    }
+  };
+
+  const totalPages = pagination.totalPages;
 
   // Filter announcements for Active / Expired
   const fourteenDaysAgo = new Date();
@@ -337,35 +362,114 @@ export default function ManageAnnouncements() {
           ) : filteredAnnouncements.length === 0 ? (
             <div className="text-center py-10 text-black">No announcements found.</div>
           ) : (
-            <div className="space-y-4">
-              {filteredAnnouncements.map(a => (
-                <div key={a.announcement_id} className="bg-white p-6 rounded-lg shadow-md text-black">
-                  <div className="flex justify-between items-start mb-4">
-                    <div>
-                      <h3 className="text-xl font-semibold text-black">{a.title}</h3>
-                      <p className="text-sm text-black">
-                        Posted on {new Date(a.posted_at).toLocaleDateString()} • {a.is_public ? "Public" : "Private"}
-                      </p>
+            <>
+              <div className="space-y-4">
+                {filteredAnnouncements.map(a => (
+                  <div key={a.announcement_id} className="bg-white p-6 rounded-lg shadow-md text-black">
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <h3 className="text-xl font-semibold text-black">{a.title}</h3>
+                        <p className="text-sm text-black">
+                          Posted on {new Date(a.posted_at).toLocaleDateString()} • {a.is_public ? "Public" : "Private"}
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <button 
+                          onClick={() => handleEdit(a)} 
+                          className="text-black hover:text-gray-800 p-2 rounded transition"
+                        >
+                          <PencilIcon className="w-5 h-5" />
+                        </button>
+                        <button 
+                          onClick={() => handleDelete(a.announcement_id)} 
+                          className="text-black hover:text-gray-800 p-2 rounded transition"
+                        >
+                          <TrashIcon className="w-5 h-5" />
+                        </button>
+                      </div>
                     </div>
-                    <div className="flex gap-2">
-                      <button 
-                        onClick={() => handleEdit(a)} 
-                        className="text-black hover:text-gray-800 p-2 rounded transition"
-                      >
-                        <PencilIcon className="w-5 h-5" />
-                      </button>
-                      <button 
-                        onClick={() => handleDelete(a.announcement_id)} 
-                        className="text-black hover:text-gray-800 p-2 rounded transition"
-                      >
-                        <TrashIcon className="w-5 h-5" />
-                      </button>
-                    </div>
+                    <p className="text-black">{a.content}</p>
                   </div>
-                  <p className="text-black">{a.content}</p>
+                ))}
+              </div>
+
+              {/* Pagination Controls */}
+              {pagination.totalPages > 1 && (
+                <div className="w-full mt-5 flex justify-center">
+                  <div className="flex items-center gap-2 px-3 py-1.5">
+                    {/* Previous Button */}
+                    <button
+                      onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                      disabled={currentPage === 1}
+                      className="px-2 py-1 text-3xl text-gray-500 hover:text-gray-700 disabled:opacity-30"
+                    >
+                      ‹
+                    </button>
+
+                    {/* Page Numbers */}
+                    {Array.from({ length: totalPages }).map((_, i) => {
+                      const page = i + 1;
+
+                      // Show only near numbers + first + last + ellipsis
+                      if (
+                        page === 1 ||
+                        page === totalPages ||
+                        (page >= currentPage - 1 && page <= currentPage + 1)
+                      ) {
+                        return (
+                          <button
+                            key={i}
+                            onClick={() => setCurrentPage(page)}
+                            className={`w-8 h-8 flex items-center justify-center rounded-full text-sm font-medium transition-all ${
+                              currentPage === page
+                                ? "bg-red-100 text-red-700"
+                                : "text-gray-700 hover:bg-gray-100"
+                            }`}
+                          >
+                            {page}
+                          </button>
+                        );
+                      }
+
+                      // Ellipsis (only render once)
+                      if (page === currentPage - 2 || page === currentPage + 2) {
+                        return (
+                          <div key={i} className="px-1 text-gray-400">
+                            ...
+                          </div>
+                        );
+                      }
+
+                      return null;
+                    })}
+
+                    {/* Next Button */}
+                    <button
+                      onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                      disabled={currentPage === totalPages}
+                      className="px-2 py-1 text-3xl text-gray-500 hover:text-gray-700 disabled:opacity-30"
+                    >
+                      ›
+                    </button>
+
+                    {/* Rows Per Page Dropdown */}
+                    <select
+                      value={itemsPerPage}
+                      onChange={(e) => {
+                        setCurrentPage(1);
+                        setItemsPerPage(Number(e.target.value));
+                      }}
+                      className="ml-3 bg-white border border-gray-300 text-sm rounded-xl px-3 py-1 focus:ring-0"
+                    >
+                      <option value={5}>5 / page</option>
+                      <option value={10}>10 / page</option>
+                      <option value={20}>20 / page</option>
+                      <option value={50}>50 / page</option>
+                    </select>
+                  </div>
                 </div>
-              ))}
-            </div>
+              )}
+            </>
           )}
         </main>
       </div>

@@ -1,7 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import jsPDF from "jspdf";
+import {
+  ArrowLeftIcon
+  } from "@heroicons/react/24/outline";
 
 export default function RegisterPage() {
   const [form, setForm] = useState({
@@ -25,6 +29,7 @@ export default function RegisterPage() {
 
   const [photo, setPhoto] = useState<File | null>(null);
   const [message, setMessage] = useState("");
+  const router = useRouter();
   const [referenceNumber, setReferenceNumber] = useState("");
 
   const handleChange = (
@@ -120,6 +125,12 @@ export default function RegisterPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-black via-red-900 to-black flex items-center justify-center p-4">
+      <button
+        className="absolute top-4 left-4 p-2 backdrop-blur-xl rounded-full hover:bg-red-700 transition"
+        onClick={() => router.push("/barangay-niugan")}
+      >
+        <ArrowLeftIcon className="h-6 w-6 text-white" />
+      </button>
       <div className="relative z-10 bg-black/80 backdrop-blur-lg shadow-2xl max-w-4xl w-full rounded-2xl p-8 border border-white/40 flex flex-col md:flex-row gap-8">
         <div className="flex-1 flex flex-col justify-center text-center md:text-left">
           <h1 className="text-3xl font-bold font-poppins text-white mb-3">
@@ -159,7 +170,7 @@ export default function RegisterPage() {
           )}
 
           {/* FORM */}
-          <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-3 text-sm">
+          <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-3 text-black text-sm">
             {/* --- form inputs --- */}
             <input
               type="text"

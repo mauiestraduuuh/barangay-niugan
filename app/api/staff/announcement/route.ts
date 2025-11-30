@@ -10,6 +10,8 @@ interface AnnouncementBody {
   content?: string;
   posted_by?: number;
   is_public?: boolean;
+  page?: number;
+  limit?: number;
 }
 
 // ================= HELPER: VERIFY TOKEN =================
@@ -33,7 +35,26 @@ async function verifyStaffUser(userId: number) {
   return staff !== null;
 }
 
-// GET: Fetch all announcements
+// ================= HELPER: DELETE EXPIRED ANNOUNCEMENTS =================
+async function deleteExpiredAnnouncements() {
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+  try {
+    const result = await prisma.announcement.deleteMany({
+      where: {
+        posted_at: { lt: thirtyDaysAgo },
+      },
+    });
+    console.log(`Deleted ${result.count} expired announcements`);
+    return result.count;
+  } catch (error) {
+    console.error("Failed to delete expired announcements:", error);
+    return 0;
+  }
+}
+
+// GET: Fetch all announcements with pagination
 export async function GET(req: NextRequest) {
   const decoded = verifyToken(req);
   if (!decoded)
@@ -43,16 +64,44 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ message: "Access denied" }, { status: 403 });
 
   try {
+    // Delete expired announcements first
+    await deleteExpiredAnnouncements();
+
+    // Get pagination parameters from query string
+    const { searchParams } = new URL(req.url);
+    const page = parseInt(searchParams.get("page") || "1");
+    const limit = parseInt(searchParams.get("limit") || "10");
+    const skip = (page - 1) * limit;
+
     const fourteenDaysAgo = new Date();
     fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
 
+    // Get total count for pagination
+    const total = await prisma.announcement.count({
+      where: {
+        posted_at: { gte: fourteenDaysAgo },
+      },
+    });
+
+    // Fetch paginated announcements
     const announcements = await prisma.announcement.findMany({
       where: {
         posted_at: { gte: fourteenDaysAgo },
       },
       orderBy: { posted_at: "desc" },
+      skip,
+      take: limit,
     });
-    return NextResponse.json(announcements);
+
+    return NextResponse.json({
+      announcements,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    });
   } catch (error) {
     console.error("Fetch announcements failed:", error);
     return NextResponse.json(
@@ -61,7 +110,6 @@ export async function GET(req: NextRequest) {
     );
   }
 }
-
 
 // POST: Create a new announcement
 export async function POST(req: NextRequest) {

@@ -99,7 +99,7 @@ export default function ReportsSection() {
     const res = await axios.get(`${window.location.origin}/api/admin/reports`, {
       headers: { Authorization: `Bearer ${token}` },
       params: { from: dateRange.from, to: dateRange.to },
-      timeout: 5000, // optional: fail if request takes too long
+      timeout: 50000, // optional: fail if request takes too long
     });
 
     if (res.data.stats) {

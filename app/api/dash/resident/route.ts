@@ -4,6 +4,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/../lib/prisma";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import fs from "fs";
+import path from "path";
 
 const JWT_SECRET = process.env.JWT_SECRET!;
 
@@ -110,35 +112,46 @@ export async function PUT(req: NextRequest) {
     if (!userId)
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const body = await req.json();
-    const {
-      first_name,
-      last_name,
-      birthdate,
-      gender,
-      address,
-      contact_no,
-      photo_url,
-      senior_mode,
-    } = body;
+    const formData = await req.formData();
+    const first_name = formData.get('first_name') as string;
+    const last_name = formData.get('last_name') as string;
+    const birthdate = formData.get('birthdate') as string;
+    const contact_no = formData.get('contact_no') as string;
+    const address = formData.get('address') as string;
+    const photo = formData.get('photo') as File | null;
+
+    let photo_url: string | undefined = undefined;
+
+    if (photo) {
+      const buffer = Buffer.from(await photo.arrayBuffer());
+      const ext = photo.name.split('.').pop() || 'jpg'; // default to jpg if no ext
+      const filename = `${userId}_${Date.now()}.${ext}`;
+      const uploadDir = path.join(process.cwd(), 'public', 'uploads');
+      fs.mkdirSync(uploadDir, { recursive: true });
+      const filepath = path.join(uploadDir, filename);
+      fs.writeFileSync(filepath, buffer);
+      photo_url = `/uploads/${filename}`;
+    }
 
     const resident = await prisma.resident.findFirst({ where: { user_id: userId } });
     if (!resident) return NextResponse.json({ error: "Resident not found" }, { status: 404 });
 
-        const updatedResident = await prisma.resident.update({
-        where: { resident_id: resident.resident_id }, 
-        data: {
-          first_name,
-          last_name,
-          birthdate: birthdate ? new Date(birthdate) : undefined,
-          gender,
-          address,
-          contact_no,
-          photo_url,
-          senior_mode,
-        },
-      });
+    const updateData: any = {
+      first_name,
+      last_name,
+      birthdate: birthdate ? new Date(birthdate) : undefined,
+      address,
+      contact_no,
+    };
 
+    if (photo_url !== undefined) {
+      updateData.photo_url = photo_url;
+    }
+
+    const updatedResident = await prisma.resident.update({
+      where: { resident_id: resident.resident_id },
+      data: updateData,
+    });
 
     return NextResponse.json(serializeResident(updatedResident));
   } catch (err) {
