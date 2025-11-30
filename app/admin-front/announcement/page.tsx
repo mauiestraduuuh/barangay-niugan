@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import NotificationDropdown from "../../components/NotificationDropdown";
 import {
   BellIcon,
   UserIcon,
@@ -24,15 +23,6 @@ import {
   UsersIcon,
 } from "@heroicons/react/24/outline";
 
-// Notification type
-interface Notification {
-  notification_id: number;
-  type: string;
-  message: string;
-  is_read: boolean;
-  created_at: string;
-}
-
 // Announcement type
 interface Announcement {
   announcement_id: number;
@@ -41,6 +31,13 @@ interface Announcement {
   posted_by: number;
   is_public: boolean;
   posted_at: string;
+}
+
+interface PaginationInfo {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
 }
 
 export default function ManageAnnouncements() {
@@ -57,10 +54,17 @@ export default function ManageAnnouncements() {
     content: "",
     is_public: true,
   });
-  const [filterType, setFilterType] = useState<"active" | "expired">("active"); // Added filter state
+  const [filterType, setFilterType] = useState<"active" | "expired">("active");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pagination, setPagination] = useState<PaginationInfo>({
+    total: 0,
+    page: 1,
+    limit: 10,
+    totalPages: 0,
+  });
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
   const features = [
@@ -76,16 +80,19 @@ export default function ManageAnnouncements() {
   ];
 
   // Fetch announcements
-  const fetchAnnouncements = async (type: "active" | "expired" = "active") => {
+  const fetchAnnouncements = async (type: "active" | "expired" = "active", page: number = 1) => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/admin/announcement?type=${type}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+      const res = await fetch(`/api/admin/announcement?type=${type}&page=${page}&limit=${itemsPerPage}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
       if (!res.ok) {
         console.error("Fetch failed", res.status, await res.text());
         throw new Error("Failed to fetch announcements");
       }
-      const data: Announcement[] = await res.json();
-      setAnnouncements(data);
+      const data = await res.json();
+      setAnnouncements(data.announcements);
+      setPagination(data.pagination);
     } catch (error) {
       console.error("Error fetching announcements:", error);
       setMessage("Failed to load announcements");
@@ -96,8 +103,8 @@ export default function ManageAnnouncements() {
 
   // Fetch on load or filter change
   useEffect(() => {
-    fetchAnnouncements(filterType);
-  }, [filterType]);
+    fetchAnnouncements(filterType, currentPage);
+  }, [filterType, currentPage, itemsPerPage]);
 
   // Form changes
   const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -135,7 +142,7 @@ export default function ManageAnnouncements() {
       setShowModal(false);
       setEditingAnnouncement(null);
       setFormData({ title: "", content: "", is_public: true });
-      fetchAnnouncements(filterType);
+      fetchAnnouncements(filterType, currentPage);
     } catch (error) {
       console.error("Submit error:", error);
       setMessage("Failed to save announcement");
@@ -174,7 +181,7 @@ export default function ManageAnnouncements() {
       if (!res.ok) throw new Error(await res.text());
 
       setMessage("Announcement deleted");
-      fetchAnnouncements(filterType);
+      fetchAnnouncements(filterType, currentPage);
     } catch (error) {
       console.error("Delete error:", error);
       setMessage("Failed to delete announcement");
@@ -191,9 +198,11 @@ export default function ManageAnnouncements() {
     }
   };
 
+  const totalPages = pagination.totalPages;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to-slate-50 p-4 flex gap-4">
-  {/* Sidebar */}
+      {/* Sidebar */}
       <div
         className={`${
           sidebarOpen ? "w-64" : "w-16"
@@ -216,7 +225,6 @@ export default function ManageAnnouncements() {
             <XMarkIcon className="w-6 h-6" />
           </button>
         </div>
-          
 
         {/* Navigation */}
         <nav className="flex-1 mt-6">
@@ -259,16 +267,16 @@ export default function ManageAnnouncements() {
           </ul>
         </nav>
 
-      {/* Functional Logout Button */}
-    <div className="p-4">
-      <button
-        onClick={handleLogout}
-        className="flex items-center gap-3 text-black hover:text-red-700 transition w-full text-left"
-      >
-        <ArrowRightOnRectangleIcon className="w-6 h-6" />
-        {sidebarOpen && <span>Log Out</span>}
-      </button>
-    </div>
+        {/* Functional Logout Button */}
+        <div className="p-4">
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-3 text-black hover:text-red-700 transition w-full text-left"
+          >
+            <ArrowRightOnRectangleIcon className="w-6 h-6" />
+            {sidebarOpen && <span>Log Out</span>}
+          </button>
+        </div>
 
         {/* Sidebar Toggle (desktop only) */}
         <div className="p-4 flex justify-center hidden md:flex">
@@ -294,8 +302,7 @@ export default function ManageAnnouncements() {
       )}
 
       {/* Main Section */}
-   {/* Main Section */}
-<div className="flex-1 flex flex-col gap-4">
+      <div className="flex-1 flex flex-col gap-4">
         <header className="bg-gray-50 shadow-sm p-4 flex justify-between items-center rounded-xl text-black">
           <button
             onClick={toggleSidebar}
@@ -303,98 +310,227 @@ export default function ManageAnnouncements() {
           >
             <Bars3Icon className="w-6 h-6" />
           </button>
-          <h1 className="text-large font-bold ">Manage Announcement</h1>
+          <h1 className="text-large font-bold">Manage Announcement</h1>
           <div className="flex items-center space-x-4"></div>
         </header>
 
-  <main className="flex-1 bg-gray-50 rounded-xl p-4 md:p-6 shadow-sm overflow-auto text-black">
-    {message && (
-      <p className={`text-center p-2 rounded mb-4 ${message.includes("success") ? "bg-green-100" : "bg-red-100"}`}>
-        {message}
-      </p>
-    )}
+        <main className="flex-1 bg-gray-50 rounded-xl p-4 md:p-6 shadow-sm overflow-auto text-black">
+          {message && (
+            <p className={`text-center p-2 rounded mb-4 ${message.includes("success") ? "bg-green-100" : "bg-red-100"}`}>
+              {message}
+            </p>
+          )}
 
-    {/* Announcement History Header + Filter Buttons */}
-    <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-        <h3 className="text-large md:text-large font-semibold text-black">Announcement History</h3>
-        <div className="flex gap-2">
-          <button
-            onClick={() => setFilterType("active")}
-            className={`px-3 py-1 rounded ${filterType === "active" ? "bg-red-700 text-white" : "bg-gray-200 text-black"}`}
-          >
-            Active
-          </button>
-          <button
-            onClick={() => setFilterType("expired")}
-            className={`px-3 py-1 rounded ${filterType === "expired" ? "bg-red-700 text-white" : "bg-gray-200 text-black"}`}
-          >
-            Expired
-          </button>
-        </div>
-      </div>
-      <button
-        onClick={() => { setEditingAnnouncement(null); setFormData({ title: "", content: "", is_public: true }); setShowModal(true); }}
-        className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition w-full sm:w-auto"
-      >
-        <PlusIcon className="w-5 h-5 text-black" /> Add Announcement
-      </button>
-    </div>
-
-    {/* Announcement List */}
-    {loading ? (
-      <div className="text-center py-10 text-black">Loading...</div>
-    ) : announcements.length === 0 ? (
-      <div className="text-center py-10 text-black">No announcements yet.</div>
-    ) : (
-      <div className="space-y-4">
-        {announcements.map(a => (
-          <div key={a.announcement_id} className="bg-white p-4 md:p-6 rounded-lg shadow-md text-black">
-            <div className="flex flex-col sm:flex-row justify-between items-start mb-4 gap-2">
-              <div>
-                <h3 className="text-lg md:text-xl font-semibold text-black">{a.title}</h3>
-                <p className="text-sm text-black">Posted on {new Date(a.posted_at).toLocaleDateString()} • {a.is_public ? "Public" : "Private"}</p>
-              </div>
+          {/* Announcement History Header + Filter Buttons */}
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+              <h3 className="text-large md:text-large font-semibold text-black">Announcement History</h3>
               <div className="flex gap-2">
-                <button onClick={() => handleEdit(a)} className="text-black hover:text-gray-800 p-2 rounded transition">
-                  <PencilIcon className="w-5 h-5" />
+                <button
+                  onClick={() => {
+                    setFilterType("active");
+                    setCurrentPage(1);
+                  }}
+                  className={`px-3 py-1 rounded ${filterType === "active" ? "bg-red-700 text-white" : "bg-gray-200 text-black"}`}
+                >
+                  Active
                 </button>
-                <button onClick={() => handleDelete(a.announcement_id)} className="text-black hover:text-gray-800 p-2 rounded transition">
-                  <TrashIcon className="w-5 h-5" />
+                <button
+                  onClick={() => {
+                    setFilterType("expired");
+                    setCurrentPage(1);
+                  }}
+                  className={`px-3 py-1 rounded ${filterType === "expired" ? "bg-red-700 text-white" : "bg-gray-200 text-black"}`}
+                >
+                  Expired
                 </button>
               </div>
             </div>
-            <p className="text-black">{a.content}</p>
+            <button
+              onClick={() => {
+                setEditingAnnouncement(null);
+                setFormData({ title: "", content: "", is_public: true });
+                setShowModal(true);
+              }}
+              className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition w-full sm:w-auto"
+            >
+              <PlusIcon className="w-5 h-5" /> Add Announcement
+            </button>
           </div>
-        ))}
+
+          {/* Announcement List */}
+          {loading ? (
+            <div className="text-center py-10 text-black">Loading...</div>
+          ) : announcements.length === 0 ? (
+            <div className="text-center py-10 text-black">No announcements yet.</div>
+          ) : (
+            <>
+              <div className="space-y-4">
+                {announcements.map(a => (
+                  <div key={a.announcement_id} className="bg-white p-4 md:p-6 rounded-lg shadow-md text-black">
+                    <div className="flex flex-col sm:flex-row justify-between items-start mb-4 gap-2">
+                      <div>
+                        <h3 className="text-lg md:text-xl font-semibold text-black">{a.title}</h3>
+                        <p className="text-sm text-black">
+                          Posted on {new Date(a.posted_at).toLocaleDateString()} • {a.is_public ? "Public" : "Private"}
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleEdit(a)}
+                          className="text-black hover:text-gray-800 p-2 rounded transition"
+                        >
+                          <PencilIcon className="w-5 h-5" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(a.announcement_id)}
+                          className="text-black hover:text-gray-800 p-2 rounded transition"
+                        >
+                          <TrashIcon className="w-5 h-5" />
+                        </button>
+                      </div>
+                    </div>
+                    <p className="text-black">{a.content}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Pagination Controls */}
+              {pagination.totalPages > 1 && (
+                <div className="w-full mt-5 flex justify-center">
+                  <div className="flex items-center gap-2 px-3 py-1.5">
+                    {/* Previous Button */}
+                    <button
+                      onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                      disabled={currentPage === 1}
+                      className="px-2 py-1 text-3xl text-gray-500 hover:text-gray-700 disabled:opacity-30"
+                    >
+                      ‹
+                    </button>
+
+                    {/* Page Numbers */}
+                    {Array.from({ length: totalPages }).map((_, i) => {
+                      const page = i + 1;
+
+                      // Show only near numbers + first + last + ellipsis
+                      if (
+                        page === 1 ||
+                        page === totalPages ||
+                        (page >= currentPage - 1 && page <= currentPage + 1)
+                      ) {
+                        return (
+                          <button
+                            key={i}
+                            onClick={() => setCurrentPage(page)}
+                            className={`w-8 h-8 flex items-center justify-center rounded-full text-sm font-medium transition-all ${
+                              currentPage === page
+                                ? "bg-red-100 text-red-700"
+                                : "text-gray-700 hover:bg-gray-100"
+                            }`}
+                          >
+                            {page}
+                          </button>
+                        );
+                      }
+
+                      // Ellipsis (only render once)
+                      if (page === currentPage - 2 || page === currentPage + 2) {
+                        return (
+                          <div key={i} className="px-1 text-gray-400">
+                            ...
+                          </div>
+                        );
+                      }
+
+                      return null;
+                    })}
+
+                    {/* Next Button */}
+                    <button
+                      onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                      disabled={currentPage === totalPages}
+                      className="px-2 py-1 text-3xl text-gray-500 hover:text-gray-700 disabled:opacity-30"
+                    >
+                      ›
+                    </button>
+
+                    {/* Rows Per Page Dropdown */}
+                    <select
+                      value={itemsPerPage}
+                      onChange={(e) => {
+                        setCurrentPage(1);
+                        setItemsPerPage(Number(e.target.value));
+                      }}
+                      className="ml-3 bg-white border border-gray-300 text-sm rounded-xl px-3 py-1 focus:ring-0"
+                    >
+                      <option value={5}>5 / page</option>
+                      <option value={10}>10 / page</option>
+                      <option value={20}>20 / page</option>
+                      <option value={50}>50 / page</option>
+                    </select>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </main>
       </div>
-    )}
-  </main>
-</div>
-
-
 
       {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md text-black">
-            <h3 className="text-xl font-semibold mb-4">{editingAnnouncement ? "Edit Announcement" : "Add Announcement"}</h3>
+            <h3 className="text-xl font-semibold mb-4">
+              {editingAnnouncement ? "Edit Announcement" : "Add Announcement"}
+            </h3>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
-                <input type="text" name="title" value={formData.title} onChange={handleFormChange} required className="w-full border border-gray-300 p-2 rounded focus:ring-2 focus:ring-red-500" />
+                <input
+                  type="text"
+                  name="title"
+                  value={formData.title}
+                  onChange={handleFormChange}
+                  required
+                  className="w-full border border-gray-300 p-2 rounded focus:ring-2 focus:ring-red-500"
+                />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Content</label>
-                <textarea name="content" value={formData.content} onChange={handleFormChange} required rows={4} className="w-full border border-gray-300 p-2 rounded focus:ring-2 focus:ring-red-500" />
+                <textarea
+                  name="content"
+                  value={formData.content}
+                  onChange={handleFormChange}
+                  required
+                  rows={4}
+                  className="w-full border border-gray-300 p-2 rounded focus:ring-2 focus:ring-red-500"
+                />
               </div>
               <div className="flex items-center">
-                <input type="checkbox" name="is_public" checked={formData.is_public} onChange={handleFormChange} className="mr-2" />
+                <input
+                  type="checkbox"
+                  name="is_public"
+                  checked={formData.is_public}
+                  onChange={handleFormChange}
+                  className="mr-2"
+                />
                 <label className="text-sm font-medium text-gray-700">Public</label>
               </div>
               <div className="flex gap-4">
-                <button type="submit" disabled={loading} className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded transition disabled:opacity-50">{loading ? "Saving..." : editingAnnouncement ? "Update" : "Create"}</button>
-                <button type="button" onClick={() => setShowModal(false)} className="bg-gray-300 hover:bg-gray-400 text-black px-4 py-2 rounded transition">Cancel</button>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded transition disabled:opacity-50"
+                >
+                  {loading ? "Saving..." : editingAnnouncement ? "Update" : "Create"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowModal(false)}
+                  className="bg-gray-300 hover:bg-gray-400 text-black px-4 py-2 rounded transition"
+                >
+                  Cancel
+                </button>
               </div>
             </form>
           </div>
