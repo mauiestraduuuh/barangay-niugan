@@ -59,10 +59,10 @@ export default function ManageAnnouncements() {
   const [pagination, setPagination] = useState<PaginationInfo>({
     total: 0,
     page: 1,
-    limit: 10,
+    limit: 5,
     totalPages: 0,
   });
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [itemsPerPage, setItemsPerPage] = useState(5);
 
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
