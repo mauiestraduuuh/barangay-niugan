@@ -59,7 +59,9 @@ export default function ResidentProfilePage() {
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [message, setMessage] = useState("");
   const [activeSection, setActiveSection] = useState<"overview" | "edit" | "password">("overview");
 
@@ -475,106 +477,128 @@ export default function ResidentProfilePage() {
             </div>
           )}
 
-          {activeSection === "password" && (
-            <div className="space-y-8 bg-white text-black shadow-lg rounded-xl p-8 mx-auto">
-              <h2 className="text-3xl font-bold text-gray-800">Change Password</h2>
+  
+  {activeSection === "password" && (
+  <div className="space-y-8 bg-white text-black shadow-lg rounded-xl p-8 mx-auto">
+    <h2 className="text-3xl font-bold text-gray-800">Change Password</h2>
 
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-gray-600 font-medium mb-1" htmlFor="current_password">
-                    Current Password
-                  </label>
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    id="current_password"
-                    name="current_password"
-                    value={passwords.current_password}
-                    onChange={handlePasswordChange}
-                    placeholder="Enter current password"
-                    className="border border-gray-200 p-4 rounded-xl w-full focus:ring-2 focus:ring-red-500 focus:border-red-400 shadow-sm transition"
-                  />
-                  <button
-                type="button"
-                className="absolute right-4 top-3.5"
-                onClick={() => setShowPassword(!showPassword)}
-              >
-                {showPassword ? (
-                  <EyeSlashIcon className="h-5 w-5 text-gray-700" />
-                ) : (
-                  <EyeIcon className="h-5 w-5 text-gray-700" />
-                )}
-              </button>
-                </div>
+    <div className="space-y-4">
 
-                <div>
-                  <label className="block text-gray-600 font-medium mb-1" htmlFor="new_password">
-                    New Password
-                  </label>
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    id="new_password"
-                    name="new_password"
-                    value={passwords.new_password}
-                    onChange={handlePasswordChange}
-                    placeholder="Enter new password"
-                    className="border border-gray-200 p-4 rounded-xl w-full focus:ring-2 focus:ring-red-500 focus:border-red-400 shadow-sm transition"
-                  />
-                                    <button
-                type="button"
-                className="absolute right-4 top-3.5"
-                onClick={() => setShowPassword(!showPassword)}
-              >
-                {showPassword ? (
-                  <EyeSlashIcon className="h-5 w-5 text-gray-700" />
-                ) : (
-                  <EyeIcon className="h-5 w-5 text-gray-700" />
-                )}
-              </button>
-                </div>
-                      <div>
-                        <label className="block text-gray-600 font-medium mb-1" htmlFor="confirm_password">
-                          Confirm New Password
-                        </label>
-                        <input
-                          type={showPassword ? "text" : "password"}
-                          id="confirm_password"
-                          name="confirm_password"
-                          value={passwords.confirm_password}
-                          onChange={handlePasswordChange}
-                          placeholder="Confirm new password"
-                          className="border border-gray-200 p-4 rounded-xl w-full focus:ring-2 focus:ring-red-500 focus:border-red-400 shadow-sm transition"
-                        />
-                                          <button
-                type="button"
-                className="absolute right-4 top-3.5"
-                onClick={() => setShowPassword(!showPassword)}
-              >
-                {showPassword ? (
-                  <EyeSlashIcon className="h-5 w-5 text-gray-700" />
-                ) : (
-                  <EyeIcon className="h-5 w-5 text-gray-700" />
-                )}
-              </button>
-                      </div>
-                    </div>
+      {/* CURRENT PASSWORD */}
+      <div className="group">
+        <label className="block text-gray-600 font-medium mb-1" htmlFor="current_password">
+          Current Password
+        </label>
 
-                    <div className="flex gap-4 justify-end">
-                      <button
-                        onClick={changePassword}
-                        disabled={loading}
-                        className="bg-red-500 hover:bg-red-600 text-white py-3 px-8 rounded-xl font-medium shadow-md transition duration-300"
-                      >
-                        {loading ? "Updating..." : "Change Password"}
-                      </button>
-                      <button
-                        onClick={() => setActiveSection("overview")}
-                        className="bg-gray-100 hover:bg-gray-200 text-gray-800 py-3 px-8 rounded-xl font-medium shadow-md transition duration-300"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                )}
+        <div className="relative">
+          <input
+            type={showCurrent ? "text" : "password"}
+            id="current_password"
+            name="current_password"
+            value={passwords.current_password}
+            onChange={handlePasswordChange}
+            placeholder="Enter current password"
+            className="border border-gray-200 p-4 rounded-xl w-full focus:ring-2 focus:ring-red-500 focus:border-red-400 shadow-sm transition"
+          />
+
+          <button
+            key={showCurrent ? 'slash' : 'eye'}  // Forces re-render on toggle
+            type="button"
+            className="absolute right-4 top-1/2 -translate-y-1/2 p-1 opacity-0 group-focus-within:opacity-100 transition-opacity"
+            onClick={() => setShowCurrent(!showCurrent)}
+          >
+            {showCurrent ? (
+              <EyeSlashIcon className="h-5 w-5 text-gray-700" />
+            ) : (
+              <EyeIcon className="h-5 w-5 text-gray-700" />
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* NEW PASSWORD */}
+      <div className="group">
+        <label className="block text-gray-600 font-medium mb-1" htmlFor="new_password">
+          New Password
+        </label>
+
+        <div className="relative">
+          <input
+            type={showNew ? "text" : "password"}
+            id="new_password"
+            name="new_password"
+            value={passwords.new_password}
+            onChange={handlePasswordChange}
+            placeholder="Enter new password"
+            className="border border-gray-200 p-4 rounded-xl w-full focus:ring-2 focus:ring-red-500 focus:border-red-400 shadow-sm transition"
+          />
+
+          <button
+            key={showNew ? 'slash' : 'eye'}
+            type="button"
+            className="absolute right-4 top-1/2 -translate-y-1/2 p-1 opacity-0 group-focus-within:opacity-100 transition-opacity"
+            onClick={() => setShowNew(!showNew)}
+          >
+            {showNew ? (
+              <EyeSlashIcon className="h-5 w-5 text-gray-700" />
+            ) : (
+              <EyeIcon className="h-5 w-5 text-gray-700" />
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* CONFIRM PASSWORD */}
+      <div className="group">
+        <label className="block text-gray-600 font-medium mb-1" htmlFor="confirm_password">
+          Confirm New Password
+        </label>
+
+        <div className="relative">
+          <input
+            type={showConfirm ? "text" : "password"}
+            id="confirm_password"
+            name="confirm_password"
+            value={passwords.confirm_password}
+            onChange={handlePasswordChange}
+            placeholder="Confirm new password"
+            className="border border-gray-200 p-4 rounded-xl w-full focus:ring-2 focus:ring-red-500 focus:border-red-400 shadow-sm transition"
+          />
+
+          <button
+            key={showConfirm ? 'slash' : 'eye'}
+            type="button"
+            className="absolute right-4 top-1/2 -translate-y-1/2 p-1 opacity-0 group-focus-within:opacity-100 transition-opacity"
+            onClick={() => setShowConfirm(!showConfirm)}
+          >
+            {showConfirm ? (
+              <EyeSlashIcon className="h-5 w-5 text-gray-700" />
+            ) : (
+              <EyeIcon className="h-5 w-5 text-gray-700" />
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div className="flex gap-4 justify-end">
+      <button
+        onClick={changePassword}
+        disabled={loading}
+        className="bg-red-500 hover:bg-red-600 text-white py-3 px-8 rounded-xl font-medium shadow-md transition duration-300"
+      >
+        {loading ? "Updating..." : "Change Password"}
+      </button>
+      <button
+        onClick={() => setActiveSection("overview")}
+        className="bg-gray-100 hover:bg-gray-200 text-gray-800 py-3 px-8 rounded-xl font-medium shadow-md transition duration-300"
+      >
+        Cancel
+      </button>
+    </div>
+  </div>
+)}
+
         </main>
       </div>
     </div>
