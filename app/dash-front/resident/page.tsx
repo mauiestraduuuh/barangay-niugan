@@ -10,9 +10,10 @@ import {
   CreditCardIcon,
   ClipboardDocumentIcon,
   ChatBubbleLeftEllipsisIcon,
-  BellIcon,
   Bars3Icon,
   ChevronLeftIcon,
+  EyeSlashIcon,
+  EyeIcon,
   LockClosedIcon,
   ChevronRightIcon,
   XMarkIcon,
@@ -58,6 +59,7 @@ export default function ResidentProfilePage() {
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [message, setMessage] = useState("");
   const [activeSection, setActiveSection] = useState<"overview" | "edit" | "password">("overview");
 
@@ -483,7 +485,7 @@ export default function ResidentProfilePage() {
                     Current Password
                   </label>
                   <input
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     id="current_password"
                     name="current_password"
                     value={passwords.current_password}
@@ -491,6 +493,17 @@ export default function ResidentProfilePage() {
                     placeholder="Enter current password"
                     className="border border-gray-200 p-4 rounded-xl w-full focus:ring-2 focus:ring-red-500 focus:border-red-400 shadow-sm transition"
                   />
+                  <button
+                type="button"
+                className="absolute right-4 top-3.5"
+                onClick={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? (
+                  <EyeSlashIcon className="h-5 w-5 text-gray-700" />
+                ) : (
+                  <EyeIcon className="h-5 w-5 text-gray-700" />
+                )}
+              </button>
                 </div>
 
                 <div>
@@ -498,7 +511,7 @@ export default function ResidentProfilePage() {
                     New Password
                   </label>
                   <input
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     id="new_password"
                     name="new_password"
                     value={passwords.new_password}
@@ -506,13 +519,24 @@ export default function ResidentProfilePage() {
                     placeholder="Enter new password"
                     className="border border-gray-200 p-4 rounded-xl w-full focus:ring-2 focus:ring-red-500 focus:border-red-400 shadow-sm transition"
                   />
+                                    <button
+                type="button"
+                className="absolute right-4 top-3.5"
+                onClick={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? (
+                  <EyeSlashIcon className="h-5 w-5 text-gray-700" />
+                ) : (
+                  <EyeIcon className="h-5 w-5 text-gray-700" />
+                )}
+              </button>
                 </div>
                       <div>
                         <label className="block text-gray-600 font-medium mb-1" htmlFor="confirm_password">
                           Confirm New Password
                         </label>
                         <input
-                          type="password"
+                          type={showPassword ? "text" : "password"}
                           id="confirm_password"
                           name="confirm_password"
                           value={passwords.confirm_password}
@@ -520,6 +544,17 @@ export default function ResidentProfilePage() {
                           placeholder="Confirm new password"
                           className="border border-gray-200 p-4 rounded-xl w-full focus:ring-2 focus:ring-red-500 focus:border-red-400 shadow-sm transition"
                         />
+                                          <button
+                type="button"
+                className="absolute right-4 top-3.5"
+                onClick={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? (
+                  <EyeSlashIcon className="h-5 w-5 text-gray-700" />
+                ) : (
+                  <EyeIcon className="h-5 w-5 text-gray-700" />
+                )}
+              </button>
                       </div>
                     </div>
 
