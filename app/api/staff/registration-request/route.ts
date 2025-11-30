@@ -62,6 +62,10 @@ export async function GET(req: NextRequest) {
         role: true,
         submitted_at: true,
         status: true,
+        address: true, 
+        gender: true, 
+        photo_url: true,
+        is_head_of_family: true, 
         approvedBy: { select: { user_id: true, username: true } },
       },
     });

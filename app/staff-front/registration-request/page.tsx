@@ -482,16 +482,16 @@ export default function StaffRegistrationRequestsPage() {
 
           {/* MODAL */}
           {viewRequest && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 sm:p-0">
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 sm:p-0 text-black">
               <div className="bg-white p-4 sm:p-6 rounded-xl shadow-lg w-full sm:w-1/2 relative overflow-auto max-h-[90vh]">
                 <button
                   onClick={() => setViewRequest(null)}
                   className="absolute top-3 right-3 text-gray-700 hover:text-red-600"
                 >
-                  <XMarkIcon className="w-6 h-6" />
+                  <XMarkIcon className="w-6 h-6 text-black" />
                 </button>
 
-                <h2 className="text-xl font-semibold mb-4">Request Details</h2>
+                <h2 className="text-xl font-semibold mb-4 text-black">Request Details</h2> 
 
                 <p><strong>Name:</strong> {viewRequest.first_name} {viewRequest.last_name}</p>
                 <p><strong>Email:</strong> {viewRequest.email || "N/A"}</p>
