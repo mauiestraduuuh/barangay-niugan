@@ -367,7 +367,7 @@ const updateProfile = async () => {
             </div>
           )}
 
-         // {activeSection === "edit" && (
+   {activeSection === "edit" && (
   <div className="space-y-8 bg-white text-black shadow-lg rounded-xl p-8 mx-auto">
     <h2 className="text-3xl font-bold text-gray-800">Edit Information</h2>
 
