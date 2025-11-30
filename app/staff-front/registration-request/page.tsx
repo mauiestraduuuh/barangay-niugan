@@ -491,7 +491,7 @@ export default function StaffRegistrationRequestsPage() {
                   <XMarkIcon className="w-6 h-6 text-black" />
                 </button>
 
-                <h2 className="text-xl font-semibold mb-4 text-black">Request Details</h2> 
+                <h2 className="text-xl font-semibold mb-4">Request Details</h2> 
 
                 <p><strong>Name:</strong> {viewRequest.first_name} {viewRequest.last_name}</p>
                 <p><strong>Email:</strong> {viewRequest.email || "N/A"}</p>
