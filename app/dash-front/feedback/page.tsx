@@ -521,7 +521,7 @@ const filterRequests = () => {
         </thead>
         <tbody>
           {filteredFeedbacks.map((fb) => (
-            <tr key={fb.feedback_id} className="hover:bg-gray-50 transition-colors duration-200 text-xs sm:text-sm md:text-base">
+            <tr key={fb.feedback_id} className="hover:bg-gray-50 transition-colors duration-200 text-black text-xs sm:text-sm md:text-base">
               <td className="p-2 sm:p-4 border-b border-gray-200">
                 {fb.category ? (language === "en" ? fb.category.english_name : fb.category.tagalog_name) : "-"}
               </td>

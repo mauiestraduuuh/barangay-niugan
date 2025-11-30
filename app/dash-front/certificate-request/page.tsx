@@ -458,13 +458,13 @@ const filterRequests = () => {
 
   {/* Request Modal */}
   {showModal && (
-    <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl w-full max-w-md p-6 relative">
+    <div className="fixed inset-0 bg-black text-black bg-opacity-40 flex items-center justify-center z-50">
+      <div className="bg-white rounded-xl w-full max-w-md p-6 relative text-black">
         <button
           onClick={() => setShowModal(false)}
           className="absolute top-4 right-4 text-black-500 hover:text-red-700"
         >
-          <XMarkIcon className="w-6 h-6" />
+          <XMarkIcon className="w-6 h-6 text-black" />
         </button>
         <h2 className="text-xl font-semibold mb-4">New Certificate Request</h2>
         <form onSubmit={handleRequestSubmit} className="flex flex-col gap-4">

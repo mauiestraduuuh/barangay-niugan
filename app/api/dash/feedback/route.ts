@@ -2,16 +2,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/../lib/prisma";
 import jwt from "jsonwebtoken";
-import fs from "fs";
-import path from "path";
+import { supabase } from "@/../lib/supabase";
 
 const JWT_SECRET = process.env.JWT_SECRET!;
+const BUCKET = process.env.SUPABASE_PUBLIC_BUCKET!; // use uploads bucket
 
 export const config = {
-  api: { bodyParser: false }, // needed for formData
+  api: { bodyParser: false }, // for FormData
 };
 
-// Extract user ID and role from token
+// --- Helpers ---
 function getUserFromToken(req: NextRequest): { userId: number; role: string } | null {
   try {
     const authHeader = req.headers.get("authorization");
@@ -27,7 +27,6 @@ function getUserFromToken(req: NextRequest): { userId: number; role: string } | 
   }
 }
 
-// Get resident_id from user_id
 async function getResidentId(userId: number): Promise<number | null> {
   const resident = await prisma.resident.findFirst({
     where: { user_id: userId },
@@ -36,25 +35,31 @@ async function getResidentId(userId: number): Promise<number | null> {
   return resident?.resident_id || null;
 }
 
-// --- GET: fetch feedbacks and complaint categories ---
+function getPublicFileUrl(filePath?: string | null) {
+  if (!filePath) return null;
+  try {
+    const { data } = supabase.storage.from(BUCKET).getPublicUrl(filePath);
+    return data?.publicUrl || null;
+  } catch (err) {
+    console.error("Error getting public URL:", err);
+    return null;
+  }
+}
+
+// --- GET Feedbacks & Categories ---
 export async function GET(req: NextRequest) {
   try {
     const user = getUserFromToken(req);
-    if (!user || user.role !== "RESIDENT") {
+    if (!user || user.role !== "RESIDENT")
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
 
     const residentId = await getResidentId(user.userId);
-    if (!residentId) {
+    if (!residentId)
       return NextResponse.json({ error: "Resident not found" }, { status: 404 });
-    }
 
-    // Fetch only feedbacks for this resident
     const feedbacks = await prisma.feedback.findMany({
       where: { resident_id: residentId },
-      include: {
-        category: true,
-      },
+      include: { category: true },
       orderBy: { submitted_at: "desc" },
     });
 
@@ -62,9 +67,9 @@ export async function GET(req: NextRequest) {
       feedback_id: fb.feedback_id,
       category_id: fb.category_id,
       status: fb.status,
-      proof_file: fb.proof_file,
+      proof_file: getPublicFileUrl(fb.proof_file),
       response: fb.response,
-      response_proof_file: fb.response_proof_file,
+      response_proof_file: getPublicFileUrl(fb.response_proof_file),
       submitted_at: fb.submitted_at,
       responded_at: fb.responded_at,
       category: fb.category,
@@ -81,65 +86,60 @@ export async function GET(req: NextRequest) {
       group: cat.group,
     }));
 
-    return NextResponse.json({
-      feedbacks: formattedFeedbacks,
-      categories: formattedCategories,
-    });
+    return NextResponse.json({ feedbacks: formattedFeedbacks, categories: formattedCategories });
   } catch (err) {
-    console.error(err);
+    console.error("GET /api/dash/feedback failed:", err);
     return NextResponse.json({ message: "Failed to fetch feedbacks" }, { status: 500 });
   }
 }
 
-
-// --- POST: submit new feedback ---
+// --- POST: Submit Feedback ---
 export async function POST(req: NextRequest) {
   try {
-    // Authenticate user
     const user = getUserFromToken(req);
-    if (!user || user.role !== "RESIDENT") {
+    if (!user || user.role !== "RESIDENT")
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
 
-    // Get resident_id from user_id
     const residentId = await getResidentId(user.userId);
-    if (!residentId) {
+    if (!residentId)
       return NextResponse.json({ error: "Resident not found" }, { status: 404 });
-    }
 
     const formData = await req.formData();
     const categoryId = parseInt(formData.get("categoryId") as string);
     const file = formData.get("file") as File;
 
-    if (!categoryId || !file) {
+    if (!categoryId || !file)
       return NextResponse.json({ message: "Category and file are required" }, { status: 400 });
+
+    // Upload file to Supabase (organized by resident)
+    const filePath = `${residentId}/${Date.now()}_${file.name}`;
+    const fileBuffer = Buffer.from(await file.arrayBuffer());
+
+    const { data, error } = await supabase.storage
+      .from(BUCKET)
+      .upload(filePath, fileBuffer, { cacheControl: "3600", upsert: false });
+
+    if (error || !data) {
+      console.error("Supabase upload error:", error);
+      return NextResponse.json({ message: "File upload failed" }, { status: 500 });
     }
 
-    // Save file to public/uploads
-    const uploadDir = path.join(process.cwd(), "public", "uploads");
-    if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
-
-    const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-    const fileName = `${Date.now()}_${file.name}`;
-    const filePath = path.join(uploadDir, fileName);
-    fs.writeFileSync(filePath, buffer);
-
-    // Create feedback with actual resident_id
     const feedback = await prisma.feedback.create({
       data: {
         resident_id: residentId,
         category_id: categoryId,
         status: "PENDING",
-        proof_file: `/uploads/${fileName}`,
+        proof_file: filePath,
         submitted_at: new Date(),
       },
       include: { category: true },
     });
 
+    feedback.proof_file = getPublicFileUrl(filePath);
+
     return NextResponse.json({ feedback });
   } catch (err) {
-    console.error(err);
+    console.error("POST /api/dash/feedback failed:", err);
     return NextResponse.json({ message: "Failed to submit feedback" }, { status: 500 });
   }
 }

@@ -10,9 +10,10 @@ import {
   CreditCardIcon,
   ClipboardDocumentIcon,
   ChatBubbleLeftEllipsisIcon,
-  BellIcon,
   Bars3Icon,
   ChevronLeftIcon,
+  EyeSlashIcon,
+  EyeIcon,
   LockClosedIcon,
   ChevronRightIcon,
   XMarkIcon,
@@ -58,10 +59,24 @@ export default function ResidentProfilePage() {
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
+  const [editingProfile, setEditingProfile] = useState(profile);
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [message, setMessage] = useState("");
   const [activeSection, setActiveSection] = useState<"overview" | "edit" | "password">("overview");
 
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+
+  useEffect(() => {
+  if (activeSection === "edit") {
+    setEditingProfile(profile);
+  }
+}, [activeSection, profile]);
+
+const handleEditingProfileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  setEditingProfile({ ...editingProfile, [e.target.name]: e.target.value });
+};
 
   useEffect(() => {
     fetchProfile();
@@ -80,50 +95,49 @@ export default function ResidentProfilePage() {
     }
   };
 
-  const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setProfile({ ...profile, [e.target.name]: e.target.value });
-  };
-
   const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setPasswords({ ...passwords, [e.target.name]: e.target.value });
   };
 
-  const updateProfile = async () => {
-    if (!token) return setMessage("Unauthorized");
-    setLoading(true);
-    try {
-      const formData = new FormData();
-      formData.append("first_name", profile.first_name);
-      formData.append("last_name", profile.last_name);
-      formData.append("birthdate", profile.birthdate);
-      formData.append("contact_no", profile.contact_no || "");
-      formData.append("address", profile.address || "");
-      if (selectedFile) {
-        formData.append("photo", selectedFile);
-      }
-
-      const res = await axios.put("/api/dash/resident", formData, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "multipart/form-data",
-        },
-      });
-      setProfile(res.data); 
-      setSelectedFile(null);
-      setMessage("Profile updated successfully");
-      setActiveSection("overview");
-      setTimeout(() => {
-        setMessage("");
-      }, 5000);
-    } catch (err) {
-      console.error(err);
-      setMessage("Failed to update profile");
-      setTimeout(() => {
-        setMessage("");
-      }, 5000);
+const updateProfile = async () => {
+  if (!token) return setMessage("Unauthorized");
+  setLoading(true);
+  try {
+    const formData = new FormData();
+    formData.append("first_name", editingProfile.first_name);
+    formData.append("last_name", editingProfile.last_name);
+    formData.append("birthdate", editingProfile.birthdate);
+    formData.append("contact_no", editingProfile.contact_no || "");
+    formData.append("address", editingProfile.address || "");
+    if (selectedFile) {
+      formData.append("photo", selectedFile);
     }
-    setLoading(false);
-  };
+
+    const res = await axios.put("/api/dash/resident", formData, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "multipart/form-data",
+      },
+    });
+    setProfile(res.data);  // Update the real profile state
+    setEditingProfile(res.data);  // Sync editingProfile with the updated data
+    setSelectedFile(null);
+    setMessage("Profile updated successfully");
+    setActiveSection("overview");
+    setTimeout(() => {
+      setMessage("");
+    }, 5000);
+  } catch (err) {
+    console.error(err);
+    setMessage("Failed to update profile");
+    setTimeout(() => {
+      setMessage("");
+    }, 5000);
+  }
+  setLoading(false);
+};
+
+
 
   const changePassword = async () => {
     if (passwords.new_password !== passwords.confirm_password) {
@@ -353,193 +367,248 @@ export default function ResidentProfilePage() {
             </div>
           )}
 
-          {activeSection === "edit" && (
-            <div className="space-y-8 bg-white shadow-lg rounded-xl p-8 mx-auto">
-              <h2 className="text-3xl font-bold text-gray-800">Edit Information</h2>
+   {activeSection === "edit" && (
+  <div className="space-y-8 bg-white text-black shadow-lg rounded-xl p-8 mx-auto">
+    <h2 className="text-3xl font-bold text-gray-800">Edit Information</h2>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-gray-600 font-medium mb-1" htmlFor="first_name">
-                    First Name
-                  </label>
-                  <input
-                    type="text"
-                    id="first_name"
-                    name="first_name"
-                    value={profile.first_name}
-                    onChange={handleProfileChange}
-                    placeholder="Enter your first name"
-                    className="border border-gray-200 p-4 rounded-xl w-full focus:ring-2 focus:ring-red-500 focus:border-red-400 shadow-sm transition"
-                  />
-                </div>
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div>
+        <label className="block text-gray-600 font-medium mb-1" htmlFor="first_name">
+          First Name
+        </label>
+        <input
+          type="text"
+          id="first_name"
+          name="first_name"
+          value={editingProfile.first_name}
+          onChange={handleEditingProfileChange}
+          placeholder="Enter your first name"
+          className="border border-gray-200 p-4 rounded-xl w-full focus:ring-2 focus:ring-red-500 focus:border-red-400 shadow-sm transition"
+        />
+      </div>
 
-                <div>
-                  <label className="block text-gray-600 font-medium mb-1" htmlFor="last_name">
-                    Last Name
-                  </label>
-                  <input
-                    type="text"
-                    id="last_name"
-                    name="last_name"
-                    value={profile.last_name}
-                    onChange={handleProfileChange}
-                    placeholder="Enter your last name"
-                    className="border border-gray-200 p-4 rounded-xl w-full focus:ring-2 focus:ring-red-500 focus:border-red-400 shadow-sm transition"
-                  />
-                </div>
+      <div>
+        <label className="block text-gray-600 font-medium mb-1" htmlFor="last_name">
+          Last Name
+        </label>
+        <input
+          type="text"
+          id="last_name"
+          name="last_name"
+          value={editingProfile.last_name}
+          onChange={handleEditingProfileChange}
+          placeholder="Enter your last name"
+          className="border border-gray-200 p-4 rounded-xl w-full focus:ring-2 focus:ring-red-500 focus:border-red-400 shadow-sm transition"
+        />
+      </div>
 
-                <div>
-                  <label className="block text-gray-600 font-medium mb-1" htmlFor="birthdate">
-                    Birthdate
-                  </label>
-                  <input
-                    type="date"
-                    id="birthdate"
-                    name="birthdate"
-                    value={profile.birthdate?.split("T")[0]}
-                    onChange={handleProfileChange}
-                    className="border border-gray-200 p-4 rounded-xl w-full focus:ring-2 focus:ring-red-500 focus:border-red-400 shadow-sm transition"
-                  />
-                </div>
+      <div>
+        <label className="block text-gray-600 font-medium mb-1" htmlFor="birthdate">
+          Birthdate
+        </label>
+        <input
+          type="date"
+          id="birthdate"
+          name="birthdate"
+          value={editingProfile.birthdate?.split("T")[0]}
+          onChange={handleEditingProfileChange}
+          className="border border-gray-200 p-4 rounded-xl w-full focus:ring-2 focus:ring-red-500 focus:border-red-400 shadow-sm transition"
+        />
+      </div>
 
-                <div>
-                  <label className="block text-gray-600 font-medium mb-1" htmlFor="contact_no">
-                    Contact Number
-                  </label>
-                  <input
-                    type="text"
-                    id="contact_no"
-                    name="contact_no"
-                    value={profile.contact_no || ""}
-                    onChange={handleProfileChange}
-                    placeholder="Enter contact number"
-                    className="border border-gray-200 p-4 rounded-xl w-full focus:ring-2 focus:ring-red-500 focus:border-red-400 shadow-sm transition"
-                  />
-                </div>
+      <div>
+        <label className="block text-gray-600 font-medium mb-1" htmlFor="contact_no">
+          Contact Number
+        </label>
+        <input
+          type="text"
+          id="contact_no"
+          name="contact_no"
+          value={editingProfile.contact_no || ""}
+          onChange={handleEditingProfileChange}
+          placeholder="Enter contact number"
+          className="border border-gray-200 p-4 rounded-xl w-full focus:ring-2 focus:ring-red-500 focus:border-red-400 shadow-sm transition"
+        />
+      </div>
 
-                <div className="md:col-span-2">
-                  <label className="block text-gray-600 font-medium mb-1" htmlFor="address">
-                    Address
-                  </label>
-                  <input
-                    type="text"
-                    id="address"
-                    name="address"
-                    value={profile.address || ""}
-                    onChange={handleProfileChange}
-                    placeholder="Enter your address"
-                    className="border border-gray-200 p-4 rounded-xl w-full focus:ring-2 focus:ring-red-500 focus:border-red-400 shadow-sm transition"
-                  />
-                </div>
+      <div className="md:col-span-2">
+        <label className="block text-gray-600 font-medium mb-1" htmlFor="address">
+          Address
+        </label>
+        <input
+          type="text"
+          id="address"
+          name="address"
+          value={editingProfile.address || ""}
+          onChange={handleEditingProfileChange}
+          placeholder="Enter your address"
+          className="border border-gray-200 p-4 rounded-xl w-full focus:ring-2 focus:ring-red-500 focus:border-red-400 shadow-sm transition"
+        />
+      </div>
 
-                <div className="md:col-span-2">
-                  <label className="block text-gray-600 font-medium mb-1" htmlFor="photo">
-                    Profile Picture
-                  </label>
-                  <input
-                    type="file"
-                    id="photo_url"
-                    accept="image/*"
-                    onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
-                    className="border border-gray-200 p-4 rounded-xl w-full focus:ring-2 focus:ring-red-500 focus:border-red-400 shadow-sm transition"
-                  />
-                  {selectedFile && (
-                    <div className="mt-2">
-                      <img
-                        src={URL.createObjectURL(selectedFile)}
-                        alt="Preview"
-                        className="w-20 h-20 rounded-full object-cover border border-gray-300"
-                      />
-                    </div>
-                  )}
-                </div>
-              </div>
+      <div className="md:col-span-2">
+        <label className="block text-gray-600 font-medium mb-1" htmlFor="photo">
+          Profile Picture
+        </label>
+        <input
+          type="file"
+          id="photo_url"
+          accept="image/*"
+          onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+          className="border border-gray-200 p-4 rounded-xl w-full focus:ring-2 focus:ring-red-500 focus:border-red-400 shadow-sm transition"
+        />
+        {selectedFile && (
+          <div className="mt-2">
+            <img
+              src={URL.createObjectURL(selectedFile)}
+              alt="Preview"
+              className="w-20 h-20 rounded-full object-cover border border-gray-300"
+            />
+          </div>
+        )}
+      </div>
+    </div>
 
-              <div className="flex gap-4 justify-end">
-                <button
-                  onClick={updateProfile}
-                  disabled={loading}
-                  className="bg-red-500 hover:bg-red-600 text-white py-3 px-8 rounded-xl font-medium shadow-md transition duration-300"
-                >
-                  {loading ? "Saving..." : "Save Changes"}
-                </button>
-                <button
-                  onClick={() => setActiveSection("overview")}
-                  className="bg-gray-100 hover:bg-gray-200 text-gray-800 py-3 px-8 rounded-xl font-medium shadow-md transition duration-300"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          )}
+    <div className="flex gap-4 justify-end">
+      <button
+        onClick={updateProfile}
+        disabled={loading}
+        className="bg-red-500 hover:bg-red-600 text-white py-3 px-8 rounded-xl font-medium shadow-md transition duration-300"
+      >
+        {loading ? "Saving..." : "Save Changes"}
+      </button>
+      <button
+        onClick={() => setActiveSection("overview")}
+        className="bg-gray-100 hover:bg-gray-200 text-gray-800 py-3 px-8 rounded-xl font-medium shadow-md transition duration-300"
+      >
+        Cancel
+      </button>
+    </div>
+  </div>
+)}
 
-          {activeSection === "password" && (
-            <div className="space-y-8 bg-white shadow-lg rounded-xl p-8 mx-auto">
-              <h2 className="text-3xl font-bold text-gray-800">Change Password</h2>
+  
+  {activeSection === "password" && (
+  <div className="space-y-8 bg-white text-black shadow-lg rounded-xl p-8 mx-auto">
+    <h2 className="text-3xl font-bold text-gray-800">Change Password</h2>
 
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-gray-600 font-medium mb-1" htmlFor="current_password">
-                    Current Password
-                  </label>
-                  <input
-                    type="password"
-                    id="current_password"
-                    name="current_password"
-                    value={passwords.current_password}
-                    onChange={handlePasswordChange}
-                    placeholder="Enter current password"
-                    className="border border-gray-200 p-4 rounded-xl w-full focus:ring-2 focus:ring-red-500 focus:border-red-400 shadow-sm transition"
-                  />
-                </div>
+    <div className="space-y-4">
 
-                <div>
-                  <label className="block text-gray-600 font-medium mb-1" htmlFor="new_password">
-                    New Password
-                  </label>
-                  <input
-                    type="password"
-                    id="new_password"
-                    name="new_password"
-                    value={passwords.new_password}
-                    onChange={handlePasswordChange}
-                    placeholder="Enter new password"
-                    className="border border-gray-200 p-4 rounded-xl w-full focus:ring-2 focus:ring-red-500 focus:border-red-400 shadow-sm transition"
-                  />
-                </div>
-                      <div>
-                        <label className="block text-gray-600 font-medium mb-1" htmlFor="confirm_password">
-                          Confirm New Password
-                        </label>
-                        <input
-                          type="password"
-                          id="confirm_password"
-                          name="confirm_password"
-                          value={passwords.confirm_password}
-                          onChange={handlePasswordChange}
-                          placeholder="Confirm new password"
-                          className="border border-gray-200 p-4 rounded-xl w-full focus:ring-2 focus:ring-red-500 focus:border-red-400 shadow-sm transition"
-                        />
-                      </div>
-                    </div>
+      {/* CURRENT PASSWORD */}
+      <div className="group">
+        <label className="block text-gray-600 font-medium mb-1" htmlFor="current_password">
+          Current Password
+        </label>
 
-                    <div className="flex gap-4 justify-end">
-                      <button
-                        onClick={changePassword}
-                        disabled={loading}
-                        className="bg-red-500 hover:bg-red-600 text-white py-3 px-8 rounded-xl font-medium shadow-md transition duration-300"
-                      >
-                        {loading ? "Updating..." : "Change Password"}
-                      </button>
-                      <button
-                        onClick={() => setActiveSection("overview")}
-                        className="bg-gray-100 hover:bg-gray-200 text-gray-800 py-3 px-8 rounded-xl font-medium shadow-md transition duration-300"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                )}
+        <div className="relative">
+          <input
+            type={showCurrent ? "text" : "password"}
+            id="current_password"
+            name="current_password"
+            value={passwords.current_password}
+            onChange={handlePasswordChange}
+            placeholder="Enter current password"
+            className="border border-gray-200 p-4 rounded-xl w-full focus:ring-2 focus:ring-red-500 focus:border-red-400 shadow-sm transition"
+          />
+
+          <button
+            key={showCurrent ? 'slash' : 'eye'}  // Forces re-render on toggle
+            type="button"
+            className="absolute right-4 top-1/2 -translate-y-1/2 p-1 opacity-0 group-focus-within:opacity-100 transition-opacity"
+            onClick={() => setShowCurrent(!showCurrent)}
+          >
+            {showCurrent ? (
+              <EyeSlashIcon className="h-5 w-5 text-gray-700" />
+            ) : (
+              <EyeIcon className="h-5 w-5 text-gray-700" />
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* NEW PASSWORD */}
+      <div className="group">
+        <label className="block text-gray-600 font-medium mb-1" htmlFor="new_password">
+          New Password
+        </label>
+
+        <div className="relative">
+          <input
+            type={showNew ? "text" : "password"}
+            id="new_password"
+            name="new_password"
+            value={passwords.new_password}
+            onChange={handlePasswordChange}
+            placeholder="Enter new password"
+            className="border border-gray-200 p-4 rounded-xl w-full focus:ring-2 focus:ring-red-500 focus:border-red-400 shadow-sm transition"
+          />
+
+          <button
+            key={showNew ? 'slash' : 'eye'}
+            type="button"
+            className="absolute right-4 top-1/2 -translate-y-1/2 p-1 opacity-0 group-focus-within:opacity-100 transition-opacity"
+            onClick={() => setShowNew(!showNew)}
+          >
+            {showNew ? (
+              <EyeSlashIcon className="h-5 w-5 text-gray-700" />
+            ) : (
+              <EyeIcon className="h-5 w-5 text-gray-700" />
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* CONFIRM PASSWORD */}
+      <div className="group">
+        <label className="block text-gray-600 font-medium mb-1" htmlFor="confirm_password">
+          Confirm New Password
+        </label>
+
+        <div className="relative">
+          <input
+            type={showConfirm ? "text" : "password"}
+            id="confirm_password"
+            name="confirm_password"
+            value={passwords.confirm_password}
+            onChange={handlePasswordChange}
+            placeholder="Confirm new password"
+            className="border border-gray-200 p-4 rounded-xl w-full focus:ring-2 focus:ring-red-500 focus:border-red-400 shadow-sm transition"
+          />
+
+          <button
+            key={showConfirm ? 'slash' : 'eye'}
+            type="button"
+            className="absolute right-4 top-1/2 -translate-y-1/2 p-1 opacity-0 group-focus-within:opacity-100 transition-opacity"
+            onClick={() => setShowConfirm(!showConfirm)}
+          >
+            {showConfirm ? (
+              <EyeSlashIcon className="h-5 w-5 text-gray-700" />
+            ) : (
+              <EyeIcon className="h-5 w-5 text-gray-700" />
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div className="flex gap-4 justify-end">
+      <button
+        onClick={changePassword}
+        disabled={loading}
+        className="bg-red-500 hover:bg-red-600 text-white py-3 px-8 rounded-xl font-medium shadow-md transition duration-300"
+      >
+        {loading ? "Updating..." : "Change Password"}
+      </button>
+      <button
+        onClick={() => setActiveSection("overview")}
+        className="bg-gray-100 hover:bg-gray-200 text-gray-800 py-3 px-8 rounded-xl font-medium shadow-md transition duration-300"
+      >
+        Cancel
+      </button>
+    </div>
+  </div>
+)}
+
         </main>
       </div>
     </div>
