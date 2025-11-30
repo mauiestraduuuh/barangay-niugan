@@ -354,7 +354,7 @@ export default function ResidentProfilePage() {
           )}
 
           {activeSection === "edit" && (
-            <div className="space-y-8 bg-white shadow-lg rounded-xl p-8 mx-auto">
+            <div className="space-y-8 bg-white text-black shadow-lg rounded-xl p-8 mx-auto">
               <h2 className="text-3xl font-bold text-gray-800">Edit Information</h2>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -474,7 +474,7 @@ export default function ResidentProfilePage() {
           )}
 
           {activeSection === "password" && (
-            <div className="space-y-8 bg-white shadow-lg rounded-xl p-8 mx-auto">
+            <div className="space-y-8 bg-white text-black shadow-lg rounded-xl p-8 mx-auto">
               <h2 className="text-3xl font-bold text-gray-800">Change Password</h2>
 
               <div className="space-y-4">
