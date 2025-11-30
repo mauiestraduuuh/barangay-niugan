@@ -4,8 +4,9 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import axios from "axios";
-import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
+import { toPng } from "html-to-image";
+
 import {
   HomeIcon,
   UserIcon,
@@ -146,27 +147,37 @@ export default function DigitalID() {
     });
   };
 
-  const handleDownload = async () => {
-    if (!cardRef.current || !resident) return;
+  
+const handleDownload = async () => {
+  if (!cardRef.current || !resident) return;
 
-    sanitizeStylesForCanvas(cardRef.current);
+  try {
+    const card = cardRef.current;
 
-    const canvas = await html2canvas(cardRef.current, {
-      useCORS: true,
-      allowTaint: true,
-      scale: 3,
-      backgroundColor: "#ffffff",
+    // Convert to PNG (html-to-image preserves ALL colors + gradients)
+    const dataUrl = await toPng(card, {
+      cacheBust: true,
+      backgroundColor: "white",
     });
 
-    const imgData = canvas.toDataURL("image/png");
+    // Create PDF
     const pdf = new jsPDF({
       orientation: "landscape",
       unit: "px",
-      format: [canvas.width, canvas.height],
+      format: "a4",
     });
-    pdf.addImage(imgData, "PNG", 0, 0, canvas.width, canvas.height);
+
+    const imgProps = pdf.getImageProperties(dataUrl);
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+
+    pdf.addImage(dataUrl, "PNG", 0, 0, pdfWidth, pdfHeight);
+
     pdf.save(`${resident.first_name}-${resident.last_name}-DigitalID.pdf`);
-  };
+  } catch (error) {
+    console.error("Error generating PDF:", error);
+  }
+};
 
   if (loadingResident)
     return <p className="text-center mt-20">Loading digital ID...</p>;
@@ -321,10 +332,8 @@ export default function DigitalID() {
             "
           >
             {/* Left colored stripe gradient */}
-            <div
-              className="absolute left-0 top-0 h-full w-4 sm:w-[15px]"
-              style={{ background: 'linear-gradient(to bottom, #b91c1c, #ffffff, #1d4ed8)' }}
-            />
+<div className="absolute left-0 top-0 h-full w-4 sm:w-[15px] bg-gradient-to-b from-red-700 via-white to-blue-700" />
+
 
             <div className="flex h-full p-4 pl-6 sm:p-6 sm:pl-10">
               <div className="flex flex-col justify-between">
