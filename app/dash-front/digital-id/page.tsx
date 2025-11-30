@@ -322,79 +322,78 @@ const handleDownload = async () => {
           <div className="flex items-center space-x-4"></div>
         </header>
 
-        {/* ID Card */}
-        <main className="flex flex-col items-center justify-center bg-gray-50 rounded-xl p-4 sm:p-6 md:p-8 shadow-md">
-          <div
-            ref={cardRef}
-            className="
-              relative w-full max-w-[550px] aspect-[11/6]
-              bg-white rounded-xl shadow-md border border-gray-700 overflow-hidden text-black
-            "
-          >
-            {/* Left colored stripe gradient */}
-<div className="absolute left-0 top-0 h-full w-4 sm:w-[15px] bg-gradient-to-b from-red-700 via-white to-blue-700" />
+ {/* ID Card */}
+<main className="flex flex-col items-center justify-center bg-gray-50 rounded-xl p-4 sm:p-6 md:p-8 shadow-md">
+  <div
+    ref={cardRef}
+    className="
+      relative w-full max-w-[550px] aspect-[11/6]
+      bg-white rounded-xl shadow-md border border-gray-700 overflow-hidden text-black
+    "
+  >
+    {/* Left colored stripe gradient */}
+    <div className="absolute left-0 top-0 h-full w-2 sm:w-4 md:w-[15px] bg-gradient-to-b from-red-700 via-white to-blue-700" />
 
+    <div className="flex h-full p-2 pl-4 sm:p-4 sm:pl-6 md:p-6 md:pl-10">
+      <div className="flex flex-col justify-between">
+        <img
+          src={resident.photo_url || "/default-profile.png"}
+          alt="Profile"
+          crossOrigin="anonymous"
+          className="w-16 h-16 sm:w-20 sm:h-20 md:w-28 md:h-28 rounded-md border border-gray-700 object-cover"
+          loading="lazy"
+        />
+        <div className="text-[10px] sm:text-xs md:text-sm mt-1 sm:mt-2">
+          <p>Issued: {resident.issued_at || "N/A"}</p>
+          <p>Issued by: {resident.issued_by || "N/A"}</p>
+        </div>
+      </div>
 
-            <div className="flex h-full p-4 pl-6 sm:p-6 sm:pl-10">
-              <div className="flex flex-col justify-between">
-                <img
-                  src={resident.photo_url || "/default-profile.png"}
-                  alt="Profile"
-                  crossOrigin="anonymous"
-                  className="w-20 h-20 sm:w-28 sm:h-28 rounded-md border border-gray-700 object-cover"
-                  loading="lazy"
-                />
-                <div className="text-xs sm:text-sm mt-2">
-                  <p>Issued: {resident.issued_at || "N/A"}</p>
-                  <p>Issued by: {resident.issued_by || "N/A"}</p>
-                </div>
-              </div>
-
-              <div className="flex-1 pl-4 sm:pl-6 flex flex-col justify-between">
-                <div>
-                  <p className="text-xs text-gray-700">REPUBLIC OF THE PHILIPPINES</p>
-                  <h2 className="text-sm sm:text-lg font-bold leading-tight">BARANGAY DIGITAL ID</h2>
-                  <div className="flex justify-between">
-                    <p className="text-xs font-semibold mt-1">ID No.</p>
-                    <p className="text-xs mt-1">{resident.id_number}</p>
-                  </div>
-                  <p className="text-sm sm:text-base font-semibold mt-2 sm:mt-4">
-                    {resident.first_name} {resident.last_name}
-                  </p>
-                  <p className="text-xs sm:text-sm text-gray-700">{resident.address}</p>
-                  <p className="text-xs sm:text-sm text-gray-700">
-                    Household Head: {resident.landlord_name || "N/A"}
-                  </p>
-
-                  {resident.memberships && resident.memberships.length > 0 && (
-                    <div className="text-xs mt-2">
-                      <p className="font-semibold">Memberships:</p>
-                      <ul className="list-disc list-inside">
-                        {resident.memberships.map((m, i) => (
-                          <li key={i}>{m}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex justify-end">
-                  {resident.qr_code ? (
-                    <img
-                      src={resident.qr_code}
-                      alt="QR Code"
-                      crossOrigin="anonymous"
-                      className="w-16 h-16 sm:w-[90px] sm:h-[90px] object-contain"
-                      loading="lazy"
-                    />
-                  ) : (
-                    <p className="text-xs text-gray-700">QR not available</p>
-                  )}
-                </div>
-              </div>
-            </div>
+      <div className="flex-1 pl-2 sm:pl-4 md:pl-6 flex flex-col justify-between">
+        <div>
+          <p className="text-[10px] sm:text-xs md:text-sm text-gray-700">REPUBLIC OF THE PHILIPPINES</p>
+          <h2 className="text-[10px] sm:text-xs md:text-sm font-bold leading-tight">BARANGAY DIGITAL ID</h2>
+          <div className="flex justify-between">
+            <p className="text-[10px] sm:text-xs md:text-sm font-semibold mt-1">ID No.</p>
+            <p className="text-[10px] sm:text-xs md:text-sm mt-1">{resident.id_number}</p>
           </div>
+          <p className="text-[10px] sm:text-xs md:text-sm font-semibold mt-1 sm:mt-2 md:mt-4">
+            {resident.first_name} {resident.last_name}
+          </p>
+          <p className="text-[10px] sm:text-xs md:text-sm text-gray-700">{resident.address}</p>
+          <p className="text-[10px] sm:text-xs md:text-sm text-gray-700">
+            Household Head: {resident.landlord_name || "N/A"}
+          </p>
 
+          {resident.memberships && resident.memberships.length > 0 && (
+            <div className="text-[10px] sm:text-xs md:text-sm mt-1 sm:mt-2">
+              <p className="font-semibold">Memberships:</p>
+              <ul className="list-disc list-inside">
+                {resident.memberships.map((m, i) => (
+                  <li key={i}>{m}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+
+        {/* Moved QR to absolute position for higher placement */}
+        <div className="absolute bottom-8 right-4">
+          {resident.qr_code ? (
+            <img
+              src={resident.qr_code}
+              alt="QR Code"
+              crossOrigin="anonymous"
+              className="w-16 h-16 sm:w-20 sm:h-20 md:w-[90px] md:h-[90px] object-contain"
+              loading="lazy"
+            />
+          ) : (
+            <p className="text-[10px] sm:text-xs md:text-sm text-gray-700">QR not available</p>
+          )}
+        </div>
+      </div>
+    </div>
+  </div>
           {/* Download Button */}
           <div className="flex gap-4 mt-6">
             <button
