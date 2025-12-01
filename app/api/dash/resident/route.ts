@@ -124,9 +124,13 @@ export async function PUT(req: NextRequest) {
 
     if (photo) {
       const buffer = Buffer.from(await photo.arrayBuffer());
-      const base64 = buffer.toString("base64");
-      const mimeType = photo.type || "image/jpeg";
-      photo_url = `data:${mimeType};base64,${base64}`;
+      const ext = photo.name.split('.').pop() || 'jpg'; // default to jpg if no ext
+      const filename = `${userId}_${Date.now()}.${ext}`;
+      const uploadDir = path.join(process.cwd(), 'public', 'uploads');
+      fs.mkdirSync(uploadDir, { recursive: true });
+      const filepath = path.join(uploadDir, filename);
+      fs.writeFileSync(filepath, buffer);
+      photo_url = `/uploads/${filename}`;
     }
 
     const resident = await prisma.resident.findFirst({ where: { user_id: userId } });

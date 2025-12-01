@@ -37,14 +37,6 @@ interface Resident {
   landlord_name?: string | null;
 }
 
-interface Notification {
-  notification_id: number;
-  type: string;
-  message: string;
-  is_read: boolean;
-  created_at: string;
-}
-
 export default function DigitalID() {
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -118,66 +110,29 @@ export default function DigitalID() {
     fetchDigitalID();
   }, []);
 
-  const sanitizeStylesForCanvas = (el: HTMLElement) => {
-    const elements = [...el.querySelectorAll("*"), el];
+  const handleDownload = async () => {
+    if (!cardRef.current || !resident) return;
 
-    elements.forEach((child) => {
-      const computed = window.getComputedStyle(child as Element);
+    try {
+      const card = cardRef.current;
+      const dataUrl = await toPng(card, { cacheBust: true, backgroundColor: "white" });
 
-      // Background fallback
-      if (
-        computed.background.includes("oklch") ||
-        computed.background.includes("gradient") ||
-        computed.backgroundColor.includes("oklch") ||
-        computed.backgroundColor === "transparent"
-      ) {
-        (child as HTMLElement).style.background = "#ffffff";
-        (child as HTMLElement).style.backgroundColor = "#ffffff";
-      }
+      const pdf = new jsPDF({ orientation: "landscape", unit: "px", format: "a4" });
+      const imgProps = pdf.getImageProperties(dataUrl);
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
 
-      // Text color fallback
-      if (computed.color.includes("oklch") || computed.color === "currentColor") {
-        (child as HTMLElement).style.color = "#000000";
-      }
-
-      // Borders fallback
-      if (computed.borderColor.includes("oklch")) {
-        (child as HTMLElement).style.borderColor = "#000000";
-      }
-    });
+      pdf.addImage(dataUrl, "PNG", 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`${resident.first_name}-${resident.last_name}-DigitalID.pdf`);
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+    }
   };
 
-  
-const handleDownload = async () => {
-  if (!cardRef.current || !resident) return;
-
-  try {
-    const card = cardRef.current;
-
-    // Convert to PNG (html-to-image preserves ALL colors + gradients)
-    const dataUrl = await toPng(card, {
-      cacheBust: true,
-      backgroundColor: "white",
-    });
-
-    // Create PDF
-    const pdf = new jsPDF({
-      orientation: "landscape",
-      unit: "px",
-      format: "a4",
-    });
-
-    const imgProps = pdf.getImageProperties(dataUrl);
-    const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-
-    pdf.addImage(dataUrl, "PNG", 0, 0, pdfWidth, pdfHeight);
-
-    pdf.save(`${resident.first_name}-${resident.last_name}-DigitalID.pdf`);
-  } catch (error) {
-    console.error("Error generating PDF:", error);
-  }
-};
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    router.push("/auth-front/login");
+  };
 
   if (loadingResident)
     return <p className="text-center mt-20">Loading digital ID...</p>;
@@ -198,11 +153,6 @@ const handleDownload = async () => {
   if (!resident)
     return <p className="text-center mt-20 text-red-500">Digital ID not found</p>;
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    router.push("/auth-front/login");
-  };
-
   const features = [
     { name: "the-dash-resident", label: "Home", icon: HomeIcon },
     { name: "resident", label: "Manage Profile", icon: UserIcon },
@@ -210,6 +160,7 @@ const handleDownload = async () => {
     { name: "certificate-request", label: "Certificates", icon: ClipboardDocumentIcon },
     { name: "feedback", label: "Feedback / Complain", icon: ChatBubbleLeftEllipsisIcon },
   ];
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to-black p-4 flex gap-4">
       {/* Sidebar */}
@@ -261,11 +212,7 @@ const handleDownload = async () => {
                         }`}
                       />
                       {sidebarOpen && (
-                        <span
-                          className={`${
-                            isActive ? "text-red-700" : "group-hover:text-red-700"
-                          }`}
-                        >
+                        <span className={`${isActive ? "text-red-700" : "group-hover:text-red-700"}`}>
                           {label}
                         </span>
                       )}
@@ -310,90 +257,85 @@ const handleDownload = async () => {
 
       {/* Main Section */}
       <div className="flex-1 flex flex-col gap-4">
-      {/* Header */}
-         <header className="bg-gray-50 shadow-sm p-4 flex justify-between items-center rounded-xl text-black">
+        {/* Header */}
+        <header className="bg-gray-50 shadow-sm p-4 flex justify-between items-center rounded-xl text-black">
           <button
             onClick={toggleSidebar}
             className="block md:hidden text-black hover:text-red-700 focus:outline-none"
           >
             <Bars3Icon className="w-6 h-6" />
           </button>
-          <h1 className="text-large font-bold ">Barangay Digital ID</h1>
+          <h1 className="text-large font-bold">Barangay Digital ID</h1>
           <div className="flex items-center space-x-4"></div>
         </header>
 
- {/* ID Card */}
-<main className="flex flex-col items-center justify-center bg-gray-50 rounded-xl p-4 sm:p-6 md:p-8 shadow-md">
-  <div
-    ref={cardRef}
-    className="
-      relative w-full max-w-[550px] aspect-[11/6]
-      bg-white rounded-xl shadow-md border border-gray-700 overflow-hidden text-black
-    "
-  >
-    {/* Left colored stripe gradient */}
-    <div className="absolute left-0 top-0 h-full w-2 sm:w-4 md:w-[15px] bg-gradient-to-b from-red-700 via-white to-blue-700" />
+        {/* ID Card */}
+        <main className="flex flex-col items-center justify-center bg-gray-50 rounded-xl p-4 sm:p-6 md:p-8 shadow-md">
+          <div
+            ref={cardRef}
+            className="relative w-full max-w-[550px] aspect-[11/6] bg-white rounded-xl shadow-md border border-gray-700 overflow-hidden text-black"
+          >
+            {/* Left stripe */}
+            <div className="absolute left-0 top-0 h-full w-2 sm:w-4 md:w-[15px] bg-gradient-to-b from-red-700 via-white to-blue-700" />
 
-    <div className="flex h-full p-2 pl-4 sm:p-4 sm:pl-6 md:p-6 md:pl-10">
-      <div className="flex flex-col justify-between">
-        <img
-          src={resident.photo_url || "/default-profile.png"}
-          alt="Profile"
-          crossOrigin="anonymous"
-          className="w-16 h-16 sm:w-20 sm:h-20 md:w-28 md:h-28 rounded-md border border-gray-700 object-cover"
-          loading="lazy"
-        />
-        <div className="text-[10px] sm:text-xs md:text-sm mt-1 sm:mt-2">
-          <p>Issued: {resident.issued_at || "N/A"}</p>
-          <p>Issued by: {resident.issued_by || "N/A"}</p>
-        </div>
-      </div>
+            <div className="flex h-full p-2 pl-4 sm:p-4 sm:pl-6 md:p-6 md:pl-10">
+              <div className="flex flex-col justify-between">
+                <img
+                  src={resident.photo_url || "/default-profile.png"}
+                  alt="Profile"
+                  className="w-16 h-16 sm:w-20 sm:h-20 md:w-28 md:h-28 rounded-md border border-gray-700 object-cover"
+                  loading="lazy"
+                />
+                <div className="text-[10px] sm:text-xs md:text-sm mt-1 sm:mt-2">
+                  <p>Issued: {resident.issued_at || "N/A"}</p>
+                  <p>Issued by: {resident.issued_by || "N/A"}</p>
+                </div>
+              </div>
 
-      <div className="flex-1 pl-2 sm:pl-4 md:pl-6 flex flex-col justify-between">
-        <div>
-          <p className="text-[10px] sm:text-xs md:text-sm text-gray-700">REPUBLIC OF THE PHILIPPINES</p>
-          <h2 className="text-[10px] sm:text-xs md:text-sm font-bold leading-tight">BARANGAY DIGITAL ID</h2>
-          <div className="flex justify-between">
-            <p className="text-[10px] sm:text-xs md:text-sm font-semibold mt-1">ID No.</p>
-            <p className="text-[10px] sm:text-xs md:text-sm mt-1">{resident.id_number}</p>
-          </div>
-          <p className="text-[10px] sm:text-xs md:text-sm font-semibold mt-1 sm:mt-2 md:mt-4">
-            {resident.first_name} {resident.last_name}
-          </p>
-          <p className="text-[10px] sm:text-xs md:text-sm text-gray-700">{resident.address}</p>
-          <p className="text-[10px] sm:text-xs md:text-sm text-gray-700">
-            Household Head: {resident.landlord_name || "N/A"}
-          </p>
+              <div className="flex-1 pl-2 sm:pl-4 md:pl-6 flex flex-col justify-between">
+                <div>
+                  <p className="text-[10px] sm:text-xs md:text-sm text-gray-700">REPUBLIC OF THE PHILIPPINES</p>
+                  <h2 className="text-[10px] sm:text-xs md:text-sm font-bold leading-tight">BARANGAY DIGITAL ID</h2>
+                  <div className="flex justify-between">
+                    <p className="text-[10px] sm:text-xs md:text-sm font-semibold mt-1">ID No.</p>
+                    <p className="text-[10px] sm:text-xs md:text-sm mt-1">{resident.id_number}</p>
+                  </div>
+                  <p className="text-[10px] sm:text-xs md:text-sm font-semibold mt-1 sm:mt-2 md:mt-4">
+                    {resident.first_name} {resident.last_name}
+                  </p>
+                  <p className="text-[10px] sm:text-xs md:text-sm text-gray-700">{resident.address}</p>
+                  <p className="text-[10px] sm:text-xs md:text-sm text-gray-700">
+                    Household Head: {resident.landlord_name || "N/A"}
+                  </p>
 
-          {resident.memberships && resident.memberships.length > 0 && (
-            <div className="text-[10px] sm:text-xs md:text-sm mt-1 sm:mt-2">
-              <p className="font-semibold">Memberships:</p>
-              <ul className="list-disc list-inside">
-                {resident.memberships.map((m, i) => (
-                  <li key={i}>{m}</li>
-                ))}
-              </ul>
+                  {resident.memberships?.length ? (
+                    <div className="text-[10px] sm:text-xs md:text-sm mt-1 sm:mt-2">
+                      <p className="font-semibold">Memberships:</p>
+                      <ul className="list-disc list-inside">
+                        {resident.memberships.map((m, i) => (
+                          <li key={i}>{m}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
+                </div>
+
+                <div className="absolute bottom-8 right-4">
+                  {resident.qr_code ? (
+                    <img
+                      src={resident.qr_code}
+                      alt="QR Code"
+                      className="w-16 h-16 sm:w-20 sm:h-20 md:w-[90px] md:h-[90px] object-contain"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <p className="text-[10px] sm:text-xs md:text-sm text-gray-700">QR not available</p>
+                  )}
+                </div>
+              </div>
             </div>
-          )}
-        </div>
+          </div>
 
-        {/* Moved QR to absolute position for higher placement */}
-        <div className="absolute bottom-8 right-4">
-          {resident.qr_code ? (
-            <img
-              src={resident.qr_code}
-              alt="QR Code"
-              crossOrigin="anonymous"
-              className="w-16 h-16 sm:w-20 sm:h-20 md:w-[90px] md:h-[90px] object-contain"
-              loading="lazy"
-            />
-          ) : (
-            <p className="text-[10px] sm:text-xs md:text-sm text-gray-700">QR not available</p>
-          )}
-        </div>
-      </div>
-    </div>
-  </div>
           {/* Download Button */}
           <div className="flex gap-4 mt-6">
             <button

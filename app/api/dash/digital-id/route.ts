@@ -71,8 +71,13 @@ export async function GET(req: NextRequest) {
     if (!resident)
       return NextResponse.json({ error: "Resident not found" }, { status: 404 });
 
-    // Convert resident photo to base64 (for card display)
-    const residentPhotoBase64 = await photoUrlToBase64(resident.photo_url);
+    // Use base64 photo if already stored; otherwise fetch external URL
+    let residentPhotoBase64: string | null = null;
+    if (resident.photo_url?.startsWith("data:")) {
+      residentPhotoBase64 = resident.photo_url;
+    } else {
+      residentPhotoBase64 = await photoUrlToBase64(resident.photo_url);
+    }
 
     // Determine household head
     let householdHeadName = "N/A";
@@ -116,7 +121,7 @@ export async function GET(req: NextRequest) {
     if (resident.is_slp_beneficiary) memberships.push("SLP Beneficiary");
     if (resident.is_renter) memberships.push("Renter");
 
-    // Prepare QR content (without the photo!)
+    // Prepare QR content (without the photo)
     const qrContent: any = {
       full_name: `${resident.first_name} ${resident.last_name}`,
       id_number: `ID-${resident.resident_id}`,
@@ -137,7 +142,7 @@ export async function GET(req: NextRequest) {
         : undefined,
     };
 
-    // Generate QR code (now small and safe)
+    // Generate QR code
     const qrDataURL = await QRCode.toDataURL(JSON.stringify(qrContent));
 
     const safeDigitalID = safeBigInt({
@@ -152,7 +157,7 @@ export async function GET(req: NextRequest) {
         ...resident,
         household_number: resident.household_number?.replace(/^HH-/, "") ?? null,
         memberships,
-        photo_url: residentPhotoBase64, // still included for card display
+        photo_url: residentPhotoBase64,
       }),
       household_head: householdHeadName,
     });
