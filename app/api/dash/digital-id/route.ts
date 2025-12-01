@@ -28,7 +28,7 @@ function safeBigInt(obj: any) {
   );
 }
 
-// Convert external photo URL to base64
+// Convert external photo URL to base64 (for the ID card only)
 async function photoUrlToBase64(url: string | null) {
   if (!url) return null;
   try {
@@ -58,7 +58,6 @@ export async function GET(req: NextRequest) {
         birthdate: true,
         address: true,
         head_id: true,
-        household_id: true,
         household_number: true,
         is_renter: true,
         is_4ps_member: true,
@@ -69,9 +68,10 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    if (!resident) return NextResponse.json({ error: "Resident not found" }, { status: 404 });
+    if (!resident)
+      return NextResponse.json({ error: "Resident not found" }, { status: 404 });
 
-    // Convert resident photo to base64
+    // Convert resident photo to base64 (for card display)
     const residentPhotoBase64 = await photoUrlToBase64(resident.photo_url);
 
     // Determine household head
@@ -105,7 +105,8 @@ export async function GET(req: NextRequest) {
       where: { resident_id: resident.resident_id },
       select: { id: true, id_number: true, issued_at: true, issued_by: true, qr_code: true },
     });
-    if (!digitalID) return NextResponse.json({ error: "Digital ID not found" }, { status: 404 });
+    if (!digitalID)
+      return NextResponse.json({ error: "Digital ID not found" }, { status: 404 });
 
     // Memberships
     const memberships: string[] = [];
@@ -115,7 +116,7 @@ export async function GET(req: NextRequest) {
     if (resident.is_slp_beneficiary) memberships.push("SLP Beneficiary");
     if (resident.is_renter) memberships.push("Renter");
 
-    // Prepare QR content
+    // Prepare QR content (without the photo!)
     const qrContent: any = {
       full_name: `${resident.first_name} ${resident.last_name}`,
       id_number: `ID-${resident.resident_id}`,
@@ -127,14 +128,16 @@ export async function GET(req: NextRequest) {
       household_number: resident.household_number?.replace(/^HH-/, "") ?? null,
       is_renter: resident.is_renter,
       memberships: memberships.length ? memberships : undefined,
-      landlord: landlord ? {
-        name: `${landlord.first_name} ${landlord.last_name}`,
-        contact_no: landlord.contact_no,
-        address: landlord.address,
-      } : undefined,
-      photo_url: residentPhotoBase64, // embed base64 photo
+      landlord: landlord
+        ? {
+            name: `${landlord.first_name} ${landlord.last_name}`,
+            contact_no: landlord.contact_no,
+            address: landlord.address,
+          }
+        : undefined,
     };
 
+    // Generate QR code (now small and safe)
     const qrDataURL = await QRCode.toDataURL(JSON.stringify(qrContent));
 
     const safeDigitalID = safeBigInt({
@@ -149,7 +152,7 @@ export async function GET(req: NextRequest) {
         ...resident,
         household_number: resident.household_number?.replace(/^HH-/, "") ?? null,
         memberships,
-        photo_url: residentPhotoBase64, // embed base64 photo
+        photo_url: residentPhotoBase64, // still included for card display
       }),
       household_head: householdHeadName,
     });
