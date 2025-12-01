@@ -111,23 +111,40 @@ export default function DigitalID() {
   }, []);
 
   const handleDownload = async () => {
-    if (!cardRef.current || !resident) return;
+  if (!cardRef.current || !resident) return;
 
-    try {
-      const card = cardRef.current;
-      const dataUrl = await toPng(card, { cacheBust: true, backgroundColor: "white" });
+  const card = cardRef.current;
 
-      const pdf = new jsPDF({ orientation: "landscape", unit: "px", format: "a4" });
-      const imgProps = pdf.getImageProperties(dataUrl);
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+  // Wait for all images inside the card to load (profile + QR)
+  const images = card.querySelectorAll("img");
+  await Promise.all(
+    Array.from(images).map(
+      (img) =>
+        new Promise<void>((resolve) => {
+          if ((img as HTMLImageElement).complete) resolve();
+          else {
+            img.addEventListener("load", () => resolve());
+            img.addEventListener("error", () => resolve());
+          }
+        })
+    )
+  );
 
-      pdf.addImage(dataUrl, "PNG", 0, 0, pdfWidth, pdfHeight);
-      pdf.save(`${resident.first_name}-${resident.last_name}-DigitalID.pdf`);
-    } catch (error) {
-      console.error("Error generating PDF:", error);
-    }
-  };
+  try {
+    const dataUrl = await toPng(card, { cacheBust: true, backgroundColor: "white" });
+
+    const pdf = new jsPDF({ orientation: "landscape", unit: "px", format: "a4" });
+    const imgProps = pdf.getImageProperties(dataUrl);
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+
+    pdf.addImage(dataUrl, "PNG", 0, 0, pdfWidth, pdfHeight);
+    pdf.save(`${resident.first_name}-${resident.last_name}-DigitalID.pdf`);
+  } catch (error) {
+    console.error("Error generating PDF:", error);
+  }
+};
+
 
   const handleLogout = () => {
     localStorage.removeItem("token");
