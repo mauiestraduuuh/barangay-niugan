@@ -43,6 +43,31 @@ interface StaffProfile {
   household_id: number | null;
 }
 
+// Loading Spinner Component
+const LoadingSpinner = ({ size = "md" }: { size?: "sm" | "md" | "lg" }) => {
+  const sizeClasses = {
+    sm: "w-4 h-4 border-2",
+    md: "w-8 h-8 border-3",
+    lg: "w-12 h-12 border-4"
+  };
+
+  return (
+    <div className={`${sizeClasses[size]} border-red-700 border-t-transparent rounded-full animate-spin`}></div>
+  );
+};
+
+// Full Page Loading Overlay
+const LoadingOverlay = ({ message = "Processing..." }: { message?: string }) => {
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white p-6 rounded-xl flex flex-col items-center gap-4 shadow-2xl">
+        <LoadingSpinner size="lg" />
+        <p className="text-gray-700 font-medium">{message}</p>
+      </div>
+    </div>
+  );
+};
+
 export default function StaffProfilePage() {
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -79,6 +104,8 @@ export default function StaffProfilePage() {
   });
 
   const [loading, setLoading] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [pageLoading, setPageLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [activeSection, setActiveSection] = useState<"overview" | "edit" | "password">("overview");
 
@@ -95,6 +122,7 @@ export default function StaffProfilePage() {
       return;
     }
 
+    setPageLoading(true); // Start loading
     try {
       const res = await axios.get("/api/staff/staff-profile", {
         headers: { Authorization: `Bearer ${token}` },
@@ -138,6 +166,8 @@ export default function StaffProfilePage() {
     } catch (err: any) {
       console.error("Fetch profile error:", err);
       setMessage(err.response?.data?.message || "Failed to fetch profile");
+    } finally {
+      setPageLoading(false); // Stop loading
     }
   };
 
@@ -162,7 +192,7 @@ export default function StaffProfilePage() {
       return;
     }
 
-    setLoading(true);
+    setActionLoading(true); // Start loading
 
     try {
       await axios.put(
@@ -195,9 +225,9 @@ export default function StaffProfilePage() {
     } catch (err: any) {
       console.error("Update profile error:", err);
       setMessage(err.response?.data?.message || "Failed to update profile");
+    } finally {
+      setActionLoading(false); // Stop loading
     }
-
-    setLoading(false);
   };
 
   const changePassword = async () => {
@@ -206,7 +236,8 @@ export default function StaffProfilePage() {
       return;
     }
     if (!token) return setMessage("Unauthorized");
-    setLoading(true);
+    
+    setActionLoading(true); // Start loading
     try {
       await axios.put(
         "/api/staff/staff-profile",
@@ -219,8 +250,9 @@ export default function StaffProfilePage() {
     } catch (err) {
       console.error(err);
       setMessage("Failed to update password");
+    } finally {
+      setActionLoading(false); // Stop loading
     }
-    setLoading(false);
   };
 
   const handleLogout = () => {
@@ -244,6 +276,9 @@ export default function StaffProfilePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to-black p-4 flex gap-4">
+      {/* Loading Overlays */}
+      {actionLoading && activeSection === "edit" && <LoadingOverlay message="Updating profile..." />}
+      {actionLoading && activeSection === "password" && <LoadingOverlay message="Changing password..." />}
       {/* Sidebar */}
       <div
         className={`${
@@ -361,211 +396,243 @@ export default function StaffProfilePage() {
               {message}
             </p>
           )}
+          
+          {pageLoading ? (
+            <div className="flex flex-col items-center justify-center py-20 gap-4">
+              <LoadingSpinner size="lg" />
+              <p className="text-gray-600">Loading profile...</p>
+            </div>
+          ) : (
+            <>
+              {/* Sections */}
+              {activeSection === "overview" && (
+                <div className="space-y-8">
+                  <div className="flex flex-col md:flex-row items-center md:items-start bg-white shadow-lg rounded-2xl p-8 border border-gray-100 gap-6">
+                    <div className="flex-shrink-0 relative">
+                      <img
+                        src={profile.photo_url || "/default-profile.png"}
+                        alt="Profile"
+                        className="w-36 h-36 rounded-full object-cover border-4 border-red-500 shadow-md"
+                      />
+                    </div>
+                    <div className="flex-1 text-center md:text-left">
+                      <h2 className="text-3xl font-bold text-black">{profile.first_name} {profile.last_name}</h2>
+                      <p className="text-black text-sm mt-1">Role: {profile.role}</p>
+                      <p className="text-black mt-2"><span className="font-semibold">Username:</span> {profile.username}</p>
 
-          {/* Sections */}
-          {activeSection === "overview" && (
-            <div className="space-y-8">
-              <div className="flex flex-col md:flex-row items-center md:items-start bg-white shadow-lg rounded-2xl p-8 border border-gray-100 gap-6">
-                <div className="flex-shrink-0 relative">
-                  <img
-                    src={profile.photo_url || "/default-profile.png"}
-                    alt="Profile"
-                    className="w-36 h-36 rounded-full object-cover border-4 border-red-500 shadow-md"
-                  />
+                      <div className="mt-4 flex flex-wrap gap-3 justify-center md:justify-start">
+                        <button
+                          onClick={() => setActiveSection("edit")}
+                          className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white font-semibold px-5 py-2 rounded-full shadow-sm transition"
+                        >
+                          <UserIcon className="w-5 h-5" /> Edit Profile
+                        </button>
+                        <button
+                          onClick={() => setActiveSection("password")}
+                          className="flex items-center gap-2 bg-gray-900 hover:bg-gray-800 text-white font-semibold px-5 py-2 rounded-full shadow-sm transition"
+                        >
+                          <LockClosedIcon className="w-5 h-5" /> Change Password
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-white shadow-lg rounded-2xl p-8 border border-gray-100">
+                    <h3 className="text-xl font-semibold text-black mb-6">Personal Details</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {[
+                        { label: "Staff ID", value: profile.staff_id },
+                        { label: "User ID", value: profile.user_id },
+                        { label: "Gender", value: profile.gender ?? "N/A" },
+                        { label: "Birthdate", value: profile.birthdate ? new Date(profile.birthdate).toLocaleDateString() : "N/A" },
+                        { label: "Contact", value: profile.contact_no ?? "N/A" },
+                        { label: "Address", value: profile.address ?? "N/A" },
+                        { label: "Created At", value: new Date(profile.created_at).toLocaleDateString() },
+                        { label: "Updated At", value: new Date(profile.updated_at).toLocaleDateString() },
+                      ].map(({ label, value }) => (
+                        <div key={label} className="p-4 bg-gray-50 hover:bg-gray-100 rounded-lg transition border border-gray-200">
+                          <p className="text-xs font-semibold text-black uppercase tracking-wide">{label}</p>
+                          <p className="text-black mt-1">{value}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
-                <div className="flex-1 text-center md:text-left">
-                  <h2 className="text-3xl font-bold text-black">{profile.first_name} {profile.last_name}</h2>
-                  <p className="text-black text-sm mt-1">Role: {profile.role}</p>
-                  <p className="text-black mt-2"><span className="font-semibold">Username:</span> {profile.username}</p>
+              )}
 
-                  <div className="mt-4 flex flex-wrap gap-3 justify-center md:justify-start">
+              {activeSection === "edit" && (
+                <div className="bg-white shadow-lg rounded-2xl p-8 border border-gray-100">
+                  <h2 className="text-2xl font-semibold mb-6 text-gray-800">Edit Profile</h2>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">First Name</label>
+                      <input
+                        type="text"
+                        name="first_name"
+                        value={profile.first_name}
+                        onChange={handleProfileChange}
+                        placeholder="First Name"
+                        className="border border-gray-300 p-3 rounded-md focus:ring-2 focus:ring-red-500 w-full transition"
+                        disabled={actionLoading}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Last Name</label>
+                      <input
+                        type="text"
+                        name="last_name"
+                        value={profile.last_name}
+                        onChange={handleProfileChange}
+                        placeholder="Last Name"
+                        className="border border-gray-300 p-3 rounded-md focus:ring-2 focus:ring-red-500 w-full transition"
+                        disabled={actionLoading}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Contact Number</label>
+                      <input
+                        type="text"
+                        name="contact_no"
+                        value={profile.contact_no ?? ""}
+                        onChange={handleProfileChange}
+                        placeholder="Contact Number"
+                        className="border border-gray-300 p-3 rounded-md focus:ring-2 focus:ring-red-500 w-full transition"
+                        disabled={actionLoading}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Gender</label>
+                      <select
+                        name="gender"
+                        value={profile.gender ?? ""}
+                        onChange={handleProfileChange}
+                        className="border border-gray-300 p-3 rounded-md focus:ring-2 focus:ring-red-500 w-full transition"
+                        disabled={actionLoading}
+                      >
+                        <option value="">Select Gender</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                      </select>
+                    </div>
+
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Address</label>
+                      <input
+                        type="text"
+                        name="address"
+                        value={profile.address ?? ""}
+                        onChange={handleProfileChange}
+                        placeholder="Address"
+                        className="border border-gray-300 p-3 rounded-md focus:ring-2 focus:ring-red-500 w-full transition"
+                        disabled={actionLoading}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap justify-end gap-4 mt-8">
                     <button
-                      onClick={() => setActiveSection("edit")}
-                      className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white font-semibold px-5 py-2 rounded-full shadow-sm transition"
+                      onClick={() => {
+                        setActiveSection("overview");
+                        fetchProfile();
+                      }}
+                      disabled={actionLoading}
+                      className="bg-gray-300 hover:bg-gray-400 text-black font-medium py-3 px-6 rounded-full transition disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <UserIcon className="w-5 h-5" /> Edit Profile
+                      Cancel
                     </button>
                     <button
-                      onClick={() => setActiveSection("password")}
-                      className="flex items-center gap-2 bg-gray-900 hover:bg-gray-800 text-white font-semibold px-5 py-2 rounded-full shadow-sm transition"
+                      onClick={updateProfile}
+                      disabled={actionLoading}
+                      className="bg-red-600 hover:bg-red-700 text-white font-semibold py-3 px-6 rounded-full shadow-sm transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                     >
-                      <LockClosedIcon className="w-5 h-5" /> Change Password
+                      {actionLoading ? (
+                        <>
+                          <LoadingSpinner size="sm" />
+                          Saving...
+                        </>
+                      ) : (
+                        "Save Changes"
+                      )}
                     </button>
                   </div>
                 </div>
-              </div>
+              )}
 
-              <div className="bg-white shadow-lg rounded-2xl p-8 border border-gray-100">
-                <h3 className="text-xl font-semibold text-black mb-6">Personal Details</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {[
-                    { label: "Staff ID", value: profile.staff_id },
-                    { label: "User ID", value: profile.user_id },
-                    { label: "Gender", value: profile.gender ?? "N/A" },
-                    { label: "Birthdate", value: profile.birthdate ? new Date(profile.birthdate).toLocaleDateString() : "N/A" },
-                    { label: "Contact", value: profile.contact_no ?? "N/A" },
-                    { label: "Address", value: profile.address ?? "N/A" },
-                    { label: "Created At", value: new Date(profile.created_at).toLocaleDateString() },
-                    { label: "Updated At", value: new Date(profile.updated_at).toLocaleDateString() },
-                  ].map(({ label, value }) => (
-                    <div key={label} className="p-4 bg-gray-50 hover:bg-gray-100 rounded-lg transition border border-gray-200">
-                      <p className="text-xs font-semibold text-black uppercase tracking-wide">{label}</p>
-                      <p className="text-black mt-1">{value}</p>
+              {activeSection === "password" && (
+                <div className="bg-white shadow-lg rounded-2xl p-8 border border-gray-100">
+                  <h2 className="text-2xl font-semibold mb-6 text-gray-800">Change Password</h2>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Current Password</label>
+                      <input
+                        type="password"
+                        name="current_password"
+                        value={passwords.current_password}
+                        onChange={handlePasswordChange}
+                        placeholder="Enter current password"
+                        className="border border-gray-300 p-3 rounded-md focus:ring-2 focus:ring-red-500 w-full transition"
+                        disabled={actionLoading}
+                      />
                     </div>
-                  ))}
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">New Password</label>
+                      <input
+                        type="password"
+                        name="new_password"
+                        value={passwords.new_password}
+                        onChange={handlePasswordChange}
+                        placeholder="Enter new password"
+                        className="border border-gray-300 p-3 rounded-md focus:ring-2 focus:ring-red-500 w-full transition"
+                        disabled={actionLoading}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Confirm New Password</label>
+                      <input
+                        type="password"
+                        name="confirm_password"
+                        value={passwords.confirm_password}
+                        onChange={handlePasswordChange}
+                        placeholder="Confirm new password"
+                        className="border border-gray-300 p-3 rounded-md focus:ring-2 focus:ring-red-500 w-full transition"
+                        disabled={actionLoading}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap justify-end gap-4 mt-8">
+                    <button
+                      onClick={() => setActiveSection("overview")}
+                      disabled={actionLoading}
+                      className="bg-gray-300 hover:bg-gray-400 text-black font-medium py-3 px-6 rounded-full transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={changePassword}
+                      disabled={actionLoading}
+                      className="bg-red-600 hover:bg-red-700 text-white font-semibold py-3 px-6 rounded-full shadow-sm transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    >
+                      {actionLoading ? (
+                        <>
+                          <LoadingSpinner size="sm" />
+                          Updating...
+                        </>
+                      ) : (
+                        "Change Password"
+                      )}
+                    </button>
+                  </div>
                 </div>
-              </div>
-            </div>
-          )}
-
-          {activeSection === "edit" && (
-            <div className="bg-white shadow-lg rounded-2xl p-8 border border-gray-100">
-              <h2 className="text-2xl font-semibold mb-6 text-gray-800">Edit Profile</h2>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">First Name</label>
-                  <input
-                    type="text"
-                    name="first_name"
-                    value={profile.first_name}
-                    onChange={handleProfileChange}
-                    placeholder="First Name"
-                    className="border border-gray-300 p-3 rounded-md focus:ring-2 focus:ring-red-500 w-full transition"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Last Name</label>
-                  <input
-                    type="text"
-                    name="last_name"
-                    value={profile.last_name}
-                    onChange={handleProfileChange}
-                    placeholder="Last Name"
-                    className="border border-gray-300 p-3 rounded-md focus:ring-2 focus:ring-red-500 w-full transition"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Contact Number</label>
-                  <input
-                    type="text"
-                    name="contact_no"
-                    value={profile.contact_no ?? ""}
-                    onChange={handleProfileChange}
-                    placeholder="Contact Number"
-                    className="border border-gray-300 p-3 rounded-md focus:ring-2 focus:ring-red-500 w-full transition"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Gender</label>
-                  <select
-                    name="gender"
-                    value={profile.gender ?? ""}
-                    onChange={handleProfileChange}
-                    className="border border-gray-300 p-3 rounded-md focus:ring-2 focus:ring-red-500 w-full transition"
-                  >
-                    <option value="">Select Gender</option>
-                    <option value="Male">Male</option>
-                    <option value="Female">Female</option>
-                  </select>
-                </div>
-
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Address</label>
-                  <input
-                    type="text"
-                    name="address"
-                    value={profile.address ?? ""}
-                    onChange={handleProfileChange}
-                    placeholder="Address"
-                    className="border border-gray-300 p-3 rounded-md focus:ring-2 focus:ring-red-500 w-full transition"
-                  />
-                </div>
-              </div>
-
-              <div className="flex flex-wrap justify-end gap-4 mt-8">
-                <button
-                  onClick={() => {
-                    setActiveSection("overview");
-                    fetchProfile();
-                  }}
-                  className="bg-gray-300 hover:bg-gray-400 text-black font-medium py-3 px-6 rounded-full transition"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={updateProfile}
-                  disabled={loading}
-                  className="bg-red-600 hover:bg-red-700 text-white font-semibold py-3 px-6 rounded-full shadow-sm transition"
-                >
-                  {loading ? "Saving..." : "Save Changes"}
-                </button>
-              </div>
-            </div>
-          )}
-
-          {activeSection === "password" && (
-            <div className="bg-white shadow-lg rounded-2xl p-8 border border-gray-100">
-              <h2 className="text-2xl font-semibold mb-6 text-gray-800">Change Password</h2>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Current Password</label>
-                  <input
-                    type="password"
-                    name="current_password"
-                    value={passwords.current_password}
-                    onChange={handlePasswordChange}
-                    placeholder="Enter current password"
-                    className="border border-gray-300 p-3 rounded-md focus:ring-2 focus:ring-red-500 w-full transition"
-                  />
-                </div>
-
-              
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">New Password</label>
-                  <input
-                    type="password"
-                    name="new_password"
-                    value={passwords.new_password}
-                    onChange={handlePasswordChange}
-                    placeholder="Enter new password"
-                    className="border border-gray-300 p-3 rounded-md focus:ring-2 focus:ring-red-500 w-full transition"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Confirm New Password</label>
-                  <input
-                    type="password"
-                    name="confirm_password"
-                    value={passwords.confirm_password}
-                    onChange={handlePasswordChange}
-                    placeholder="Confirm new password"
-                    className="border border-gray-300 p-3 rounded-md focus:ring-2 focus:ring-red-500 w-full transition"
-                  />
-                </div>
-              </div>
-
-              <div className="flex flex-wrap justify-end gap-4 mt-8">
-                <button
-                  onClick={() => setActiveSection("overview")}
-                  className="bg-gray-300 hover:bg-gray-400 text-black font-medium py-3 px-6 rounded-full transition"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={changePassword}
-                  disabled={loading}
-                  className="bg-red-600 hover:bg-red-700 text-white font-semibold py-3 px-6 rounded-full shadow-sm transition"
-                >
-                  {loading ? "Updating..." : "Change Password"}
-                </button>
-              </div>
-            </div>
+              )}
+            </>
           )}
         </main>
       </div>
