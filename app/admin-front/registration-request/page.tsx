@@ -292,7 +292,7 @@ const handleApproveReject = async (requestId: number, approve: boolean) => {
           <div className="flex items-center space-x-4"></div>
         </header>
 
-          <main className="bg-gray-50 p-4 sm:p-6 rounded-xl shadow-sm overflow-auto">
+        <main className="bg-gray-50 p-4 sm:p-6 rounded-xl shadow-sm overflow-auto">
 
         {/* Filter */}
         <div className="flex items-center justify-between">
