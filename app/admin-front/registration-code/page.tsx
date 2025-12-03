@@ -28,6 +28,31 @@ interface RegistrationCode {
   usedById?: number | null;
 }
 
+// Loading Spinner Component
+const LoadingSpinner = ({ size = "md" }: { size?: "sm" | "md" | "lg" }) => {
+  const sizeClasses = {
+    sm: "w-4 h-4 border-2",
+    md: "w-8 h-8 border-3",
+    lg: "w-12 h-12 border-4"
+  };
+
+  return (
+    <div className={`${sizeClasses[size]} border-red-700 border-t-transparent rounded-full animate-spin`}></div>
+  );
+};
+
+// Full Page Loading Overlay
+const LoadingOverlay = ({ message = "Processing..." }: { message?: string }) => {
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white p-6 rounded-xl flex flex-col items-center gap-4 shadow-2xl">
+        <LoadingSpinner size="lg" />
+        <p className="text-gray-700 font-medium">{message}</p>
+      </div>
+    </div>
+  );
+};
+
 export default function RegistrationCodePage() {
   const [codes, setCodes] = useState<RegistrationCode[]>([]);
   const [filter, setFilter] = useState<"used" | "unused">("unused");
@@ -35,6 +60,7 @@ export default function RegistrationCodePage() {
   const [message, setMessage] = useState("");
   const [activeItem, setActiveItem] = useState("registration-code");
   const [loading, setLoading] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const router = useRouter();
   const filteredCodes = codes.filter((c) => (filter === "unused" ? !c.isUsed : c.isUsed));
@@ -70,6 +96,8 @@ export default function RegistrationCodePage() {
       setMessage("Owner name is required");
       return;
     }
+    
+    setActionLoading(true); // Start loading
     try {
       const res = await axios.post("/api/admin/registration-code", { ownerName });
       if (res.data.success) {
@@ -80,12 +108,16 @@ export default function RegistrationCodePage() {
     } catch (err) {
       console.error(err);
       setMessage("Failed to create code");
+    } finally {
+      setActionLoading(false); // Stop loading
     }
   };
 
   // Delete unused code
   const deleteCode = async (id: number) => {
     if (!confirm("Are you sure you want to delete this code?")) return;
+    
+    setActionLoading(true); // Start loading
     try {
       const res = await axios.delete("/api/admin/registration-code", { data: { id } });
       if (res.data.success) {
@@ -95,6 +127,8 @@ export default function RegistrationCodePage() {
     } catch (err) {
       console.error(err);
       setMessage("Failed to delete code");
+    } finally {
+      setActionLoading(false); // Stop loading
     }
   };
 
@@ -121,6 +155,7 @@ export default function RegistrationCodePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to-black p-4 flex gap-4 ">
+      {actionLoading && <LoadingOverlay message="Processing..." />}
        {/* Sidebar */}
            <div
              className={`${
@@ -250,9 +285,17 @@ export default function RegistrationCodePage() {
             />
             <button
               onClick={generateCode}
-              className="bg-black text-white px-4 py-2 rounded-xl hover:bg-red-700"
+              disabled={actionLoading}
+              className="bg-black text-white px-4 py-2 rounded-xl hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
-              Generate
+              {actionLoading ? (
+                <>
+                  <LoadingSpinner size="sm" />
+                  Generating...
+                </>
+              ) : (
+                "Generate"
+              )}
             </button>
 
             {/* Filter Toggle */}
@@ -317,7 +360,8 @@ export default function RegistrationCodePage() {
                         {!c.isUsed && (
                           <button
                             onClick={() => deleteCode(c.id)}
-                            className="bg-gray-600 text-white px-3 py-1 rounded hover:bg-gray-700 text-xs sm:text-sm"
+                            disabled={actionLoading}
+                            className="bg-gray-600 text-white px-3 py-1 rounded hover:bg-gray-700 text-xs sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             Delete
                           </button>
