@@ -23,7 +23,6 @@ import {
   UsersIcon,
 } from "@heroicons/react/24/outline";
 
-// Announcement type
 interface Announcement {
   announcement_id: number;
   title: string;
@@ -40,12 +39,39 @@ interface PaginationInfo {
   totalPages: number;
 }
 
+// Loading Spinner Component
+const LoadingSpinner = ({ size = "md" }: { size?: "sm" | "md" | "lg" }) => {
+  const sizeClasses = {
+    sm: "w-4 h-4 border-2",
+    md: "w-8 h-8 border-3",
+    lg: "w-12 h-12 border-4"
+  };
+
+  return (
+    <div className={`${sizeClasses[size]} border-red-700 border-t-transparent rounded-full animate-spin`}></div>
+  );
+};
+
+// Full Page Loading Overlay
+const LoadingOverlay = ({ message = "Processing..." }: { message?: string }) => {
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white p-6 rounded-xl flex flex-col items-center gap-4 shadow-2xl">
+        <LoadingSpinner size="lg" />
+        <p className="text-gray-700 font-medium">{message}</p>
+      </div>
+    </div>
+  );
+};
+
 export default function ManageAnnouncements() {
   const router = useRouter();
   const [activeItem, setActiveItem] = useState("announcement");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState("");
   const [message, setMessage] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [editingAnnouncement, setEditingAnnouncement] = useState<Announcement | null>(null);
@@ -79,7 +105,13 @@ export default function ManageAnnouncements() {
     { name: "reports", label: "Reports", icon: ChartBarIcon },
   ];
 
-  // Fetch announcements
+  useEffect(() => {
+    if (message) {
+      const timer = setTimeout(() => setMessage(""), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [message]);
+
   const fetchAnnouncements = async (type: "active" | "expired" = "active", page: number = 1) => {
     setLoading(true);
     try {
@@ -101,12 +133,10 @@ export default function ManageAnnouncements() {
     }
   };
 
-  // Fetch on load or filter change
   useEffect(() => {
     fetchAnnouncements(filterType, currentPage);
   }, [filterType, currentPage, itemsPerPage]);
 
-  // Form changes
   const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
     setFormData({
@@ -115,11 +145,12 @@ export default function ManageAnnouncements() {
     });
   };
 
-  // Submit (create/update)
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!token) return setMessage("Unauthorized: No token");
-    setLoading(true);
+    
+    setActionLoading(true);
+    setLoadingMessage(editingAnnouncement ? "Updating announcement..." : "Creating announcement...");
 
     try {
       const method = editingAnnouncement ? "PUT" : "POST";
@@ -138,20 +169,19 @@ export default function ManageAnnouncements() {
 
       if (!res.ok) throw new Error(await res.text());
 
-      setMessage(editingAnnouncement ? "Announcement updated" : "Announcement created");
+      setMessage(editingAnnouncement ? "Announcement updated successfully" : "Announcement created successfully");
       setShowModal(false);
       setEditingAnnouncement(null);
       setFormData({ title: "", content: "", is_public: true });
-      fetchAnnouncements(filterType, currentPage);
+      await fetchAnnouncements(filterType, currentPage);
     } catch (error) {
       console.error("Submit error:", error);
       setMessage("Failed to save announcement");
     } finally {
-      setLoading(false);
+      setActionLoading(false);
     }
   };
 
-  // Edit
   const handleEdit = (announcement: Announcement) => {
     setEditingAnnouncement(announcement);
     setFormData({
@@ -162,12 +192,13 @@ export default function ManageAnnouncements() {
     setShowModal(true);
   };
 
-  // Delete
   const handleDelete = async (id: number) => {
     if (!confirm("Are you sure you want to delete this announcement?")) return;
     if (!token) return setMessage("Unauthorized: No token");
 
-    setLoading(true);
+    setActionLoading(true);
+    setLoadingMessage("Deleting announcement...");
+    
     try {
       const res = await fetch("/api/admin/announcement", {
         method: "DELETE",
@@ -180,17 +211,16 @@ export default function ManageAnnouncements() {
 
       if (!res.ok) throw new Error(await res.text());
 
-      setMessage("Announcement deleted");
-      fetchAnnouncements(filterType, currentPage);
+      setMessage("Announcement deleted successfully");
+      await fetchAnnouncements(filterType, currentPage);
     } catch (error) {
       console.error("Delete error:", error);
       setMessage("Failed to delete announcement");
     } finally {
-      setLoading(false);
+      setActionLoading(false);
     }
   };
 
-  // Logout
   const handleLogout = () => {
     if (window.confirm("Are you sure you want to log out?")) {
       localStorage.removeItem("token");
@@ -202,6 +232,9 @@ export default function ManageAnnouncements() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to-slate-50 p-4 flex gap-4">
+      {/* Loading Overlay */}
+      {actionLoading && <LoadingOverlay message={loadingMessage} />}
+
       {/* Sidebar */}
       <div
         className={`${
@@ -209,7 +242,6 @@ export default function ManageAnnouncements() {
         } bg-gray-50 shadow-lg rounded-xl transition-all duration-300 ease-in-out flex flex-col 
         ${sidebarOpen ? "fixed inset-y-0 left-0 z-50 md:static md:translate-x-0" : "hidden md:flex"}`}
       >
-        {/* Logo + Close */}
         <div className="p-4 flex items-center justify-center">
           <img
             src="/niugan-logo.png"
@@ -226,7 +258,6 @@ export default function ManageAnnouncements() {
           </button>
         </div>
 
-        {/* Navigation */}
         <nav className="flex-1 mt-6">
           <ul>
             {features.map(({ name, label, icon: Icon }) => (
@@ -267,7 +298,6 @@ export default function ManageAnnouncements() {
           </ul>
         </nav>
 
-        {/* Functional Logout Button */}
         <div className="p-4">
           <button
             onClick={handleLogout}
@@ -278,7 +308,6 @@ export default function ManageAnnouncements() {
           </button>
         </div>
 
-        {/* Sidebar Toggle (desktop only) */}
         <div className="p-4 flex justify-center hidden md:flex">
           <button
             onClick={toggleSidebar}
@@ -293,7 +322,6 @@ export default function ManageAnnouncements() {
         </div>
       </div>
 
-      {/* Mobile Overlay */}
       {sidebarOpen && (
         <div
           className="fixed inset-0 bg-white/80 z-40 md:hidden"
@@ -316,12 +344,11 @@ export default function ManageAnnouncements() {
 
         <main className="flex-1 bg-gray-50 rounded-xl p-4 md:p-6 shadow-sm overflow-auto text-black">
           {message && (
-            <p className={`text-center p-2 rounded mb-4 ${message.includes("success") ? "bg-green-100" : "bg-red-100"}`}>
+            <p className={`text-center p-2 rounded mb-4 ${message.includes("success") ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
               {message}
             </p>
           )}
 
-          {/* Announcement History Header + Filter Buttons */}
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
               <h3 className="text-large md:text-large font-semibold text-black">Announcement History</h3>
@@ -358,11 +385,13 @@ export default function ManageAnnouncements() {
             </button>
           </div>
 
-          {/* Announcement List */}
           {loading ? (
-            <div className="text-center py-10 text-black">Loading...</div>
+            <div className="flex flex-col items-center justify-center py-20 gap-4">
+              <LoadingSpinner size="lg" />
+              <p className="text-gray-600">Loading announcements...</p>
+            </div>
           ) : announcements.length === 0 ? (
-            <div className="text-center py-10 text-black">No announcements yet.</div>
+            <div className="text-center py-20 text-gray-600">No announcements yet.</div>
           ) : (
             <>
               <div className="space-y-4">
@@ -395,11 +424,9 @@ export default function ManageAnnouncements() {
                 ))}
               </div>
 
-              {/* Pagination Controls */}
               {pagination.totalPages > 1 && (
                 <div className="w-full mt-5 flex justify-center">
                   <div className="flex items-center gap-2 px-3 py-1.5">
-                    {/* Previous Button */}
                     <button
                       onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
                       disabled={currentPage === 1}
@@ -408,11 +435,9 @@ export default function ManageAnnouncements() {
                       ‹
                     </button>
 
-                    {/* Page Numbers */}
                     {Array.from({ length: totalPages }).map((_, i) => {
                       const page = i + 1;
 
-                      // Show only near numbers + first + last + ellipsis
                       if (
                         page === 1 ||
                         page === totalPages ||
@@ -433,7 +458,6 @@ export default function ManageAnnouncements() {
                         );
                       }
 
-                      // Ellipsis (only render once)
                       if (page === currentPage - 2 || page === currentPage + 2) {
                         return (
                           <div key={i} className="px-1 text-gray-400">
@@ -445,7 +469,6 @@ export default function ManageAnnouncements() {
                       return null;
                     })}
 
-                    {/* Next Button */}
                     <button
                       onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
                       disabled={currentPage === totalPages}
@@ -454,7 +477,6 @@ export default function ManageAnnouncements() {
                       ›
                     </button>
 
-                    {/* Rows Per Page Dropdown */}
                     <select
                       value={itemsPerPage}
                       onChange={(e) => {
@@ -492,7 +514,8 @@ export default function ManageAnnouncements() {
                   value={formData.title}
                   onChange={handleFormChange}
                   required
-                  className="w-full border border-gray-300 p-2 rounded focus:ring-2 focus:ring-red-500"
+                  disabled={actionLoading}
+                  className="w-full border border-gray-300 p-2 rounded focus:ring-2 focus:ring-red-500 disabled:opacity-50"
                 />
               </div>
               <div>
@@ -503,7 +526,8 @@ export default function ManageAnnouncements() {
                   onChange={handleFormChange}
                   required
                   rows={4}
-                  className="w-full border border-gray-300 p-2 rounded focus:ring-2 focus:ring-red-500"
+                  disabled={actionLoading}
+                  className="w-full border border-gray-300 p-2 rounded focus:ring-2 focus:ring-red-500 disabled:opacity-50"
                 />
               </div>
               <div className="flex items-center">
@@ -512,6 +536,7 @@ export default function ManageAnnouncements() {
                   name="is_public"
                   checked={formData.is_public}
                   onChange={handleFormChange}
+                  disabled={actionLoading}
                   className="mr-2"
                 />
                 <label className="text-sm font-medium text-gray-700">Public</label>
@@ -519,15 +544,23 @@ export default function ManageAnnouncements() {
               <div className="flex gap-4">
                 <button
                   type="submit"
-                  disabled={loading}
-                  className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded transition disabled:opacity-50"
+                  disabled={actionLoading}
+                  className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded transition disabled:opacity-50 flex items-center gap-2"
                 >
-                  {loading ? "Saving..." : editingAnnouncement ? "Update" : "Create"}
+                  {actionLoading ? (
+                    <>
+                      <LoadingSpinner size="sm" />
+                      {editingAnnouncement ? "Updating..." : "Creating..."}
+                    </>
+                  ) : (
+                    editingAnnouncement ? "Update" : "Create"
+                  )}
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="bg-gray-300 hover:bg-gray-400 text-black px-4 py-2 rounded transition"
+                  disabled={actionLoading}
+                  className="bg-gray-300 hover:bg-gray-400 text-black px-4 py-2 rounded transition disabled:opacity-50"
                 >
                   Cancel
                 </button>
