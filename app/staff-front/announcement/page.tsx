@@ -37,12 +37,39 @@ interface PaginationInfo {
   totalPages: number;
 }
 
+// Loading Spinner Component
+const LoadingSpinner = ({ size = "md" }: { size?: "sm" | "md" | "lg" }) => {
+  const sizeClasses = {
+    sm: "w-4 h-4 border-2",
+    md: "w-8 h-8 border-3",
+    lg: "w-12 h-12 border-4"
+  };
+
+  return (
+    <div className={`${sizeClasses[size]} border-red-700 border-t-transparent rounded-full animate-spin`}></div>
+  );
+};
+
+// Full Page Loading Overlay
+const LoadingOverlay = ({ message = "Processing..." }: { message?: string }) => {
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white p-6 rounded-xl flex flex-col items-center gap-4 shadow-2xl">
+        <LoadingSpinner size="lg" />
+        <p className="text-gray-700 font-medium">{message}</p>
+      </div>
+    </div>
+  );
+};
+
 export default function ManageAnnouncements() {
   const router = useRouter();
   const [activeItem, setActiveItem] = useState("announcement");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState("");
   const [message, setMessage] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [editingAnnouncement, setEditingAnnouncement] = useState<Announcement | null>(null);
@@ -112,7 +139,8 @@ export default function ManageAnnouncements() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!token) return setMessage("Unauthorized: No token");
-    setLoading(true);
+    setActionLoading(true);
+    setLoadingMessage(editingAnnouncement ? "Updating announcement..." : "Creating announcement...");
 
     try {
       const method = editingAnnouncement ? "PUT" : "POST";
@@ -140,7 +168,7 @@ export default function ManageAnnouncements() {
       console.error("Submit error:", error);
       setMessage("Failed to save announcement");
     } finally {
-      setLoading(false);
+      setActionLoading(false);
     }
   };
 
@@ -160,7 +188,8 @@ export default function ManageAnnouncements() {
     if (!confirm("Are you sure you want to delete this announcement?")) return;
     if (!token) return setMessage("Unauthorized: No token");
 
-    setLoading(true);
+    setActionLoading(true);
+    setLoadingMessage("Deleting announcement...");
     try {
       const res = await fetch("/api/staff/announcement", {
         method: "DELETE",
@@ -179,7 +208,7 @@ export default function ManageAnnouncements() {
       console.error("Delete error:", error);
       setMessage("Failed to delete announcement");
     } finally {
-      setLoading(false);
+      setActionLoading(false);
     }
   };
 
@@ -209,6 +238,9 @@ export default function ManageAnnouncements() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to-black p-4 flex gap-4">
+
+      {actionLoading && <LoadingOverlay message={loadingMessage} />}
+
       {/* Sidebar */}
       <div
         className={`${
@@ -358,9 +390,12 @@ export default function ManageAnnouncements() {
           </div>
 
           {loading ? (
-            <div className="text-center py-10 text-black">Loading...</div>
-          ) : filteredAnnouncements.length === 0 ? (
-            <div className="text-center py-10 text-black">No announcements found.</div>
+            <div className="flex flex-col items-center justify-center py-20 gap-4">
+              <LoadingSpinner size="lg" />
+              <p className="text-gray-600">Loading announcements...</p>
+            </div>
+          ) : announcements.length === 0 ? (
+            <div className="text-center py-20 text-gray-600">No announcements yet.</div>
           ) : (
             <>
               <div className="space-y-4">
@@ -474,7 +509,7 @@ export default function ManageAnnouncements() {
         </main>
       </div>
 
-      {/* Modal */}
+            {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md text-black">
@@ -484,48 +519,59 @@ export default function ManageAnnouncements() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
-                <input 
-                  type="text" 
-                  name="title" 
-                  value={formData.title} 
-                  onChange={handleFormChange} 
-                  required 
-                  className="w-full border border-gray-300 p-2 rounded focus:ring-2 focus:ring-red-500" 
+                <input
+                  type="text"
+                  name="title"
+                  value={formData.title}
+                  onChange={handleFormChange}
+                  required
+                  disabled={actionLoading}
+                  className="w-full border border-gray-300 p-2 rounded focus:ring-2 focus:ring-red-500 disabled:opacity-50"
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Content</label>
-                <textarea 
-                  name="content" 
-                  value={formData.content} 
-                  onChange={handleFormChange} 
-                  required 
-                  rows={4} 
-                  className="w-full border border-gray-300 p-2 rounded focus:ring-2 focus:ring-red-500" 
+                <textarea
+                  name="content"
+                  value={formData.content}
+                  onChange={handleFormChange}
+                  required
+                  rows={4}
+                  disabled={actionLoading}
+                  className="w-full border border-gray-300 p-2 rounded focus:ring-2 focus:ring-red-500 disabled:opacity-50"
                 />
               </div>
               <div className="flex items-center">
-                <input 
-                  type="checkbox" 
-                  name="is_public" 
-                  checked={formData.is_public} 
-                  onChange={handleFormChange} 
-                  className="mr-2" 
+                <input
+                  type="checkbox"
+                  name="is_public"
+                  checked={formData.is_public}
+                  onChange={handleFormChange}
+                  disabled={actionLoading}
+                  className="mr-2"
                 />
                 <label className="text-sm font-medium text-gray-700">Public</label>
               </div>
               <div className="flex gap-4">
-                <button 
-                  type="submit" 
-                  disabled={loading} 
-                  className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded transition disabled:opacity-50"
+                <button
+                  type="submit"
+                  disabled={actionLoading}
+                  className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded transition disabled:opacity-50 flex items-center gap-2"
                 >
-                  {loading ? "Saving..." : editingAnnouncement ? "Update" : "Create"}
+                  {actionLoading ? (
+                    <>
+                      <LoadingSpinner size="sm" />
+                      {editingAnnouncement ? "Updating..." : "Creating..."}
+                    </>
+                  ) : (
+                    editingAnnouncement ? "Update" : "Create"
+                  )}
                 </button>
-                <button 
-                  type="button" 
-                  onClick={() => setShowModal(false)} 
-                  className="bg-gray-300 hover:bg-gray-400 text-black px-4 py-2 rounded transition"
+                <button
+                  type="button"
+                  onClick={() => setShowModal(false)}
+                  disabled={actionLoading}
+                  className="bg-gray-300 hover:bg-gray-400 text-black px-4 py-2 rounded transition disabled:opacity-50"
                 >
                   Cancel
                 </button>
