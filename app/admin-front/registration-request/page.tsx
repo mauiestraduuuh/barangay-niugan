@@ -40,10 +40,36 @@ interface RegistrationRequest {
   is_head_of_family?: boolean;
 }
 
+// Loading Spinner Component
+const LoadingSpinner = ({ size = "md" }: { size?: "sm" | "md" | "lg" }) => {
+  const sizeClasses = {
+    sm: "w-4 h-4 border-2",
+    md: "w-8 h-8 border-3",
+    lg: "w-12 h-12 border-4"
+  };
+
+  return (
+    <div className={`${sizeClasses[size]} border-red-700 border-t-transparent rounded-full animate-spin`}></div>
+  );
+};
+
+// Full Page Loading Overlay
+const LoadingOverlay = ({ message = "Processing..." }: { message?: string }) => {
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white p-6 rounded-xl flex flex-col items-center gap-4 shadow-2xl">
+        <LoadingSpinner size="lg" />
+        <p className="text-gray-700 font-medium">{message}</p>
+      </div>
+    </div>
+  );
+};
+
 export default function AdminRegistrationRequestsPage() {
   const router = useRouter();
   const [requests, setRequests] = useState<RegistrationRequest[]>([]);
   const [loading, setLoading] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [filteredRequests, setFilteredRequests] = useState<RegistrationRequest[]>([]);
   const [activeItem, setActiveItem] = useState("registration-request");
@@ -94,15 +120,15 @@ export default function AdminRegistrationRequestsPage() {
     setLoading(false);
   };
 
-  const handleApproveReject = async (requestId: number, approve: boolean) => {
+const handleApproveReject = async (requestId: number, approve: boolean) => {
   if (!token || !adminId) {
     setMessage("Unauthorized");
     return;
   }
 
-  setLoading(true);
+  setActionLoading(true); // Start loading
   try {
-    const url = "/api/admin/registration-request"; // single backend route
+    const url = "/api/admin/registration-request";
     const payload = approve
       ? { request_id: requestId, approve: true, admin_id: adminId }
       : { request_id: requestId, approve: false, admin_id: adminId };
@@ -118,9 +144,11 @@ export default function AdminRegistrationRequestsPage() {
     console.error(err);
     setMessage(err.response?.data?.message || "Action failed");
     setTimeout(() => setMessage(""), 3000);
+  } finally {
+    setActionLoading(false); // Stop loading
   }
-  setLoading(false);
 };
+
   useEffect(() => {
     filterRequests();
   }, [statusFilter, requests]);
@@ -149,6 +177,8 @@ export default function AdminRegistrationRequestsPage() {
 
   return (
       <div className= "min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to-black p-4 flex gap-4">
+        {/* Loading Overlay */}
+        {actionLoading && <LoadingOverlay message="Processing request..." />}
       {/* Sidebar */}
       <div
         className={`${
@@ -298,7 +328,10 @@ export default function AdminRegistrationRequestsPage() {
           )}
 
           {loading ? (
-            <p className="text-center">Loading...</p>
+            <div className="flex flex-col items-center justify-center py-20 gap-4">
+              <LoadingSpinner size="lg" />
+              <p className="text-gray-600">Loading requests...</p>
+            </div>
           ) : requests.length === 0 ? (
             <p className="text-center">No registration requests found</p>
           ) : (
@@ -360,16 +393,16 @@ export default function AdminRegistrationRequestsPage() {
                           <>
                             <button
                               onClick={() => handleApproveReject(req.request_id, true)}
-                              disabled={loading}
-                              className="bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded flex items-center gap-1 text-xs sm:text-sm"
+                              disabled={actionLoading}
+                              className="bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded flex items-center gap-1 text-xs sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                               <CheckIcon className="w-4 h-4" /> Approve
                             </button>
 
                             <button
                               onClick={() => handleApproveReject(req.request_id, false)}
-                              disabled={loading}
-                              className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded flex items-center gap-1 text-xs sm:text-sm"
+                              disabled={actionLoading}
+                              className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded flex items-center gap-1 text-xs sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                               <XCircleIcon className="w-4 h-4" /> Reject
                             </button>
@@ -378,7 +411,8 @@ export default function AdminRegistrationRequestsPage() {
 
                         <button
                           onClick={() => setViewRequest(req)}
-                          className="bg-gray-300 hover:bg-gray-400 text-black px-2 py-1 rounded text-xs sm:text-sm"
+                          disabled={actionLoading}
+                          className="bg-gray-300 hover:bg-gray-400 text-black px-2 py-1 rounded text-xs sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           View
                         </button>
