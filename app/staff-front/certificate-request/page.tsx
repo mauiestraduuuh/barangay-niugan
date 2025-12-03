@@ -42,11 +42,38 @@ interface CertificateRequest {
   };
 }
 
+// Loading Spinner Component
+const LoadingSpinner = ({ size = "md" }: { size?: "sm" | "md" | "lg" }) => {
+  const sizeClasses = {
+    sm: "w-4 h-4 border-2",
+    md: "w-8 h-8 border-3",
+    lg: "w-12 h-12 border-4"
+  };
+
+  return (
+    <div className={`${sizeClasses[size]} border-red-700 border-t-transparent rounded-full animate-spin`}></div>
+  );
+};
+
+// Full Page Loading Overlay
+const LoadingOverlay = ({ message = "Processing..." }: { message?: string }) => {
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white p-6 rounded-xl flex flex-col items-center gap-4 shadow-2xl">
+        <LoadingSpinner size="lg" />
+        <p className="text-gray-700 font-medium">{message}</p>
+      </div>
+    </div>
+  );
+};
+
 export default function StaffCertificateRequestsPage() {
   const router = useRouter();
   const [requests, setRequests] = useState<CertificateRequest[]>([]);
   const [filteredRequests, setFilteredRequests] = useState<CertificateRequest[]>([]);
   const [loading, setLoading] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [message, setMessage] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
@@ -135,9 +162,11 @@ export default function StaffCertificateRequestsPage() {
     setCurrentPage(1);
   };
 
-  // Approve request (Requirement D)
+  // Approve request
   const handleApprove = async (requestId: string) => {
     if (!token) return setMessage("Unauthorized");
+    setActionLoading(true);
+    setLoadingMessage("Approving request...");
     try {
       await axios.put(
         "/api/staff/certificate-request",
@@ -150,9 +179,10 @@ export default function StaffCertificateRequestsPage() {
       console.error(err);
       setMessage("Failed to approve request");
     }
+    setActionLoading(false);
   };
 
-  // Open modal for REJECT, ATTACH, SCHEDULE, Claim (Requirement D)
+  // Open modal for REJECT, ATTACH, SCHEDULE, Claim
   const openModal = (
     request: CertificateRequest,
     type: "ATTACH" | "REJECT" | "SCHEDULE" | "CLAIMED" | "VIEW"
@@ -189,8 +219,11 @@ export default function StaffCertificateRequestsPage() {
   const handleModalSubmit = async () => {
     if (!selectedRequest || !modalType || !token) return;
 
+    setActionLoading(true);
+
     try {
       if (modalType === "REJECT") {
+        setLoadingMessage("Rejecting request...");
         await axios.put(
           "/api/staff/certificate-request",
           { request_id: Number(selectedRequest.request_id), action: "REJECT", rejection_reason: remarks },
@@ -200,10 +233,12 @@ export default function StaffCertificateRequestsPage() {
       } else if (modalType === "SCHEDULE") {
         if (!pickupDate || !pickupTime) {
           setMessage("Pickup date and time are required");
+          setActionLoading(false);
           return;
         }
 
         try {
+          setLoadingMessage("Scheduling pickup...");
           await axios.put(
             "/api/staff/certificate-request",
             {
@@ -221,6 +256,7 @@ export default function StaffCertificateRequestsPage() {
           setMessage(err.response?.data?.error || "Failed to update request");
         }
       } else if (modalType === "ATTACH") {
+        setLoadingMessage("Uploading file...");
         const formData = new FormData();
         formData.append("request_id", selectedRequest.request_id);
         if (file) formData.append("file", file);
@@ -230,6 +266,7 @@ export default function StaffCertificateRequestsPage() {
         });
         setMessage("File attached successfully");
       } else if (modalType === "CLAIMED") {
+        setLoadingMessage("Marking as claimed...");
         await axios.put(
           "/api/staff/certificate-request",
           { request_id: Number(selectedRequest.request_id), action: "CLAIMED" },
@@ -243,12 +280,14 @@ export default function StaffCertificateRequestsPage() {
       console.error(err.response?.data || err);
       setMessage(err.response?.data?.error || "Action failed");
     }
+    setActionLoading(false);
   };
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
  
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to-black p-4 flex gap-4">
+      {actionLoading && <LoadingOverlay message={loadingMessage} />}
       {/* Sidebar */}
       <div
         className={`${
@@ -357,351 +396,329 @@ export default function StaffCertificateRequestsPage() {
           <div className="flex items-center space-x-4"></div>
         </header>
 
-        <main className="bg-gray-50 p-4 sm:p-6 rounded-xl shadow-sm overflow-auto text-black">
-          {message && (
-            <p className="text-center text-white bg-gray-900 p-2 rounded mb-4">{message}</p>
-          )}
-
-          {/* Filter/Search */}
-          <div className="flex flex-col md:flex-row gap-2 mb-4">
-            <input
-              type="text"
-              placeholder="Search by name, ID, or request ID"
-              className="border p-2 rounded flex-1"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-            <select
-              className="border p-2 rounded"
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as any)}
-            >
-              <option value="">All Statuses</option>
-              <option value="PENDING">Pending</option>
-              <option value="APPROVED">Approved</option>
-              <option value="REJECTED">Rejected</option>
-              <option value="CLAIMED">Claimed</option>
-            </select>
-          </div>
-
-          {loading ? (
-            <p className="text-center">Loading...</p>
-          ) : filteredRequests.length === 0 ? (
-            <p className="text-center">No certificate requests found</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full border-collapse bg-white shadow-sm rounded-xl overflow-hidden text-sm sm:text-base">
-                <thead className="bg-gradient-to-br from-black via-red-800 to-black text-white">
-                  <tr>
-                    <th className="px-3 py-2 text-left">Resident Name</th>
-                    <th className="px-3 py-2 text-left hidden sm:table-cell">Request ID</th>
-                    <th className="px-3 py-2 text-left">Certificate Type</th>
-                    <th className="px-3 py-2 text-left hidden sm:table-cell">Requested At</th>
-                    <th className="px-3 py-2 text-left">Status</th>
-                    <th className="px-3 py-2 text-left">Actions</th>
-                  </tr>
-                </thead>
-
-                <tbody>
-                 {paginatedRequests.map((req, index) => ( 
-                    <tr
-                      key={req.request_id}
-                      className={`border-b hover:bg-red-50 transition ${
-                        index % 2 === 0 ? "bg-white" : "bg-gray-50"
-                      }`}
+        <main className="bg-gray-50 p-4 sm:p-6 rounded-xl shadow-sm overflow-auto">
+                  {message && (
+                    <p className="text-center text-white bg-gray-900 p-2 rounded mb-4">{message}</p>
+                  )}
+        
+                  <div className="flex flex-col md:flex-row gap-2 mb-4 text-black">
+                    <input
+                      type="text"
+                      placeholder="Search by name, ID, or request ID"
+                      className="border p-2 rounded flex-1"
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                    />
+                    <select
+                      className="border p-2 rounded"
+                      value={statusFilter}
+                      onChange={(e) => setStatusFilter(e.target.value as any)}
                     >
-                      <td className="px-3 py-2 font-medium text-black">
-                        {req.resident.first_name} {req.resident.last_name}
-                      </td>
-                      <td className="px-3 py-2 text-gray-700 hidden sm:table-cell">
-                        {req.request_id}
-                      </td>
-                      <td className="px-3 py-2 text-gray-700">{req.certificate_type}</td>
-                      <td className="px-3 py-2 text-gray-700 hidden sm:table-cell">
-                        {new Date(req.requested_at).toLocaleString()}
-                      </td>
-                      <td className="px-3 py-2">
-                        {req.status === "PENDING" && (
-                          <span className="px-2 py-1 bg-yellow-200 text-yellow-800 rounded-full text-xs sm:text-sm font-semibold">
-                            Pending
-                          </span>
-                        )}
-                        {req.status === "APPROVED" && (
-                          <span className="px-2 py-1 bg-green-200 text-green-800 rounded-full text-xs sm:text-sm font-semibold">
-                            Approved
-                          </span>
-                        )}
-                        {req.status === "REJECTED" && (
-                          <span className="px-2 py-1 bg-red-200 text-red-800 rounded-full text-xs sm:text-sm font-semibold">
-                            Rejected
-                          </span>
-                        )}
-                        {req.status === "CLAIMED" && (
-                          <span className="px-2 py-1 bg-purple-200 text-purple-800 rounded-full text-xs sm:text-sm font-semibold">
-                            Claimed
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-3 py-2 flex flex-wrap gap-1">
-                        {req.status === "PENDING" && (
-                          <>
-                            <button
-                              onClick={() => handleApprove(req.request_id)}
-                              className="bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded flex items-center gap-1 text-xs sm:text-sm"
+                      <option value="">All Statuses</option>
+                      <option value="PENDING">Pending</option>
+                      <option value="APPROVED">Approved</option>
+                      <option value="REJECTED">Rejected</option>
+                      <option value="CLAIMED">Claimed</option>
+                    </select>
+                  </div>
+        
+                  {loading ? (
+                    <div className="flex flex-col items-center justify-center py-12 gap-4">
+                      <LoadingSpinner size="lg" />
+                      <p className="text-gray-600">Loading certificate requests...</p>
+                    </div>
+                  ) : filteredRequests.length === 0 ? (
+                    <p className="text-center py-12 text-gray-600">No certificate requests found</p>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full border-collapse bg-white shadow-sm rounded-xl overflow-hidden text-sm sm:text-base">
+                        <thead className="bg-gradient-to-br from-black via-red-800 to-black text-white">
+                          <tr>
+                            <th className="px-3 py-2 text-left">Resident Name</th>
+                            <th className="px-3 py-2 text-left hidden sm:table-cell">Request ID</th>
+                            <th className="px-3 py-2 text-left">Certificate Type</th>
+                            <th className="px-3 py-2 text-left hidden sm:table-cell">Requested At</th>
+                            <th className="px-3 py-2 text-left">Status</th>
+                            <th className="px-3 py-2 text-left">Actions</th>
+                          </tr>
+                        </thead>
+        
+                        <tbody>
+                          {paginatedRequests.map((req, index) => (
+                            <tr
+                              key={req.request_id}
+                              className={`border-b hover:bg-red-50 transition ${
+                                index % 2 === 0 ? "bg-white" : "bg-gray-50"
+                              }`}
                             >
-                              <CheckIcon className="w-4 h-4" /> Approve
-                            </button>
-                            <button
-                              onClick={() => openModal(req, "REJECT")}
-                              className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded flex items-center gap-1 text-xs sm:text-sm"
-                            >
-                              <XCircleIcon className="w-4 h-4" /> Reject
-                            </button>
-                          </>
-                        )}
-
-                        {req.status === "APPROVED" && !req.pickup_date && (
+                              <td className="px-3 py-2 font-medium text-black">
+                                {req.resident.first_name} {req.resident.last_name}
+                              </td>
+                              <td className="px-3 py-2 text-gray-700 hidden sm:table-cell">
+                                {req.request_id}
+                              </td>
+                              <td className="px-3 py-2 text-gray-700">{req.certificate_type}</td>
+                              <td className="px-3 py-2 text-gray-700 hidden sm:table-cell">
+                                {new Date(req.requested_at).toLocaleString()}
+                              </td>
+                              <td className="px-3 py-2">
+                                {req.status === "PENDING" && (
+                                  <span className="px-2 py-1 bg-yellow-200 text-yellow-800 rounded-full text-xs sm:text-sm font-semibold">
+                                    Pending
+                                  </span>
+                                )}
+                                {req.status === "APPROVED" && (
+                                  <span className="px-2 py-1 bg-green-200 text-green-800 rounded-full text-xs sm:text-sm font-semibold">
+                                    Approved
+                                  </span>
+                                )}
+                                {req.status === "REJECTED" && (
+                                  <span className="px-2 py-1 bg-red-200 text-red-800 rounded-full text-xs sm:text-sm font-semibold">
+                                    Rejected
+                                  </span>
+                                )}
+                                {req.status === "CLAIMED" && (
+                                  <span className="px-2 py-1 bg-purple-200 text-purple-800 rounded-full text-xs sm:text-sm font-semibold">
+                                    Claimed
+                                  </span>
+                                )}
+                              </td>
+                              <td className="px-3 py-2 flex flex-wrap gap-1">
+                                {req.status === "PENDING" && (
+                                  <>
+                                    <button
+                                      onClick={() => handleApprove(req.request_id)}
+                                      className="bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded flex items-center gap-1 text-xs sm:text-sm"
+                                    >
+                                      <CheckIcon className="w-4 h-4" /> Approve
+                                    </button>
+                                    <button
+                                      onClick={() => openModal(req, "REJECT")}
+                                      className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded flex items-center gap-1 text-xs sm:text-sm"
+                                    >
+                                      <XCircleIcon className="w-4 h-4" /> Reject
+                                    </button>
+                                  </>
+                                )}
+        
+                                {req.status === "APPROVED" && !req.pickup_date && (
+                                  <button
+                                    onClick={() => openModal(req, "SCHEDULE")}
+                                    className="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 rounded flex items-center gap-1 text-xs sm:text-sm"
+                                  >
+                                    Schedule Pickup
+                                  </button>
+                                )}
+                                {req.status === "APPROVED" && req.pickup_date && (
+                                  <button
+                                    onClick={() => openModal(req, "CLAIMED")}
+                                    className="bg-purple-500 hover:bg-purple-600 text-white px-2 py-1 rounded flex items-center gap-1 text-xs sm:text-sm"
+                                  >
+                                    Mark as Claimed
+                                  </button>
+                                )}
+        
+                                <button
+                                  onClick={() => openModal(req, "VIEW")}
+                                  className="bg-indigo-500 hover:bg-indigo-600 text-white px-2 py-1 rounded flex items-center gap-1 text-xs sm:text-sm"
+                                >
+                                  View
+                                </button>
+        
+                                <button
+                                  onClick={() => openModal(req, "ATTACH")}
+                                  className="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded flex items-center gap-1 text-xs sm:text-sm"
+                                >
+                                  <PaperClipIcon className="w-4 h-4" /> Attach
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+        
+                      {/* Pagination */}
+                      <div className="w-full mt-5 flex justify-center">
+                        <div className="flex items-center gap-2 px-3 py-1.5">
                           <button
-                            onClick={() => openModal(req, "SCHEDULE")}
-                            className="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 rounded flex items-center gap-1 text-xs sm:text-sm"
+                            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                            disabled={currentPage === 1}
+                            className="px-2 py-1 text-3xl text-gray-500 hover:text-gray-700 disabled:opacity-30"
                           >
-                            Schedule Pickup
+                            ‹
                           </button>
-                        )}
-                        {req.status === "APPROVED" && req.pickup_date && (
+        
+                          {Array.from({ length: totalPages }).map((_, i) => {
+                            const page = i + 1;
+        
+                            if (
+                              page === 1 ||
+                              page === totalPages ||
+                              (page >= currentPage - 1 && page <= currentPage + 1)
+                            ) {
+                              return (
+                                <button
+                                  key={i}
+                                  onClick={() => setCurrentPage(page)}
+                                  className={`w-8 h-8 flex items-center justify-center rounded-full text-sm font-medium transition-all ${
+                                    currentPage === page
+                                      ? "bg-red-100 text-red-700"
+                                      : "text-gray-700 hover:bg-gray-100"
+                                  }`}
+                                >
+                                  {page}
+                                </button>
+                              );
+                            }
+        
+                            if (page === currentPage - 2 || page === currentPage + 2) {
+                              return (
+                                <div key={i} className="px-1 text-gray-400">
+                                  ...
+                                </div>
+                              );
+                            }
+        
+                            return null;
+                          })}
+        
                           <button
-                            onClick={() => openModal(req, "CLAIMED")}
-                            className="bg-purple-500 hover:bg-purple-600 text-white px-2 py-1 rounded flex items-center gap-1 text-xs sm:text-sm"
+                            onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                            disabled={currentPage === totalPages}
+                            className="px-2 py-1 text-3xl text-gray-500 hover:text-gray-700 disabled:opacity-30"
                           >
-                            Mark as Claimed
+                            ›
                           </button>
-                        )}
-
-                        <button
-                          onClick={() => openModal(req, "VIEW")}
-                          className="bg-indigo-500 hover:bg-indigo-600 text-white px-2 py-1 rounded flex items-center gap-1 text-xs sm:text-sm"
-                        >
-                          View
-                        </button>
-
-                        <button
-                          onClick={() => openModal(req, "ATTACH")}
-                          className="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded flex items-center gap-1 text-xs sm:text-sm"
-                        >
-                          <PaperClipIcon className="w-4 h-4" /> Attach
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-        {/* PAGINATION CONTROLS */}
-              <div className="w-full mt-5 flex justify-center">
-                <div className="flex items-center gap-2 px-3 py-1.5 ">
-                  {/* Previous Button */}
-                  <button
-                    onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                    disabled={currentPage === 1}
-                    className="px-2 py-1 text-3xl text-gray-500 hover:text-gray-700 disabled:opacity-30"
-                  >
-                    ‹
-                  </button>
-
-                  {/* Page Numbers */}
-                  {Array.from({ length: totalPages }).map((_, i) => {
-                    const page = i + 1;
-
-                    // Show only near numbers + first + last + ellipsis
-                    if (
-                      page === 1 ||
-                      page === totalPages ||
-                      (page >= currentPage - 1 && page <= currentPage + 1)
-                    ) {
-                      return (
-                        <button
-                          key={i}
-                          onClick={() => setCurrentPage(page)}
-                          className={`w-8 h-8 flex items-center justify-center rounded-full text-sm font-medium transition-all ${
-                            currentPage === page
-                              ? "bg-red-100 text-red-700"
-                              : "text-gray-700 hover:bg-gray-100"
-                          }`}
-                        >
-                          {page}
-                        </button>
-                      );
-                    }
-
-                    // Ellipsis (only render once)
-                    if (page === currentPage - 2 || page === currentPage + 2) {
-                      return (
-                        <div key={i} className="px-1 text-gray-400">
-                          ...
+        
+                          <select
+                            value={ITEMS_PER_PAGE}
+                            onChange={(e) => {
+                              setCurrentPage(1);
+                              setITEMS_PER_PAGE(Number(e.target.value));
+                            }}
+                            className="ml-3 bg-white border border-gray-300 text-sm rounded-xl px-3 py-1 focus:ring-0"
+                          >
+                            <option value={5}>5 / page</option>
+                            <option value={10}>10 / page</option>
+                            <option value={20}>20 / page</option>
+                            <option value={50}>50 / page</option>
+                          </select>
                         </div>
-                      );
-                    }
-
-                    return null;
-                  })}
-
-                  {/* Next Button */}
-                  <button
-                    onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-                    disabled={currentPage === totalPages}
-                    className="px-2 py-1 text-3xl text-gray-500 hover:text-gray-700 disabled:opacity-30"
-                  >
-                    ›
-                  </button>
-
-                  {/* Rows Per Page Dropdown */}
-                  <select
-                    value={ITEMS_PER_PAGE}
-                    onChange={(e) => {
-                      setCurrentPage(1);
-                      setITEMS_PER_PAGE(Number(e.target.value));
-                    }}
-                    className="ml-3 bg-white border border-gray-300 text-sm rounded-xl px-3 py-1 focus:ring-0"
-                  >
-                    <option value={5}>5 / page</option>
-                    <option value={10}>10 / page</option>
-                    <option value={20}>20 / page</option>
-                    <option value={50}>50 / page</option>
-                  </select>
+                      </div>
+                    </div>
+                  )}
+                </main>
+              </div>
+        
+              {/* Modal */}
+              {modalOpen && selectedRequest && modalType && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 text-black">
+                  <div className="bg-white p-6 rounded-xl w-96 max-h-[90vh] overflow-y-auto">
+                    {modalType === "REJECT" && <h2 className="text-lg font-bold mb-4">Reject Request</h2>}
+                    {modalType === "SCHEDULE" && <h2 className="text-lg font-bold mb-4">Schedule Pickup</h2>}
+                    {modalType === "ATTACH" && <h2 className="text-lg font-bold mb-4">Attach File / Add Remarks</h2>}
+                    {modalType === "CLAIMED" && <h2 className="text-lg font-bold mb-4">Mark as Claimed</h2>}
+                    {modalType === "VIEW" && <h2 className="text-lg font-bold mb-4">Request Details</h2>}
+        
+                    {modalType === "CLAIMED" && (
+                      <>
+                        <p className="mb-2">Are you sure this certificate has been claimed?</p>
+                        <p className="font-semibold">
+                          {selectedRequest.resident.first_name} {selectedRequest.resident.last_name}
+                        </p>
+                      </>
+                    )}
+        
+                    {modalType === "REJECT" && (
+                      <textarea
+                        className="w-full border p-2 rounded mb-2"
+                        placeholder="Rejection Reason"
+                        value={remarks}
+                        onChange={(e) => setRemarks(e.target.value)}
+                      />
+                    )}
+        
+                    {modalType === "SCHEDULE" && (
+                      <>
+                        <input
+                          type="date"
+                          className="border p-2 rounded mb-2 w-full"
+                          value={pickupDate}
+                          onChange={(e) => setPickupDate(e.target.value)}
+                        />
+                        <input
+                          type="time"
+                          className="border p-2 rounded mb-2 w-full"
+                          value={pickupTime}
+                          onChange={(e) => setPickupTime(e.target.value)}
+                        />
+                      </>
+                    )}
+        
+                    {modalType === "VIEW" && (
+                      <div className="space-y-2">
+                        <p><strong>Resident Name:</strong> {selectedRequest.resident.first_name} {selectedRequest.resident.last_name}</p>
+                        <p><strong>Request ID:</strong> {selectedRequest.request_id}</p>
+                        <p><strong>Certificate Type:</strong> {selectedRequest.certificate_type}</p>
+                        <p><strong>Purpose:</strong> {selectedRequest.purpose || "N/A"}</p>
+                        <p><strong>Status:</strong> {selectedRequest.status}</p>
+                        {selectedRequest.rejection_reason && (
+                          <p><strong>Rejection Reason:</strong> {selectedRequest.rejection_reason}</p>
+                        )}
+                        <p><strong>Requested At:</strong> {new Date(selectedRequest.requested_at).toLocaleString()}</p>
+                        {selectedRequest.pickup_date && (
+                          <p><strong>Pickup Date:</strong> {selectedRequest.pickup_date} {selectedRequest.pickup_time}</p>
+                        )}
+                        {selectedRequest.approved_by && (
+                          <p><strong>Approved By:</strong> {selectedRequest.approved_by}</p>
+                        )}
+                      </div>
+                    )}
+        
+                    {modalType === "ATTACH" && (
+                      <>
+                        <textarea
+                          className="w-full border p-2 rounded mb-2"
+                          placeholder="Remarks"
+                          value={remarks}
+                          onChange={(e) => setRemarks(e.target.value)}
+                        />
+                        <input
+                          type="file"
+                          onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                          className="mb-4"
+                        />
+                      </>
+                    )}
+        
+                    <div className="flex justify-end gap-2 mt-4">
+                      <button
+                        onClick={closeModal}
+                        className="px-4 py-2 rounded bg-gray-300 hover:bg-gray-400"
+                        disabled={actionLoading}
+                      >
+                        Close
+                      </button>
+                      {modalType !== "VIEW" && (
+                        <button
+                          onClick={handleModalSubmit}
+                          disabled={actionLoading}
+                          className="px-4 py-2 rounded bg-blue-500 hover:bg-blue-600 text-white flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {actionLoading ? (
+                            <>
+                              <LoadingSpinner size="sm" />
+                              Processing...
+                            </>
+                          ) : (
+                            "Submit"
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-          )}
-        </main>
-      </div>
-
-      {/* Modal */}
-      {modalOpen && selectedRequest && modalType && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 text-black">
-          <div className="bg-white p-6 rounded-xl w-96">
-            {/* Titles */}
-            {modalType === "REJECT" && <h2 className="text-lg font-bold mb-4">Reject Request</h2>}
-            {modalType === "SCHEDULE" && <h2 className="text-lg font-bold mb-4">Schedule Pickup</h2>}
-            {modalType === "ATTACH" && <h2 className="text-lg font-bold mb-4">Attach File / Add Remarks</h2>}
-            {modalType === "CLAIMED" && <h2 className="text-lg font-bold mb-4">Mark as Claimed</h2>}
-
-            {/* CLAIMED confirmation */}
-            {modalType === "CLAIMED" && (
-              <>
-                <p className="mb-2">Are you sure this certificate has been claimed?</p>
-                <p className="font-semibold">
-                  {selectedRequest.resident.first_name} {selectedRequest.resident.last_name}
-                </p>
-              </>
-            )}
-
-            {/* REJECT */}
-            {modalType === "REJECT" && (
-              <textarea
-                className="w-full border p-2 rounded mb-2"
-                placeholder="Rejection Reason"
-                value={remarks}
-                onChange={(e) => setRemarks(e.target.value)}
-              />
-            )}
-
-            {/* SCHEDULE */}
-            {modalType === "SCHEDULE" && (
-              <>
-                <input
-                  type="date"
-                  className="border p-2 rounded mb-2 w-full"
-                  value={pickupDate}
-                  onChange={(e) => setPickupDate(e.target.value)}
-                />
-                <input
-                  type="time"
-                  className="border p-2 rounded mb-2 w-full"
-                  value={pickupTime}
-                  onChange={(e) => setPickupTime(e.target.value)}
-                />
-              </>
-            )}
-
-            {/* VIEW */}
-            {modalType === "VIEW" && selectedRequest && (
-              <div className="space-y-2">
-                <h2 className="text-lg font-bold mb-2">Request Details</h2>
-                <p>
-                  <strong>Resident Name:</strong> {selectedRequest.resident.first_name}{" "}
-                  {selectedRequest.resident.last_name}
-                </p>
-                <p>
-                  <strong>Request ID:</strong> {selectedRequest.request_id}
-                </p>
-                <p>
-                  <strong>Certificate Type:</strong> {selectedRequest.certificate_type}
-                </p>
-                <p>
-                  <strong>Purpose:</strong> {selectedRequest.purpose || "N/A"}
-                </p>
-                <p>
-                  <strong>Status:</strong> {selectedRequest.status}
-                </p>
-                {selectedRequest.rejection_reason && (
-                  <p>
-                    <strong>Rejection Reason:</strong> {selectedRequest.rejection_reason}
-                  </p>
-                )}
-                <p>
-                  <strong>Requested At:</strong>{" "}
-                  {new Date(selectedRequest.requested_at).toLocaleString()}
-                </p>
-                {selectedRequest.pickup_date && (
-                  <p>
-                    <strong>Pickup Date:</strong> {selectedRequest.pickup_date}{" "}
-                    {selectedRequest.pickup_time}
-                  </p>
-                )}
-                {selectedRequest.approved_by && (
-                  <p>
-                    <strong>Approved By:</strong> {selectedRequest.approved_by}
-                  </p>
-                )}
-              </div>
-            )}
-
-            {/* ATTACH */}
-            {modalType === "ATTACH" && (
-              <>
-                <textarea
-                  className="w-full border p-2 rounded mb-2"
-                  placeholder="Remarks"
-                  value={remarks}
-                  onChange={(e) => setRemarks(e.target.value)}
-                />
-                <input
-                  type="file"
-                  onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                  className="mb-4"
-                />
-              </>
-            )}
-
-            {/* Buttons */}
-            <div className="flex justify-end gap-2 mt-4">
-              <button
-                onClick={closeModal}
-                className="px-4 py-2 rounded bg-gray-300 hover:bg-gray-400"
-              >
-                Close
-              </button>
-              {modalType !== "VIEW" && (
-                <button
-                  onClick={handleModalSubmit}
-                  className="px-4 py-2 rounded bg-blue-500 hover:bg-blue-600 text-white"
-                >
-                  Submit
-                </button>
               )}
             </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
+          );
 }
