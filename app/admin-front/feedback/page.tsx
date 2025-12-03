@@ -50,6 +50,31 @@ interface Feedback {
   } | null;
 }
 
+// Loading Spinner Component
+const LoadingSpinner = ({ size = "md" }: { size?: "sm" | "md" | "lg" }) => {
+  const sizeClasses = {
+    sm: "w-4 h-4 border-2",
+    md: "w-8 h-8 border-3",
+    lg: "w-12 h-12 border-4"
+  };
+
+  return (
+    <div className={`${sizeClasses[size]} border-red-700 border-t-transparent rounded-full animate-spin`}></div>
+  );
+};
+
+// Full Page Loading Overlay
+const LoadingOverlay = ({ message = "Processing..." }: { message?: string }) => {
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white p-6 rounded-xl flex flex-col items-center gap-4 shadow-2xl">
+        <LoadingSpinner size="lg" />
+        <p className="text-gray-700 font-medium">{message}</p>
+      </div>
+    </div>
+  );
+};
+
 export default function AdminFeedbackPage() {
   const router = useRouter();
   const [activeItem, setActiveItem] = useState("feedback");
@@ -81,6 +106,8 @@ export default function AdminFeedbackPage() {
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE
   );
+
+  const [actionLoading, setActionLoading] = useState(false);
 
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
@@ -133,6 +160,7 @@ export default function AdminFeedbackPage() {
     formData.append("response", replyText);
     if (replyFile) formData.append("file", replyFile);
 
+    setActionLoading(true);
     try {
       await axios.post("/api/admin/feedback", formData, {
         headers: {
@@ -148,11 +176,14 @@ export default function AdminFeedbackPage() {
     } catch (err) {
       console.error(err);
       setMessage("Failed to send reply");
+    } finally {
+      setActionLoading(false);
     }
   };
 
   const updateStatus = async (feedbackId: string, status: string) => {
     if (!token) return setMessage("Unauthorized");
+    setActionLoading(true);
     try {
       await axios.put(
         "/api/admin/feedback",
@@ -164,6 +195,8 @@ export default function AdminFeedbackPage() {
     } catch (err) {
       console.error(err);
       setMessage("Failed to update status");
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -192,6 +225,8 @@ export default function AdminFeedbackPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to-black p-4 flex gap-4 text-black">
+      {/* Loading Overlay */}
+        {actionLoading && <LoadingOverlay message="Updating feedback..." />}
      {/* Sidebar */}
            <div
              className={`${
@@ -367,9 +402,10 @@ export default function AdminFeedbackPage() {
           )}
 
           {loading ? (
-            <p className="text-center text-black">Loading complaints...</p>
-          ) : filteredFeedbacks.length === 0 ? (
-            <p className="text-center text-black">No complaints available.</p>
+            <div className="flex flex-col items-center justify-center py-20 gap-4">
+              <LoadingSpinner size="lg" />
+              <p className="text-gray-600">Loading complaints...</p>
+            </div>
           ) : (
             <>
               {/* Desktop Table */}
@@ -615,11 +651,26 @@ export default function AdminFeedbackPage() {
             <input type="file" onChange={(e) => setReplyFile(e.target.files?.[0] || null)} className="border rounded-md p-2 mb-4 w-full" />
 
             <div className="flex justify-end gap-2">
-              <button onClick={() => setSelectedFeedback(null)} className="px-4 py-2 bg-gray-200 text-black rounded-lg hover:bg-gray-300 transition">
+              <button 
+                onClick={() => setSelectedFeedback(null)} 
+                disabled={actionLoading}
+                className="px-4 py-2 bg-gray-200 text-black rounded-lg hover:bg-gray-300 transition disabled:opacity-50"
+              >
                 Cancel
               </button>
-              <button onClick={replyFeedback} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition">
-                {selectedFeedback.response ? "Update Reply" : "Send Reply"}
+              <button 
+                onClick={replyFeedback} 
+                disabled={actionLoading}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition disabled:opacity-50 flex items-center gap-2"
+              >
+                {actionLoading ? (
+                  <>
+                    <LoadingSpinner size="sm" />
+                    Sending...
+                  </>
+                ) : (
+                  selectedFeedback.response ? "Update Reply" : "Send Reply"
+                )}
               </button>
             </div>
           </div>
