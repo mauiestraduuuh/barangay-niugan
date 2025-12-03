@@ -98,6 +98,7 @@ export default function RegistrationCodePage() {
     }
     
     setActionLoading(true); // Start loading
+
     try {
       const res = await axios.post("/api/admin/registration-code", { ownerName });
       if (res.data.success) {
@@ -321,9 +322,10 @@ export default function RegistrationCodePage() {
           </div>
 
           {loading ? (
-            <p className="text-black">Loading...</p>
-          ) : filteredCodes.length === 0 ? (
-            <p className="text-center text-black py-10">No {filter} codes found</p>
+            <div className="flex flex-col items-center justify-center py-20 gap-4">
+              <LoadingSpinner size="lg" />
+              <p className="text-gray-600">Loading Registration Code...</p>
+            </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full border-collapse bg-white shadow-sm rounded-xl overflow-hidden text-sm sm:text-base">
