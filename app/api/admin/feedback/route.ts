@@ -3,8 +3,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/../lib/prisma";
 import jwt from "jsonwebtoken";
+import { supabase } from "@/../lib/supabase";
 
 const JWT_SECRET = process.env.JWT_SECRET!;
+const BUCKET = process.env.SUPABASE_PUBLIC_BUCKET!;
+
+function getPublicFileUrl(filePath?: string | null) {
+  if (!filePath) return null;
+  const { data } = supabase.storage.from(BUCKET).getPublicUrl(filePath);
+  return data?.publicUrl || null;
+}
 
 // --- Helper to get admin id from JWT ---
 function getAdminIdFromToken(req: NextRequest): number | null {
@@ -27,7 +35,7 @@ function safeFeedback(f: any) {
   return {
     feedback_id: f.feedback_id.toString(),
     resident_id: f.resident_id.toString(),
-    proof_file: f.proof_file,
+    proof_file: getPublicFileUrl(f.proof_file),
     status: f.status,
     response: f.response,
     responded_by: f.responded_by?.toString() || null,
@@ -51,6 +59,7 @@ function safeFeedback(f: any) {
       : null,
   };
 }
+
 
 // --- GET feedback list + categories ---
 export async function GET(req: NextRequest) {

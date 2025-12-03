@@ -2,10 +2,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/../lib/prisma";
 import jwt from "jsonwebtoken";
+import { supabase } from "@/../lib/supabase";
 
 const JWT_SECRET = process.env.JWT_SECRET!;
 
-// Extract user ID and role from token
+// -------------------- Helpers --------------------
 function getUserFromToken(req: NextRequest): { userId: number; role: string } | null {
   try {
     const authHeader = req.headers.get("authorization");
@@ -21,24 +22,73 @@ function getUserFromToken(req: NextRequest): { userId: number; role: string } | 
   }
 }
 
-// Generate a 6-digit claim code
 function generateClaimCode() {
-  return 'CC-' + Math.floor(100000 + Math.random() * 900000);
+  return `CC-${Math.floor(100000 + Math.random() * 900000)}`;
 }
 
+// -------------------- POST: Upload File (Admin) --------------------
+export async function POST(req: NextRequest) {
+  try {
+    const user = getUserFromToken(req);
+    if (!user || user.role !== "ADMIN") 
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-// GET: fetch all certificate requests with resident info
+    const formData = await req.formData();
+    const request_id = formData.get("request_id");
+    const file = formData.get("file") as File | null;
+
+    if (!request_id) 
+      return NextResponse.json({ error: "request_id is required" }, { status: 400 });
+
+    const existingRequest = await prisma.certificateRequest.findUnique({ 
+      where: { request_id: Number(request_id) } 
+    });
+    if (!existingRequest) 
+      return NextResponse.json({ error: "Certificate request not found" }, { status: 404 });
+
+    let filePath = existingRequest.file_path;
+
+    if (file) {
+      const fileBuffer = await file.arrayBuffer();
+      const fileName = `${Date.now()}-${file.name}`;
+
+      // Upload to Supabase
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from("uploads")
+        .upload(`certificates/${fileName}`, Buffer.from(fileBuffer), { upsert: true });
+
+      if (uploadError) {
+        console.error("Supabase upload error:", uploadError);
+        return NextResponse.json({ error: "Failed to upload file" }, { status: 500 });
+      }
+
+      // Get public URL
+      const { data: urlData } = supabase.storage.from("uploads").getPublicUrl(uploadData.path);
+      filePath = urlData.publicUrl;
+    }
+
+    const updatedRequest = await prisma.certificateRequest.update({
+      where: { request_id: Number(request_id) },
+      data: { file_path: filePath },
+    });
+
+    return NextResponse.json({ message: "File uploaded successfully", updatedRequest });
+  } catch (error) {
+    console.error("POST error:", error);
+    return NextResponse.json({ error: "Failed to upload attachment" }, { status: 500 });
+  }
+}
+
+// -------------------- GET: Fetch Certificate Requests --------------------
 export async function GET(req: NextRequest) {
   try {
     const user = getUserFromToken(req);
-    if (!user || user.role !== "ADMIN") {
+    if (!user || user.role !== "ADMIN")
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
 
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
 
-    // --- If ?id= is provided, fetch specific request for View feature ---
     if (id) {
       const request = await prisma.certificateRequest.findUnique({
         where: { request_id: Number(id) },
@@ -59,100 +109,76 @@ export async function GET(req: NextRequest) {
         },
       });
 
-      if (!request) {
+      if (!request)
         return NextResponse.json({ error: "Certificate request not found" }, { status: 404 });
-      }
 
-      return NextResponse.json({ request });
+      return NextResponse.json({
+        request: {
+          ...request,
+          file_path: request.file_path || null,
+        },
+      });
     }
 
-    // --- Otherwise, fetch all requests for listing ---
     const requests = await prisma.certificateRequest.findMany({
       include: {
-        resident: {
-          select: {
-            resident_id: true,
-            first_name: true,
-            last_name: true,
-            address: true,
-            contact_no: true,
-          },
-        },
+        resident: { select: { resident_id: true, first_name: true, last_name: true, address: true, contact_no: true } },
         approvedBy: { select: { user_id: true, username: true } },
       },
       orderBy: { requested_at: "desc" },
     });
 
-    return NextResponse.json({ requests });
+    const safeRequests = requests.map((r) => ({ ...r, file_path: r.file_path || null }));
+
+    return NextResponse.json({ requests: safeRequests });
   } catch (error) {
-    console.error("Error fetching certificate requests:", error);
+    console.error("GET error:", error);
     return NextResponse.json({ error: "Failed to fetch requests" }, { status: 500 });
   }
 }
 
-// PUT: handle approve/reject or schedule pickup
+// -------------------- PUT: Update Certificate Request --------------------
 export async function PUT(req: NextRequest) {
   try {
     const user = getUserFromToken(req);
-    if (!user || user.role !== "ADMIN") {
+    if (!user || user.role !== "ADMIN")
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
 
     const { request_id, action, rejection_reason, pickup_date, pickup_time } = await req.json();
-
-    if (!request_id || !action) {
+    if (!request_id || !action)
       return NextResponse.json({ error: "request_id and action are required" }, { status: 400 });
-    }
 
     const data: any = {};
 
-    // Approve request (no pickup info yet)
     if (action === "APPROVE") {
       data.status = "APPROVED";
       data.approved_by = user.userId;
       data.approved_at = new Date();
-    }
-
-    // Reject request (must provide reason)
-    else if (action === "REJECT") {
-      if (!rejection_reason || rejection_reason.trim() === "") {
+    } else if (action === "REJECT") {
+      if (!rejection_reason || rejection_reason.trim() === "")
         return NextResponse.json({ error: "Rejection reason is required" }, { status: 400 });
-      }
       data.status = "REJECTED";
       data.rejection_reason = rejection_reason.trim();
       data.approved_by = user.userId;
       data.approved_at = new Date();
-    }
-
-    // Schedule pickup for approved request
-    else if (action === "SCHEDULE_PICKUP") {
-      if (!pickup_date || !pickup_time) {
+    } else if (action === "SCHEDULE_PICKUP") {
+      if (!pickup_date || !pickup_time)
         return NextResponse.json({ error: "Pickup date and time are required" }, { status: 400 });
-      }
       data.pickup_date = new Date(pickup_date);
       data.pickup_time = pickup_time;
       data.claim_code = generateClaimCode();
-    }
-
-    // Mark the cert request as claimed
-    else if (action === "CLAIMED") {
+    } else if (action === "CLAIMED") {
       data.status = "CLAIMED";
       data.claimed_at = new Date();
       data.claimed_by = user.userId;
-    }
-
-    else {
+    } else {
       return NextResponse.json({ error: "Invalid action" }, { status: 400 });
     }
 
-    const updatedRequest = await prisma.certificateRequest.update({
-      where: { request_id },
-      data,
-    });
-
+    const updatedRequest = await prisma.certificateRequest.update({ where: { request_id }, data });
     return NextResponse.json({ message: "Request updated successfully", updatedRequest });
   } catch (error) {
-    console.error("Error updating certificate request:", error);
+    console.error("PUT error:", error);
     return NextResponse.json({ error: "Failed to update request" }, { status: 500 });
   }
 }

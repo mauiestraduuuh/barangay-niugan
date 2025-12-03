@@ -28,6 +28,21 @@ function safeBigInt(obj: any) {
   );
 }
 
+// Convert external photo URL to base64 (for the ID card only)
+async function photoUrlToBase64(url: string | null) {
+  if (!url) return null;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const buffer = Buffer.from(await res.arrayBuffer());
+    const ext = url.split(".").pop()?.split("?")[0] || "png";
+    return `data:image/${ext};base64,${buffer.toString("base64")}`;
+  } catch (err) {
+    console.error("Failed to convert photo to base64:", err);
+    return null;
+  }
+}
+
 export async function GET(req: NextRequest) {
   try {
     const userId = getUserIdFromToken(req);
@@ -43,7 +58,6 @@ export async function GET(req: NextRequest) {
         birthdate: true,
         address: true,
         head_id: true,
-        household_id: true,
         household_number: true,
         is_renter: true,
         is_4ps_member: true,
@@ -54,23 +68,29 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    if (!resident) return NextResponse.json({ error: "Resident not found" }, { status: 404 });
+    if (!resident)
+      return NextResponse.json({ error: "Resident not found" }, { status: 404 });
+
+    // Use base64 photo if already stored; otherwise fetch external URL
+    let residentPhotoBase64: string | null = null;
+    if (resident.photo_url?.startsWith("data:")) {
+      residentPhotoBase64 = resident.photo_url;
+    } else {
+      residentPhotoBase64 = await photoUrlToBase64(resident.photo_url);
+    }
 
     // Determine household head
     let householdHeadName = "N/A";
     if (resident.head_id) {
       const headIdNumber = Number(resident.head_id);
-
       const headResident = await prisma.resident.findUnique({
         where: { resident_id: headIdNumber },
         select: { first_name: true, last_name: true },
       });
-
       const headStaff = await prisma.staff.findUnique({
         where: { staff_id: headIdNumber },
         select: { first_name: true, last_name: true },
       });
-
       if (headResident) householdHeadName = `${headResident.first_name} ${headResident.last_name}`;
       else if (headStaff) householdHeadName = `${headStaff.first_name} ${headStaff.last_name}`;
     }
@@ -90,8 +110,8 @@ export async function GET(req: NextRequest) {
       where: { resident_id: resident.resident_id },
       select: { id: true, id_number: true, issued_at: true, issued_by: true, qr_code: true },
     });
-
-    if (!digitalID) return NextResponse.json({ error: "Digital ID not found" }, { status: 404 });
+    if (!digitalID)
+      return NextResponse.json({ error: "Digital ID not found" }, { status: 404 });
 
     // Memberships
     const memberships: string[] = [];
@@ -101,7 +121,7 @@ export async function GET(req: NextRequest) {
     if (resident.is_slp_beneficiary) memberships.push("SLP Beneficiary");
     if (resident.is_renter) memberships.push("Renter");
 
-    // Prepare QR content
+    // Prepare QR content (without the photo)
     const qrContent: any = {
       full_name: `${resident.first_name} ${resident.last_name}`,
       id_number: `ID-${resident.resident_id}`,
@@ -113,13 +133,16 @@ export async function GET(req: NextRequest) {
       household_number: resident.household_number?.replace(/^HH-/, "") ?? null,
       is_renter: resident.is_renter,
       memberships: memberships.length ? memberships : undefined,
-      landlord: landlord ? {
-        name: `${landlord.first_name} ${landlord.last_name}`,
-        contact_no: landlord.contact_no,
-        address: landlord.address,
-      } : undefined,
+      landlord: landlord
+        ? {
+            name: `${landlord.first_name} ${landlord.last_name}`,
+            contact_no: landlord.contact_no,
+            address: landlord.address,
+          }
+        : undefined,
     };
 
+    // Generate QR code
     const qrDataURL = await QRCode.toDataURL(JSON.stringify(qrContent));
 
     const safeDigitalID = safeBigInt({
@@ -134,6 +157,7 @@ export async function GET(req: NextRequest) {
         ...resident,
         household_number: resident.household_number?.replace(/^HH-/, "") ?? null,
         memberships,
+        photo_url: residentPhotoBase64,
       }),
       household_head: householdHeadName,
     });
