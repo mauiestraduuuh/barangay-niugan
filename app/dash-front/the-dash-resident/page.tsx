@@ -84,7 +84,7 @@ useEffect(() => {
     { name: "resident", label: "Manage Profile", icon: UserIcon },
     { name: "digital-id", label: "Digital ID", icon: CreditCardIcon },
     { name: "certificate-request", label: "Certificates", icon: ClipboardDocumentIcon },
-    { name: "feedback", label: "Feedback / Complain", icon: ChatBubbleLeftEllipsisIcon },
+    { name: "feedback", label: "Complaint", icon: ChatBubbleLeftEllipsisIcon },
   ];
 
   return (

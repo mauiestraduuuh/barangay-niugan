@@ -70,11 +70,11 @@ export default function FeedbackPage() {
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
   const features = [
-    { name: 'the-dash-resident', label: 'Home', icon: HomeIcon },
-    { name: 'resident', label: 'Manage Profile', icon: UserIcon },
-    { name: 'digital-id', label: 'Digital ID', icon: CreditCardIcon },
-    { name: 'certificate-request', label: 'Certificates', icon: ClipboardDocumentIcon },
-    { name: 'feedback', label: 'Feedback / Complain', icon: ChatBubbleLeftEllipsisIcon },
+    { name: "the-dash-resident", label: "Home", icon: HomeIcon },
+    { name: "resident", label: "Manage Profile", icon: UserIcon },
+    { name: "digital-id", label: "Digital ID", icon: CreditCardIcon },
+    { name: "certificate-request", label: "Certificates", icon: ClipboardDocumentIcon },
+    { name: "feedback", label: "Complaint", icon: ChatBubbleLeftEllipsisIcon },
   ];
 
 
