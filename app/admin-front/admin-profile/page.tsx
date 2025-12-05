@@ -36,25 +36,114 @@ const LoadingSpinner = ({ size = "md" }: { size?: "sm" | "md" | "lg" }) => {
   const sizeClasses = {
     sm: "w-4 h-4 border-2",
     md: "w-8 h-8 border-3",
-    lg: "w-12 h-12 border-4"
+    lg: "w-12 h-12 border-4",
   };
 
   return (
-    <div className={`${sizeClasses[size]} border-red-700 border-t-transparent rounded-full animate-spin`}></div>
+    <div
+      className={`${sizeClasses[size]} border-red-700 border-t-transparent rounded-full animate-spin`}
+    ></div>
   );
 };
 
 // Full Page Loading Overlay
-const LoadingOverlay = ({ message = "Processing..." }: { message?: string }) => {
+const LoadingOverlay = ({ message = "Processing..." }: { message?: string }) => (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div className="bg-white p-6 rounded-xl flex flex-col items-center gap-4 shadow-2xl">
+      <LoadingSpinner size="lg" />
+      <p className="text-gray-700 font-medium">{message}</p>
+    </div>
+  </div>
+);
+
+// Error Modal
+interface ErrorModalProps {
+  open: boolean;
+  message: string;
+  onClose: () => void;
+}
+
+const ErrorModal = ({ open, message, onClose }: ErrorModalProps) => {
+  if (!open) return null;
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white p-6 rounded-xl flex flex-col items-center gap-4 shadow-2xl">
-        <LoadingSpinner size="lg" />
-        <p className="text-gray-700 font-medium">{message}</p>
+    <div className="fixed inset-0 z-50 flex justify-center items-center bg-black bg-opacity-50">
+      <div className="w-full max-w-md bg-white rounded-xl p-6 shadow-lg">
+        <h2 className="text-xl font-semibold text-red-600 text-center mb-4">Error</h2>
+        <p className="text-gray-800 text-center">{message}</p>
+        <div className="flex justify-center mt-6">
+          <button
+            onClick={onClose}
+            className="bg-red-600 hover:bg-red-700 text-white py-2 px-6 rounded-full font-semibold transition"
+          >
+            Close
+          </button>
+        </div>
       </div>
     </div>
   );
 };
+
+// Confirm Modal (for example: password change confirmation)
+interface ConfirmModalProps {
+  open: boolean;
+  title?: string;
+  message: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+}
+
+const ConfirmModal = ({ open, title = "Confirm", message, onConfirm, onCancel }: ConfirmModalProps) => {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex justify-center items-center bg-black bg-opacity-50">
+      <div className="w-full max-w-md bg-white rounded-xl p-6 shadow-lg">
+        <h2 className="text-xl font-semibold text-black text-center mb-4">{title}</h2>
+        <p className="text-gray-800 text-center">{message}</p>
+        <div className="flex justify-center gap-4 mt-6">
+          <button
+            onClick={onCancel}
+            className="bg-gray-300 hover:bg-gray-400 text-black py-2 px-6 rounded-full font-semibold transition"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            className="bg-red-600 hover:bg-red-700 text-white py-2 px-6 rounded-full font-semibold transition"
+          >
+            Confirm
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+interface SuccessModalProps {
+  open: boolean;
+  message: string;
+  onClose: () => void;
+}
+
+const SuccessModal = ({ open, message, onClose }: SuccessModalProps) => {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex justify-center items-center bg-black bg-opacity-50">
+      <div className="w-full max-w-md bg-white rounded-xl p-6 shadow-lg">
+        <h2 className="text-xl font-semibold text-green-600 text-center mb-4">Success</h2>
+        <p className="text-gray-800 text-center">{message}</p>
+        <div className="flex justify-center mt-6">
+          <button
+            onClick={onClose}
+            className="bg-green-600 hover:bg-green-700 text-white py-2 px-6 rounded-full font-semibold transition"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 
 export default function AdminProfilePage() {
   const router = useRouter();
@@ -77,7 +166,16 @@ export default function AdminProfilePage() {
   });
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
-  const [message, setMessage] = useState("");
+
+  // Error modal state
+  const [errorModalOpen, setErrorModalOpen] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+
+  // Confirm modal state
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [successModalOpen, setSuccessModalOpen] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
+
 
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
@@ -85,16 +183,9 @@ export default function AdminProfilePage() {
     fetchProfile();
   }, []);
 
-  useEffect(() => {
-    if (message) {
-      const timer = setTimeout(() => setMessage(""), 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [message]);
-
   const fetchProfile = async () => {
     if (!token) {
-      setMessage("Unauthorized: No token found");
+      showError("Unauthorized: No token found");
       return;
     }
     setLoading(true);
@@ -103,7 +194,7 @@ export default function AdminProfilePage() {
         headers: { Authorization: `Bearer ${token}` },
       });
       const admin = res.data.admin;
-      if (!admin) return setMessage("Admin data not found");
+      if (!admin) return showError("Admin data not found");
 
       setProfile({
         user_id: admin.user_id,
@@ -114,43 +205,62 @@ export default function AdminProfilePage() {
         first_name: admin.first_name ?? "",
         last_name: admin.last_name ?? "",
       });
-      setMessage("");
     } catch (err: any) {
       console.error("Fetch profile error:", err);
-      setMessage(err.response?.data?.message || "Failed to fetch profile");
+      showError(err.response?.data?.message || "Failed to fetch profile");
     } finally {
       setLoading(false);
     }
+  };
+
+  const showError = (msg: string) => {
+    setErrorMessage(msg);
+    setErrorModalOpen(true);
   };
 
   const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setPasswords({ ...passwords, [e.target.name]: e.target.value });
   };
 
-  const changePassword = async () => {
+  const handleChangePasswordConfirm = () => {
+    setConfirmOpen(false);
+    changePassword();
+  };
+
+  const requestPasswordChange = () => {
     if (passwords.new_password !== passwords.confirm_password) {
-      setMessage("Passwords do not match");
+      showError("Passwords do not match");
       return;
     }
-    if (!token) return setMessage("Unauthorized");
-    
-    setActionLoading(true);
-    try {
-      await axios.put(
-        "/api/admin/admin-profile",
-        { password: passwords.new_password },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setMessage("Password updated successfully");
-      setPasswords({ current_password: "", new_password: "", confirm_password: "" });
-      setActiveSection("overview");
-    } catch (err) {
-      console.error(err);
-      setMessage("Failed to update password");
-    } finally {
-      setActionLoading(false);
+    if (!token) {
+      showError("Unauthorized");
+      return;
     }
+    setConfirmOpen(true);
   };
+
+  const changePassword = async () => {
+  setActionLoading(true);
+  try {
+    await axios.put(
+      "/api/admin/admin-profile",
+      { password: passwords.new_password },
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    setPasswords({ current_password: "", new_password: "", confirm_password: "" });
+    setActiveSection("overview");
+
+    // Show success modal
+    setSuccessMessage("Password changed successfully!");
+    setSuccessModalOpen(true);
+  } catch (err: any) {
+    console.error(err);
+    showError(err.response?.data?.message || "Failed to update password");
+  } finally {
+    setActionLoading(false);
+  }
+};
+
 
   const handleLogout = () => {
     if (window.confirm("Are you sure you want to log out?")) {
@@ -177,6 +287,21 @@ export default function AdminProfilePage() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to-black p-4 flex gap-4">
       {/* Loading Overlay */}
       {actionLoading && <LoadingOverlay message="Updating password..." />}
+
+      {/* Error Modal */}
+      <ErrorModal
+        open={errorModalOpen}
+        message={errorMessage}
+        onClose={() => setErrorModalOpen(false)}
+      />
+
+      {/* Confirm Modal */}
+      <ConfirmModal
+        open={confirmOpen}
+        message="Are you sure you want to change your password?"
+        onConfirm={handleChangePasswordConfirm}
+        onCancel={() => setConfirmOpen(false)}
+      />
 
       {/* Sidebar */}
       <div
@@ -286,12 +411,6 @@ export default function AdminProfilePage() {
         </header>
 
         <main className="bg-gray-50 rounded-xl p-6 shadow-sm overflow-auto">
-          {message && (
-            <p className={`text-center p-2 rounded mb-4 ${message.includes("success") ? "text-green-800 bg-green-100" : "text-red-800 bg-red-100"}`}>
-              {message}
-            </p>
-          )}
-
           {loading ? (
             <div className="flex flex-col items-center justify-center py-20 gap-4">
               <LoadingSpinner size="lg" />
@@ -310,9 +429,13 @@ export default function AdminProfilePage() {
                       />
                     </div>
                     <div className="flex-1 text-center md:text-left">
-                      <h2 className="text-3xl font-bold text-black">{profile.first_name} {profile.last_name}</h2>
+                      <h2 className="text-3xl font-bold text-black">
+                        {profile.first_name} {profile.last_name}
+                      </h2>
                       <p className="text-black text-sm mt-1">Role: {profile.role}</p>
-                      <p className="text-black mt-2"><span className="font-semibold">Username:</span> {profile.username}</p>
+                      <p className="text-black mt-2">
+                        <span className="font-semibold">Username:</span> {profile.username}
+                      </p>
 
                       <div className="mt-4 flex flex-wrap gap-3 justify-center md:justify-start">
                         <button
@@ -333,7 +456,10 @@ export default function AdminProfilePage() {
                         { label: "Created At", value: new Date(profile.created_at).toLocaleDateString() },
                         { label: "Updated At", value: new Date(profile.updated_at).toLocaleDateString() },
                       ].map(({ label, value }) => (
-                        <div key={label} className="p-4 bg-gray-50 hover:bg-gray-100 rounded-lg transition border border-gray-200">
+                        <div
+                          key={label}
+                          className="p-4 bg-gray-50 hover:bg-gray-100 rounded-lg transition border border-gray-200"
+                        >
                           <p className="text-xs font-semibold text-black uppercase tracking-wide">{label}</p>
                           <p className="text-black mt-1">{value}</p>
                         </div>
@@ -394,7 +520,7 @@ export default function AdminProfilePage() {
                       Cancel
                     </button>
                     <button
-                      onClick={changePassword}
+                      onClick={requestPasswordChange}
                       disabled={actionLoading}
                       className="bg-red-600 hover:bg-red-700 text-white font-semibold py-3 px-6 rounded-full shadow-sm transition disabled:opacity-50 flex items-center gap-2"
                     >
@@ -410,6 +536,11 @@ export default function AdminProfilePage() {
                   </div>
                 </div>
               )}
+              <SuccessModal
+                  open={successModalOpen}
+                  message={successMessage}
+                  onClose={() => setSuccessModalOpen(false)}
+                />
             </>
           )}
         </main>

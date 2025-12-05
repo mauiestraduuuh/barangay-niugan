@@ -44,11 +44,13 @@ const LoadingSpinner = ({ size = "md" }: { size?: "sm" | "md" | "lg" }) => {
   const sizeClasses = {
     sm: "w-4 h-4 border-2",
     md: "w-8 h-8 border-3",
-    lg: "w-12 h-12 border-4"
+    lg: "w-12 h-12 border-4",
   };
 
   return (
-    <div className={`${sizeClasses[size]} border-red-700 border-t-transparent rounded-full animate-spin`}></div>
+    <div
+      className={`${sizeClasses[size]} border-red-700 border-t-transparent rounded-full animate-spin`}
+    ></div>
   );
 };
 
@@ -93,6 +95,18 @@ export default function ManageAnnouncements() {
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
+  const [confirmModal, setConfirmModal] = useState<{
+    visible: boolean;
+    action: "submit" | "delete" | null;
+    payload?: any;
+    message?: string;
+  }>({ visible: false, action: null });
+
+  const [errorModal, setErrorModal] = useState<{ visible: boolean; message: string }>({
+    visible: false,
+    message: "",
+  });
+
   const features = [
     { name: "the-dash-admin", label: "Home", icon: HomeIcon },
     { name: "admin-profile", label: "Manage Profile", icon: UserIcon },
@@ -118,10 +132,7 @@ export default function ManageAnnouncements() {
       const res = await fetch(`/api/admin/announcement?type=${type}&page=${page}&limit=${itemsPerPage}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
-      if (!res.ok) {
-        console.error("Fetch failed", res.status, await res.text());
-        throw new Error("Failed to fetch announcements");
-      }
+      if (!res.ok) throw new Error("Failed to fetch announcements");
       const data = await res.json();
       setAnnouncements(data.announcements);
       setPagination(data.pagination);
@@ -145,51 +156,63 @@ export default function ManageAnnouncements() {
     });
   };
 
-  // Reload entire page every 5 minutes
   useEffect(() => {
     const interval = setInterval(() => {
       window.location.reload();
-    }, 300000); // 300000ms = 5 minutes
-    
+    }, 300000); // 5 minutes
     return () => clearInterval(interval);
   }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!token) return setMessage("Unauthorized: No token");
-    
-    setActionLoading(true);
-    setLoadingMessage(editingAnnouncement ? "Updating announcement..." : "Creating announcement...");
+  const handleSubmitClick = (e: React.FormEvent) => {
+  e.preventDefault();
 
-    try {
-      const method = editingAnnouncement ? "PUT" : "POST";
-      const body = editingAnnouncement
-        ? { id: editingAnnouncement.announcement_id, ...formData }
-        : { ...formData, posted_by: 1 };
+  // Show confirmation modal with the current form data
+  setConfirmModal({
+    visible: true,
+    action: "submit",
+    message: "Are you sure the details are correct?",
+    payload: { ...formData }, // <-- include title, content, is_public
+  });
+};
 
-      const res = await fetch("/api/admin/announcement", {
-        method,
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(body),
-      });
 
-      if (!res.ok) throw new Error(await res.text());
+  const confirmSubmit = async () => {
+  if (!token || !confirmModal.payload) return;
 
-      setMessage(editingAnnouncement ? "Announcement updated successfully" : "Announcement created successfully");
-      setShowModal(false);
-      setEditingAnnouncement(null);
-      setFormData({ title: "", content: "", is_public: true });
-      await fetchAnnouncements(filterType, currentPage);
-    } catch (error) {
-      console.error("Submit error:", error);
-      setMessage("Failed to save announcement");
-    } finally {
-      setActionLoading(false);
-    }
-  };
+  setActionLoading(true);
+  setLoadingMessage(editingAnnouncement ? "Updating announcement..." : "Creating announcement...");
+
+  try {
+    const method = editingAnnouncement ? "PUT" : "POST";
+    const body = editingAnnouncement
+      ? { id: editingAnnouncement.announcement_id, ...confirmModal.payload }
+      : { ...confirmModal.payload, posted_by: 1 };
+
+    const res = await fetch("/api/admin/announcement", {
+      method,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (!res.ok) throw new Error(await res.text());
+
+    setMessage(editingAnnouncement ? "Announcement updated successfully" : "Announcement created successfully");
+    setShowModal(false);
+    setEditingAnnouncement(null);
+    setFormData({ title: "", content: "", is_public: true });
+    await fetchAnnouncements(filterType, currentPage);
+  } catch (error) {
+    console.error("Submit error:", error);
+    setErrorModal({ visible: true, message: "Failed to save announcement" });
+  } finally {
+    setActionLoading(false);
+    setConfirmModal({ visible: false, action: null });
+  }
+};
+
 
   const handleEdit = (announcement: Announcement) => {
     setEditingAnnouncement(announcement);
@@ -201,34 +224,46 @@ export default function ManageAnnouncements() {
     setShowModal(true);
   };
 
-  const handleDelete = async (id: number) => {
-    if (!confirm("Are you sure you want to delete this announcement?")) return;
-    if (!token) return setMessage("Unauthorized: No token");
+  const handleDelete = (announcement: Announcement) => {
+  // Open confirmation modal with announcement details
+  setConfirmModal({
+    visible: true,
+    action: "delete",
+    message: "Are you sure you want to delete this announcement?",
+    payload: announcement, // send full announcement details
+  });
+};
 
-    setActionLoading(true);
-    setLoadingMessage("Deleting announcement...");
-    
-    try {
-      const res = await fetch("/api/admin/announcement", {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ id }),
-      });
 
-      if (!res.ok) throw new Error(await res.text());
+  const confirmDelete = async (announcement: Announcement) => {
+  if (!token) return;
 
-      setMessage("Announcement deleted successfully");
-      await fetchAnnouncements(filterType, currentPage);
-    } catch (error) {
-      console.error("Delete error:", error);
-      setMessage("Failed to delete announcement");
-    } finally {
-      setActionLoading(false);
-    }
-  };
+  setActionLoading(true);
+  setLoadingMessage("Deleting announcement...");
+
+  try {
+    const res = await fetch("/api/admin/announcement", {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ id: announcement.announcement_id }),
+    });
+
+    if (!res.ok) throw new Error(await res.text());
+
+    setMessage("Announcement deleted successfully");
+    await fetchAnnouncements(filterType, currentPage);
+  } catch (error) {
+    console.error("Delete error:", error);
+    setErrorModal({ visible: true, message: "Failed to delete announcement" });
+  } finally {
+    setActionLoading(false);
+    setConfirmModal({ visible: false, action: null });
+  }
+};
+
 
   const handleLogout = () => {
     if (window.confirm("Are you sure you want to log out?")) {
@@ -275,9 +310,7 @@ export default function ManageAnnouncements() {
                   href={`/admin-front/${name}`}
                   onClick={() => setActiveItem(name)}
                   className={`relative flex items-center w-full px-4 py-2 text-left group transition-colors duration-200 ${
-                    activeItem === name
-                      ? "text-red-700 font-semibold"
-                      : "text-black hover:text-red-700"
+                    activeItem === name ? "text-red-700 font-semibold" : "text-black hover:text-red-700"
                   }`}
                 >
                   {activeItem === name && (
@@ -285,22 +318,10 @@ export default function ManageAnnouncements() {
                   )}
                   <Icon
                     className={`w-6 h-6 mr-2 ${
-                      activeItem === name
-                        ? "text-red-700"
-                        : "text-gray-600 group-hover:text-red-700"
+                      activeItem === name ? "text-red-700" : "text-gray-600 group-hover:text-red-700"
                     }`}
                   />
-                  {sidebarOpen && (
-                    <span
-                      className={`${
-                        activeItem === name
-                          ? "text-red-700"
-                          : "group-hover:text-red-700"
-                      }`}
-                    >
-                      {label}
-                    </span>
-                  )}
+                  {sidebarOpen && <span>{label}</span>}
                 </Link>
               </li>
             ))}
@@ -322,29 +343,17 @@ export default function ManageAnnouncements() {
             onClick={toggleSidebar}
             className="w-10 h-10 bg-white hover:bg-red-50 rounded-full flex items-center justify-center focus:outline-none transition-colors duration-200 shadow-sm"
           >
-            {sidebarOpen ? (
-              <ChevronLeftIcon className="w-5 h-5 text-black" />
-            ) : (
-              <ChevronRightIcon className="w-5 h-5 text-black" />
-            )}
+            {sidebarOpen ? <ChevronLeftIcon className="w-5 h-5 text-black" /> : <ChevronRightIcon className="w-5 h-5 text-black" />}
           </button>
         </div>
       </div>
 
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-white/80 z-40 md:hidden"
-          onClick={toggleSidebar}
-        ></div>
-      )}
+      {sidebarOpen && <div className="fixed inset-0 bg-white/80 z-40 md:hidden" onClick={toggleSidebar}></div>}
 
       {/* Main Section */}
       <div className="flex-1 flex flex-col gap-4">
         <header className="bg-gray-50 shadow-sm p-4 flex justify-between items-center rounded-xl text-black">
-          <button
-            onClick={toggleSidebar}
-            className="block md:hidden text-black hover:text-red-700 focus:outline-none"
-          >
+          <button onClick={toggleSidebar} className="block md:hidden text-black hover:text-red-700 focus:outline-none">
             <Bars3Icon className="w-6 h-6" />
           </button>
           <h1 className="text-large font-bold">Manage Announcement</h1>
@@ -353,7 +362,11 @@ export default function ManageAnnouncements() {
 
         <main className="flex-1 bg-gray-50 rounded-xl p-4 md:p-6 shadow-sm overflow-auto text-black">
           {message && (
-            <p className={`text-center p-2 rounded mb-4 ${message.includes("success") ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
+            <p
+              className={`text-center p-2 rounded mb-4 ${
+                message.includes("success") ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+              }`}
+            >
               {message}
             </p>
           )}
@@ -404,7 +417,7 @@ export default function ManageAnnouncements() {
           ) : (
             <>
               <div className="space-y-4">
-                {announcements.map(a => (
+                {announcements.map((a) => (
                   <div key={a.announcement_id} className="bg-white p-4 md:p-6 rounded-lg shadow-md text-black">
                     <div className="flex flex-col sm:flex-row justify-between items-start mb-4 gap-2">
                       <div>
@@ -414,16 +427,10 @@ export default function ManageAnnouncements() {
                         </p>
                       </div>
                       <div className="flex gap-2">
-                        <button
-                          onClick={() => handleEdit(a)}
-                          className="text-black hover:text-gray-800 p-2 rounded transition"
-                        >
+                        <button onClick={() => handleEdit(a)} className="text-black hover:text-gray-800 p-2 rounded transition">
                           <PencilIcon className="w-5 h-5" />
                         </button>
-                        <button
-                          onClick={() => handleDelete(a.announcement_id)}
-                          className="text-black hover:text-gray-800 p-2 rounded transition"
-                        >
+                        <button onClick={() => handleDelete(a)} className="text-black hover:text-gray-800 p-2 rounded transition">
                           <TrashIcon className="w-5 h-5" />
                         </button>
                       </div>
@@ -433,6 +440,7 @@ export default function ManageAnnouncements() {
                 ))}
               </div>
 
+              {/* Pagination */}
               {pagination.totalPages > 1 && (
                 <div className="w-full mt-5 flex justify-center">
                   <div className="flex items-center gap-2 px-3 py-1.5">
@@ -443,41 +451,24 @@ export default function ManageAnnouncements() {
                     >
                       ‹
                     </button>
-
                     {Array.from({ length: totalPages }).map((_, i) => {
                       const page = i + 1;
-
-                      if (
-                        page === 1 ||
-                        page === totalPages ||
-                        (page >= currentPage - 1 && page <= currentPage + 1)
-                      ) {
+                      if (page === 1 || page === totalPages || (page >= currentPage - 1 && page <= currentPage + 1)) {
                         return (
                           <button
                             key={i}
                             onClick={() => setCurrentPage(page)}
                             className={`w-8 h-8 flex items-center justify-center rounded-full text-sm font-medium transition-all ${
-                              currentPage === page
-                                ? "bg-red-100 text-red-700"
-                                : "text-gray-700 hover:bg-gray-100"
+                              currentPage === page ? "bg-red-100 text-red-700" : "text-gray-700 hover:bg-gray-100"
                             }`}
                           >
                             {page}
                           </button>
                         );
                       }
-
-                      if (page === currentPage - 2 || page === currentPage + 2) {
-                        return (
-                          <div key={i} className="px-1 text-gray-400">
-                            ...
-                          </div>
-                        );
-                      }
-
+                      if (page === currentPage - 2 || page === currentPage + 2) return <span key={i}>…</span>;
                       return null;
                     })}
-
                     <button
                       onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
                       disabled={currentPage === totalPages}
@@ -485,20 +476,6 @@ export default function ManageAnnouncements() {
                     >
                       ›
                     </button>
-
-                    <select
-                      value={itemsPerPage}
-                      onChange={(e) => {
-                        setCurrentPage(1);
-                        setItemsPerPage(Number(e.target.value));
-                      }}
-                      className="ml-3 bg-white border border-gray-300 text-sm rounded-xl px-3 py-1 focus:ring-0"
-                    >
-                      <option value={5}>5 / page</option>
-                      <option value={10}>10 / page</option>
-                      <option value={20}>20 / page</option>
-                      <option value={50}>50 / page</option>
-                    </select>
                   </div>
                 </div>
               )}
@@ -507,74 +484,200 @@ export default function ManageAnnouncements() {
         </main>
       </div>
 
-      {/* Modal */}
+      {/* Add/Edit Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md text-black">
-            <h3 className="text-xl font-semibold mb-4">
-              {editingAnnouncement ? "Edit Announcement" : "Add Announcement"}
-            </h3>
-            <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-lg text-black">
+            <h2 className="text-xl font-semibold mb-4">{editingAnnouncement ? "Edit Announcement" : "Add Announcement"}</h2>
+            <form onSubmit={handleSubmitClick} className="flex flex-col gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                <label className="block mb-1">Title</label>
                 <input
                   type="text"
                   name="title"
                   value={formData.title}
                   onChange={handleFormChange}
+                  className="w-full border border-gray-300 rounded px-3 py-2"
                   required
-                  disabled={actionLoading}
-                  className="w-full border border-gray-300 p-2 rounded focus:ring-2 focus:ring-red-500 disabled:opacity-50"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Content</label>
+                <label className="block mb-1">Content</label>
                 <textarea
                   name="content"
                   value={formData.content}
                   onChange={handleFormChange}
+                  className="w-full border border-gray-300 rounded px-3 py-2"
                   required
-                  rows={4}
-                  disabled={actionLoading}
-                  className="w-full border border-gray-300 p-2 rounded focus:ring-2 focus:ring-red-500 disabled:opacity-50"
                 />
               </div>
-              <div className="flex items-center">
+              <div className="flex items-center gap-2">
                 <input
                   type="checkbox"
                   name="is_public"
                   checked={formData.is_public}
                   onChange={handleFormChange}
-                  disabled={actionLoading}
-                  className="mr-2"
                 />
-                <label className="text-sm font-medium text-gray-700">Public</label>
+                <label>Public Announcement</label>
               </div>
-              <div className="flex gap-4">
-                <button
-                  type="submit"
-                  disabled={actionLoading}
-                  className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded transition disabled:opacity-50 flex items-center gap-2"
-                >
-                  {actionLoading ? (
-                    <>
-                      <LoadingSpinner size="sm" />
-                      {editingAnnouncement ? "Updating..." : "Creating..."}
-                    </>
-                  ) : (
-                    editingAnnouncement ? "Update" : "Create"
-                  )}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  disabled={actionLoading}
-                  className="bg-gray-300 hover:bg-gray-400 text-black px-4 py-2 rounded transition disabled:opacity-50"
-                >
+              <div className="flex justify-end gap-2">
+                <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300">
                   Cancel
+                </button>
+                <button type="submit" className="px-4 py-2 rounded bg-red-700 text-white hover:bg-red-800">
+                  {editingAnnouncement ? "Update" : "Create"}
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+     {/* Add/Edit Modal */}
+{showModal && (
+  <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+    <div className="bg-white rounded-lg shadow-lg w-full max-w-lg max-h-full overflow-auto text-black p-6 sm:p-8">
+      <h2 className="text-xl font-semibold mb-4">{editingAnnouncement ? "Edit Announcement" : "Add Announcement"}</h2>
+      <form onSubmit={handleSubmitClick} className="flex flex-col gap-4">
+        <div>
+          <label className="block mb-1">Title</label>
+          <input
+            type="text"
+            name="title"
+            value={formData.title}
+            onChange={handleFormChange}
+            className="w-full border border-gray-300 rounded px-3 py-2"
+            required
+          />
+        </div>
+        <div>
+          <label className="block mb-1">Content</label>
+          <textarea
+            name="content"
+            value={formData.content}
+            onChange={handleFormChange}
+            className="w-full border border-gray-300 rounded px-3 py-2"
+            rows={4}
+            required
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            name="is_public"
+            checked={formData.is_public}
+            onChange={handleFormChange}
+          />
+          <label>Public Announcement</label>
+        </div>
+        <div className="flex flex-col sm:flex-row justify-end gap-2">
+          <button
+            type="button"
+            onClick={() => setShowModal(false)}
+            className="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300 w-full sm:w-auto"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            className="px-4 py-2 rounded bg-red-700 text-white hover:bg-red-800 w-full sm:w-auto"
+          >
+            {editingAnnouncement ? "Update" : "Create"}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+)}
+
+      {/* Confirmation Modal */}
+          {confirmModal.visible && confirmModal.payload && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-lg shadow-lg w-full max-w-lg max-h-full overflow-auto text-black p-6 sm:p-8">
+
+                {confirmModal.action === "delete" && (
+                  <>
+                    <h3 className="text-xl font-semibold mb-4 text-red-700">Confirm Delete</h3>
+                    <p className="mb-4">{confirmModal.message}</p>
+                    <div className="mb-4 space-y-2">
+                      <p><strong>Title:</strong> {confirmModal.payload.title}</p>
+                      <p><strong>Content:</strong></p>
+                      <div className="whitespace-pre-wrap border p-2 rounded bg-gray-50">{confirmModal.payload.content}</div>
+                      <p><strong>Visibility:</strong> {confirmModal.payload.is_public ? "Public" : "Private"}</p>
+                    </div>
+                    <div className="flex flex-col sm:flex-row justify-end gap-3">
+                      <button
+                        onClick={() => setConfirmModal({ visible: false, action: null })}
+                        className="bg-gray-300 hover:bg-gray-400 px-4 py-2 rounded w-full sm:w-auto"
+                        disabled={actionLoading}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={() => confirmDelete(confirmModal.payload as Announcement)}
+                        className="bg-red-500 hover:bg-red-600 px-4 py-2 rounded text-white w-full sm:w-auto flex items-center justify-center gap-2"
+                        disabled={actionLoading}
+                      >
+                        {actionLoading ? (
+                          <>
+                            <LoadingSpinner size="sm" /> Deleting...
+                          </>
+                        ) : "Yes, Delete"}
+                      </button>
+                    </div>
+                  </>
+                )}
+
+                {confirmModal.action === "submit" && (
+                  <>
+                    <h3 className="text-xl font-semibold mb-4">{editingAnnouncement ? "Confirm Update" : "Confirm Creation"}</h3>
+                    <p className="mb-4">{confirmModal.message}</p>
+                    <div className="mb-4 space-y-2">
+                      <p><strong>Title:</strong> {confirmModal.payload.title}</p>
+                      <p><strong>Content:</strong></p>
+                      <div className="whitespace-pre-wrap border p-2 rounded bg-gray-50">{confirmModal.payload.content}</div>
+                      <p><strong>Visibility:</strong> {confirmModal.payload.is_public ? "Public" : "Private"}</p>
+                    </div>
+                    <div className="flex flex-col sm:flex-row justify-end gap-3">
+                      <button
+                        onClick={() => setConfirmModal({ visible: false, action: null })}
+                        className="bg-gray-300 hover:bg-gray-400 px-4 py-2 rounded w-full sm:w-auto"
+                        disabled={actionLoading}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={confirmSubmit}
+                        className="bg-red-500 hover:bg-red-600 px-4 py-2 rounded text-white w-full sm:w-auto flex items-center justify-center gap-2"
+                        disabled={actionLoading}
+                      >
+                        {actionLoading ? (
+                          <>
+                            <LoadingSpinner size="sm" /> {editingAnnouncement ? "Updating..." : "Creating..."}
+                          </>
+                        ) : editingAnnouncement ? "Yes, Update" : "Yes, Create"}
+                      </button>
+                    </div>
+                  </>
+                )}
+
+              </div>
+            </div>
+          )}
+
+      {/* Error Modal */}
+      {errorModal.visible && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-lg w-full max-w-sm max-h-full overflow-auto text-black p-6 sm:p-8">
+            <p className="mb-4 text-red-700 font-medium">{errorModal.message}</p>
+            <div className="flex justify-end">
+              <button
+                onClick={() => setErrorModal({ visible: false, message: "" })}
+                className="bg-gray-300 hover:bg-gray-400 px-4 py-2 rounded w-full sm:w-auto"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}
