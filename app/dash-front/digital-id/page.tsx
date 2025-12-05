@@ -37,12 +37,59 @@ interface Resident {
   landlord_name?: string | null;
 }
 
+// Loading Spinner Component
+const LoadingSpinner = ({ size = "md" }: { size?: "sm" | "md" | "lg" }) => {
+  const sizeClasses = {
+    sm: "w-4 h-4 border-2",
+    md: "w-8 h-8 border-3",
+    lg: "w-12 h-12 border-4"
+  };
+
+  return (
+    <div className={`${sizeClasses[size]} border-red-700 border-t-transparent rounded-full animate-spin`}></div>
+  );
+};
+
+// Skeleton ID Card
+const SkeletonIDCard = () => (
+  <div className="relative w-full max-w-[550px] aspect-[11/6] bg-white rounded-xl shadow-md border border-gray-700 overflow-hidden animate-pulse">
+    {/* Left stripe */}
+    <div className="absolute left-0 top-0 h-full w-2 sm:w-4 md:w-[15px] bg-gradient-to-b from-red-700 via-white to-blue-700" />
+
+    <div className="flex h-full p-2 pl-4 sm:p-4 sm:pl-6 md:p-6 md:pl-10">
+      <div className="flex flex-col justify-between">
+        <div className="w-16 h-16 sm:w-20 sm:h-20 md:w-28 md:h-28 rounded-md bg-gray-300" />
+        <div className="space-y-2 mt-1 sm:mt-2">
+          <div className="h-3 bg-gray-200 rounded w-24"></div>
+          <div className="h-3 bg-gray-200 rounded w-28"></div>
+        </div>
+      </div>
+
+      <div className="flex-1 pl-2 sm:pl-4 md:pl-6 flex flex-col justify-between">
+        <div className="space-y-2">
+          <div className="h-3 bg-gray-200 rounded w-3/4"></div>
+          <div className="h-4 bg-gray-300 rounded w-1/2"></div>
+          <div className="h-3 bg-gray-200 rounded w-2/3 mt-4"></div>
+          <div className="h-4 bg-gray-300 rounded w-full"></div>
+          <div className="h-3 bg-gray-200 rounded w-5/6"></div>
+          <div className="h-3 bg-gray-200 rounded w-4/6"></div>
+        </div>
+
+        <div className="absolute bottom-8 right-4">
+          <div className="w-16 h-16 sm:w-20 sm:h-20 md:w-[90px] md:h-[90px] bg-gray-300 rounded"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
 export default function DigitalID() {
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [resident, setResident] = useState<Resident | null>(null);
   const [loadingResident, setLoadingResident] = useState(true);
   const [errorResident, setErrorResident] = useState<string | null>(null);
+  const [downloading, setDownloading] = useState(false);
 
   const cardRef = useRef<HTMLDivElement>(null);
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
@@ -111,64 +158,54 @@ export default function DigitalID() {
   }, []);
 
   const handleDownload = async () => {
-  if (!cardRef.current || !resident) return;
+    if (!cardRef.current || !resident) return;
 
-  const card = cardRef.current;
+    setDownloading(true);
+    const card = cardRef.current;
 
-  // Wait for all images inside the card to load (profile + QR)
-  const images = card.querySelectorAll("img");
-  await Promise.all(
-    Array.from(images).map(
-      (img) =>
-        new Promise<void>((resolve) => {
-          if ((img as HTMLImageElement).complete) resolve();
-          else {
-            img.addEventListener("load", () => resolve());
-            img.addEventListener("error", () => resolve());
-          }
-        })
-    )
-  );
-
-  try {
-    const dataUrl = await toPng(card, { cacheBust: true, backgroundColor: "white" });
-
-    const pdf = new jsPDF({ orientation: "landscape", unit: "px", format: "a4" });
-    const imgProps = pdf.getImageProperties(dataUrl);
-    const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-
-    pdf.addImage(dataUrl, "PNG", 0, 0, pdfWidth, pdfHeight);
-    pdf.save(`${resident.first_name}-${resident.last_name}-DigitalID.pdf`);
-  } catch (error) {
-    console.error("Error generating PDF:", error);
-  }
-};
-
-
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    router.push("/auth-front/login");
-  };
-
-  if (loadingResident)
-    return <p className="text-center mt-20">Loading digital ID...</p>;
-  if (errorResident)
-    return (
-      <div className="text-center mt-20 text-red-500">
-        <p>{errorResident}</p>
-        <p className="mt-4">
-          Please go to{" "}
-          <Link href="/dash-front/resident" className="text-blue-600 underline">
-            Manage Profile
-          </Link>{" "}
-          to verify your information.
-        </p>
-      </div>
+    // Wait for all images inside the card to load (profile + QR)
+    const images = card.querySelectorAll("img");
+    await Promise.all(
+      Array.from(images).map(
+        (img) =>
+          new Promise<void>((resolve) => {
+            if ((img as HTMLImageElement).complete) resolve();
+            else {
+              img.addEventListener("load", () => resolve());
+              img.addEventListener("error", () => resolve());
+            }
+          })
+      )
     );
 
-  if (!resident)
-    return <p className="text-center mt-20 text-red-500">Digital ID not found</p>;
+    try {
+      const dataUrl = await toPng(card, { cacheBust: true, backgroundColor: "white" });
+
+      const pdf = new jsPDF({ orientation: "landscape", unit: "px", format: "a4" });
+      const imgProps = pdf.getImageProperties(dataUrl);
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+
+      pdf.addImage(dataUrl, "PNG", 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`${resident.first_name}-${resident.last_name}-DigitalID.pdf`);
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      alert("Failed to download PDF. Please try again.");
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  const handleLogout = () => {
+    if (window.confirm("Are you sure you want to log out?")) {
+      localStorage.removeItem("token");
+      router.push("/auth-front/login");
+    }
+  };
+
+  const retryLoad = () => {
+    window.location.reload();
+  };
 
   const features = [
     { name: "the-dash-resident", label: "Home", icon: HomeIcon },
@@ -286,83 +323,131 @@ export default function DigitalID() {
           <div className="flex items-center space-x-4"></div>
         </header>
 
-        {/* ID Card */}
-        <main className="flex flex-col items-center justify-center bg-gray-50 rounded-xl p-4 sm:p-6 md:p-8 shadow-md">
-          <div
-            ref={cardRef}
-            className="relative w-full max-w-[550px] aspect-[11/6] bg-white rounded-xl shadow-md border border-gray-700 overflow-hidden text-black"
-          >
-            {/* Left stripe */}
-            <div className="absolute left-0 top-0 h-full w-2 sm:w-4 md:w-[15px] bg-gradient-to-b from-red-700 via-white to-blue-700" />
-
-            <div className="flex h-full p-2 pl-4 sm:p-4 sm:pl-6 md:p-6 md:pl-10">
-              <div className="flex flex-col justify-between">
-                <img
-                  src={resident.photo_url || "/default-profile.png"}
-                  alt="Profile"
-                  className="w-16 h-16 sm:w-20 sm:h-20 md:w-28 md:h-28 rounded-md border border-gray-700 object-cover"
-                  loading="lazy"
-                />
-                <div className="text-[10px] sm:text-xs md:text-sm mt-1 sm:mt-2">
-                  <p>Issued: {resident.issued_at || "N/A"}</p>
-                  <p>Issued by: {resident.issued_by || "N/A"}</p>
-                </div>
-              </div>
-
-              <div className="flex-1 pl-2 sm:pl-4 md:pl-6 flex flex-col justify-between">
-                <div>
-                  <p className="text-[10px] sm:text-xs md:text-sm text-gray-700">REPUBLIC OF THE PHILIPPINES</p>
-                  <h2 className="text-[10px] sm:text-xs md:text-sm font-bold leading-tight">BARANGAY DIGITAL ID</h2>
-                  <div className="flex justify-between">
-                    <p className="text-[10px] sm:text-xs md:text-sm font-semibold mt-1">ID No.</p>
-                    <p className="text-[10px] sm:text-xs md:text-sm mt-1">{resident.id_number}</p>
-                  </div>
-                  <p className="text-[10px] sm:text-xs md:text-sm font-semibold mt-1 sm:mt-2 md:mt-4">
-                    {resident.first_name} {resident.last_name}
-                  </p>
-                  <p className="text-[10px] sm:text-xs md:text-sm text-gray-700">{resident.address}</p>
-                  <p className="text-[10px] sm:text-xs md:text-sm text-gray-700">
-                    Household Head: {resident.landlord_name || "N/A"}
-                  </p>
-
-                  {resident.memberships?.length ? (
-                    <div className="text-[10px] sm:text-xs md:text-sm mt-1 sm:mt-2">
-                      <p className="font-semibold">Memberships:</p>
-                      <ul className="list-disc list-inside">
-                        {resident.memberships.map((m, i) => (
-                          <li key={i}>{m}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  ) : null}
-                </div>
-
-                <div className="absolute bottom-8 right-4">
-                  {resident.qr_code ? (
-                    <img
-                      src={resident.qr_code}
-                      alt="QR Code"
-                      className="w-16 h-16 sm:w-20 sm:h-20 md:w-[90px] md:h-[90px] object-contain"
-                      loading="lazy"
-                    />
-                  ) : (
-                    <p className="text-[10px] sm:text-xs md:text-sm text-gray-700">QR not available</p>
-                  )}
+        {/* Main Content */}
+        <main className="flex flex-col items-center justify-center bg-gray-50 rounded-xl p-4 sm:p-6 md:p-8 shadow-md flex-1">
+          {/* Error State */}
+          {errorResident && (
+            <div className="w-full max-w-2xl">
+              <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+                <p className="font-medium">Error</p>
+                <p>{errorResident}</p>
+                <div className="mt-4 flex gap-3">
+                  <button
+                    onClick={retryLoad}
+                    className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded transition"
+                  >
+                    Retry
+                  </button>
+                  <Link
+                    href="/dash-front/resident"
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded transition inline-block"
+                  >
+                    Go to Manage Profile
+                  </Link>
                 </div>
               </div>
             </div>
-          </div>
+          )}
 
-          {/* Download Button */}
-          <div className="flex gap-4 mt-6">
-            <button
-              onClick={handleDownload}
-              className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg shadow hover:bg-red-700 transition"
-            >
-              <ArrowDownTrayIcon className="w-5 h-5" />
-              Download
-            </button>
-          </div>
+          {/* Loading State */}
+          {loadingResident && !errorResident && (
+            <div className="flex flex-col items-center gap-6">
+              <LoadingSpinner size="lg" />
+              <p className="text-black text-lg">Loading digital ID...</p>
+              <SkeletonIDCard />
+            </div>
+          )}
+
+          {/* Loaded ID Card */}
+          {!loadingResident && !errorResident && resident && (
+            <>
+              <div
+                ref={cardRef}
+                className="relative w-full max-w-[550px] aspect-[11/6] bg-white rounded-xl shadow-md border border-gray-700 overflow-hidden text-black"
+              >
+                {/* Left stripe */}
+                <div className="absolute left-0 top-0 h-full w-2 sm:w-4 md:w-[15px] bg-gradient-to-b from-red-700 via-white to-blue-700" />
+
+                <div className="flex h-full p-2 pl-4 sm:p-4 sm:pl-6 md:p-6 md:pl-10">
+                  <div className="flex flex-col justify-between">
+                    <img
+                      src={resident.photo_url || "/default-profile.png"}
+                      alt="Profile"
+                      className="w-16 h-16 sm:w-20 sm:h-20 md:w-28 md:h-28 rounded-md border border-gray-700 object-cover"
+                      loading="lazy"
+                    />
+                    <div className="text-[10px] sm:text-xs md:text-sm mt-1 sm:mt-2">
+                      <p>Issued: {resident.issued_at || "N/A"}</p>
+                      <p>Issued by: {resident.issued_by || "N/A"}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex-1 pl-2 sm:pl-4 md:pl-6 flex flex-col justify-between">
+                    <div>
+                      <p className="text-[10px] sm:text-xs md:text-sm text-gray-700">REPUBLIC OF THE PHILIPPINES</p>
+                      <h2 className="text-[10px] sm:text-xs md:text-sm font-bold leading-tight">BARANGAY DIGITAL ID</h2>
+                      <div className="flex justify-between">
+                        <p className="text-[10px] sm:text-xs md:text-sm font-semibold mt-1">ID No.</p>
+                        <p className="text-[10px] sm:text-xs md:text-sm mt-1">{resident.id_number}</p>
+                      </div>
+                      <p className="text-[10px] sm:text-xs md:text-sm font-semibold mt-1 sm:mt-2 md:mt-4">
+                        {resident.first_name} {resident.last_name}
+                      </p>
+                      <p className="text-[10px] sm:text-xs md:text-sm text-gray-700">{resident.address}</p>
+                      <p className="text-[10px] sm:text-xs md:text-sm text-gray-700">
+                        Household Head: {resident.landlord_name || "N/A"}
+                      </p>
+
+                      {resident.memberships?.length ? (
+                        <div className="text-[10px] sm:text-xs md:text-sm mt-1 sm:mt-2">
+                          <p className="font-semibold">Memberships:</p>
+                          <ul className="list-disc list-inside">
+                            {resident.memberships.map((m, i) => (
+                              <li key={i}>{m}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      ) : null}
+                    </div>
+
+                    <div className="absolute bottom-8 right-4">
+                      {resident.qr_code ? (
+                        <img
+                          src={resident.qr_code}
+                          alt="QR Code"
+                          className="w-16 h-16 sm:w-20 sm:h-20 md:w-[90px] md:h-[90px] object-contain"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <p className="text-[10px] sm:text-xs md:text-sm text-gray-700">QR not available</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Download Button */}
+              <div className="flex gap-4 mt-6">
+                <button
+                  onClick={handleDownload}
+                  disabled={downloading}
+                  className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg shadow hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {downloading ? (
+                    <>
+                      <LoadingSpinner size="sm" />
+                      <span>Downloading...</span>
+                    </>
+                  ) : (
+                    <>
+                      <ArrowDownTrayIcon className="w-5 h-5" />
+                      <span>Download</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </>
+          )}
         </main>
       </div>
     </div>

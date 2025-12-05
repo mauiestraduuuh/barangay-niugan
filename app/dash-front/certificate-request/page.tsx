@@ -18,6 +18,7 @@ import {
   XMarkIcon,
   PlusIcon,
   ArrowRightOnRectangleIcon,
+  ExclamationTriangleIcon,
 } from "@heroicons/react/24/outline";
 
 interface CertificateRequest {
@@ -48,7 +49,7 @@ const LoadingSpinner = ({ size = "md" }: { size?: "sm" | "md" | "lg" }) => {
 // Full Page Loading Overlay
 const LoadingOverlay = ({ message = "Processing..." }: { message?: string }) => {
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100]">
       <div className="bg-white p-6 rounded-xl flex flex-col items-center gap-4 shadow-2xl">
         <LoadingSpinner size="lg" />
         <p className="text-gray-700 font-medium">{message}</p>
@@ -56,6 +57,20 @@ const LoadingOverlay = ({ message = "Processing..." }: { message?: string }) => 
     </div>
   );
 };
+
+// Skeleton Table Row
+const SkeletonRow = () => (
+  <tr className="animate-pulse">
+    <td className="p-4"><div className="h-4 bg-gray-200 rounded w-12"></div></td>
+    <td className="p-4"><div className="h-4 bg-gray-200 rounded w-32"></div></td>
+    <td className="p-4"><div className="h-4 bg-gray-200 rounded w-24"></div></td>
+    <td className="p-4"><div className="h-4 bg-gray-200 rounded w-20"></div></td>
+    <td className="p-4"><div className="h-4 bg-gray-200 rounded w-16"></div></td>
+    <td className="p-4"><div className="h-4 bg-gray-200 rounded w-20"></div></td>
+    <td className="p-4"><div className="h-4 bg-gray-200 rounded w-28"></div></td>
+    <td className="p-4"><div className="h-4 bg-gray-200 rounded w-24 mx-auto"></div></td>
+  </tr>
+);
 
 export default function Dashboard() {
   const router = useRouter();
@@ -72,9 +87,13 @@ export default function Dashboard() {
   const [message, setMessage] = useState("");
   const [statusFilter, setStatusFilter] = useState<"PENDING" | "" | "APPROVED" | "REJECTED" | "CLAIMED">("PENDING");
   const [messageType, setMessageType] = useState<"success" | "error" | "">("");
+  
+  // Loading States
+  const [initialLoading, setInitialLoading] = useState(true);
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState("");
+  
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
@@ -87,8 +106,28 @@ export default function Dashboard() {
     { name: "feedback", label: "Complaint", icon: ChatBubbleLeftEllipsisIcon },
   ];
 
+  // Initial load
   useEffect(() => {
-    fetchRequests();
+    const initializePage = async () => {
+      setInitialLoading(true);
+      await fetchRequests();
+      // Minimum loading time for smooth UX
+      await new Promise(resolve => setTimeout(resolve, 500));
+      setInitialLoading(false);
+    };
+    
+    initializePage();
+  }, []);
+
+  // Auto-refresh every 30 seconds (only when tab is active)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (!document.hidden) {
+        fetchRequests();
+      }
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
@@ -102,7 +141,12 @@ export default function Dashboard() {
   }, [message]);
 
   const fetchRequests = async () => {
-    if (!token) return setMessage("Unauthorized: No token found");
+    if (!token) {
+      setMessage("Unauthorized: No token found");
+      setInitialLoading(false);
+      return;
+    }
+    
     setLoading(true);
     try {
       const res = await axios.get("/api/dash/certificate-request", {
@@ -122,15 +166,6 @@ export default function Dashboard() {
     filterRequests();
   }, [statusFilter, requests]);
 
-  // Reload entire page every 5 minutes
-  useEffect(() => {
-    const interval = setInterval(() => {
-      window.location.reload();
-    }, 300000); // 300000ms = 5 minutes
-  
-  return () => clearInterval(interval);
-}, []);
-
   const filterRequests = () => {
     let filtered = [...requests];
     if (statusFilter !== "") {
@@ -141,7 +176,8 @@ export default function Dashboard() {
 
   const handleRequestSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!certificateType) {
+    
+    if (!certificateType || certificateType.trim() === "") {
       setMessageType("error");
       setMessage("Please select a certificate type.");
       return;
@@ -152,8 +188,8 @@ export default function Dashboard() {
 
     try {
       const payload = {
-        certificate_type: certificateType,
-        purpose: purpose || undefined, // Send undefined if empty, not empty string
+        certificate_type: certificateType.trim(),
+        purpose: purpose.trim() || undefined,
       };
 
       await axios.post(
@@ -161,6 +197,7 @@ export default function Dashboard() {
         payload,
         { headers: { Authorization: `Bearer ${token}` } }
       );
+      
       setMessageType("success");
       setMessage("Certificate request submitted successfully!");
       setShowModal(false);
@@ -170,26 +207,24 @@ export default function Dashboard() {
     } catch (err: any) {
       console.error("Submit error:", err.response?.data || err);
       setMessageType("error");
-      // Show the actual error message from the backend if available
-      const errorMessage = err.response?.data?.error || err.response?.data?.message || "Failed to submit request.";
+      
+      // Extract backend error message
+      let errorMessage = "Failed to submit request.";
+      if (err.response?.data?.error) {
+        errorMessage = err.response.data.error;
+      } else if (err.response?.status === 401) {
+        errorMessage = "Session expired. Please log in again.";
+        setTimeout(() => {
+          localStorage.removeItem("token");
+          router.push("/auth-front/login");
+        }, 2000);
+      } else if (err.response?.status === 404) {
+        errorMessage = "Your resident profile was not found.";
+      }
+      
       setMessage(errorMessage);
     } finally {
       setActionLoading(false);
-    }
-  };
-
-  const statusColor = (status: string) => {
-    switch (status.toUpperCase()) {
-      case "APPROVED":
-        return "text-green-600";
-      case "PENDING":
-        return "text-yellow-600";
-      case "REJECTED":
-        return "text-red-600";
-      case "CLAIMED":
-        return "text-purple-600";
-      default:
-        return "text-gray-600";
     }
   };
 
@@ -280,10 +315,58 @@ export default function Dashboard() {
     }
   };
 
+  // Full Page Initial Loading
+  if (initialLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to-black flex items-center justify-center">
+        <div className="bg-white p-8 rounded-xl shadow-2xl flex flex-col items-center gap-6">
+          <img
+            src="/niugan-logo.png"
+            alt="Logo"
+            className="w-20 h-20 rounded-full object-cover"
+          />
+          <LoadingSpinner size="lg" />
+          <p className="text-gray-700 font-medium text-lg">Loading Certificate Requests...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to-black p-4 flex gap-4">
-      {/* Loading Overlay */}
+      {/* Action Loading Overlay */}
       {actionLoading && <LoadingOverlay message={loadingMessage} />}
+
+      {/* Toast Notification */}
+      {message && (
+        <div
+          className={`fixed top-4 right-4 z-[200] max-w-md p-4 rounded-lg shadow-lg flex items-start gap-3 ${
+            messageType === "success"
+              ? "bg-green-50 border border-green-200"
+              : "bg-red-50 border border-red-200"
+          }`}
+        >
+          {messageType === "error" && (
+            <ExclamationTriangleIcon className="w-6 h-6 text-red-600 flex-shrink-0" />
+          )}
+          <p
+            className={`flex-1 ${
+              messageType === "success" ? "text-green-800" : "text-red-800"
+            }`}
+          >
+            {message}
+          </p>
+          <button
+            onClick={() => {
+              setMessage("");
+              setMessageType("");
+            }}
+            className="text-gray-500 hover:text-gray-700"
+          >
+            <XMarkIcon className="w-5 h-5" />
+          </button>
+        </div>
+      )}
 
       {/* Sidebar */}
       <div
@@ -388,7 +471,12 @@ export default function Dashboard() {
 
           <h1 className="text-large font-bold">Certificate Request</h1>
 
-          <div className="flex items-center space-x-4"></div>
+          <div className="flex items-center space-x-4">
+            {loading && !initialLoading && (
+              <LoadingSpinner size="sm" />
+            )}
+          </div>
+          
           <div className="flex justify-end">
             <button
               onClick={() => setShowModal(true)}
@@ -400,19 +488,6 @@ export default function Dashboard() {
         </header>
 
         <div className="bg-white backdrop-blur-sm p-5 rounded-xl shadow-lg flex flex-col gap-4">
-          {/* Message Display */}
-          {message && (
-            <div
-              className={`p-3 rounded-lg text-center font-medium ${
-                messageType === "success"
-                  ? "bg-green-100 text-green-800"
-                  : "bg-red-100 text-red-800"
-              }`}
-            >
-              {message}
-            </div>
-          )}
-
           {/* Filter */}
           <div className="flex items-center justify-between">
             <h3 className="text-large font-semibold text-gray-800 mb-4">Certificate History</h3>
@@ -442,13 +517,33 @@ export default function Dashboard() {
           </div>
 
           {/* Table */}
-          {loading ? (
-            <div className="flex flex-col items-center justify-center py-20 gap-4">
-              <LoadingSpinner size="lg" />
-              <p className="text-gray-600">Loading certificate requests...</p>
+          {loading && !initialLoading ? (
+            <div className="overflow-x-auto bg-white rounded-xl shadow-lg">
+              <table className="w-full text-left border-collapse text-black text-[0.65rem] sm:text-xs md:text-sm lg:text-base">
+                <thead className="bg-gradient-to-br from-black via-red-800 to-black text-white uppercase">
+                  <tr>
+                    <th className="p-4">ID</th>
+                    <th className="p-4">Type</th>
+                    <th className="p-4">Purpose</th>
+                    <th className="p-4">Requested At</th>
+                    <th className="p-4">Status</th>
+                    <th className="p-4">Claim Code</th>
+                    <th className="p-4">Pickup Schedule</th>
+                    <th className="p-4 text-center">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <SkeletonRow />
+                  <SkeletonRow />
+                  <SkeletonRow />
+                </tbody>
+              </table>
             </div>
           ) : filteredRequests.length === 0 ? (
-            <div className="text-center py-20 text-gray-600">No certificate requests found</div>
+            <div className="flex flex-col items-center justify-center py-12 gap-2">
+              <ClipboardDocumentIcon className="w-12 h-12 text-gray-300" />
+              <p className="text-center text-gray-500">No certificate requests found.</p>
+            </div>
           ) : (
             <div className="overflow-x-auto bg-white rounded-xl shadow-lg">
               <table className="w-full text-left border-collapse text-black text-[0.65rem] sm:text-xs md:text-sm lg:text-base">
@@ -551,20 +646,28 @@ export default function Dashboard() {
           <div className="fixed inset-0 bg-black text-black bg-opacity-40 flex items-center justify-center z-50">
             <div className="bg-white rounded-xl w-full max-w-md p-6 relative text-black">
               <button
-                onClick={() => setShowModal(false)}
+                onClick={() => {
+                  if (!actionLoading) {
+                    setShowModal(false);
+                    setCertificateType("");
+                    setPurpose("");
+                  }
+                }}
                 disabled={actionLoading}
-                className="absolute top-4 right-4 text-black-500 hover:text-red-700 disabled:opacity-50"
+                className="absolute top-4 right-4 text-black hover:text-red-700 disabled:opacity-50"
               >
-                <XMarkIcon className="w-6 h-6 text-black" />
+                <XMarkIcon className="w-6 h-6" />
               </button>
               <h2 className="text-xl font-semibold mb-4">New Certificate Request</h2>
               <form onSubmit={handleRequestSubmit} className="flex flex-col gap-4">
                 <div>
-                  <label className="block text-black-700 mb-1">Certificate Type</label>
+                  <label className="block text-gray-700 mb-1 font-medium">
+                    Certificate Type <span className="text-red-600">*</span>
+                  </label>
                   <select
                     value={certificateType}
                     onChange={(e) => setCertificateType(e.target.value)}
-                    className="w-full border-black-300 rounded-lg p-2"
+                    className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-red-700 focus:outline-none"
                     required
                     disabled={actionLoading}
                   >
@@ -575,12 +678,12 @@ export default function Dashboard() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-gray-700 mb-1">Purpose</label>
+                  <label className="block text-gray-700 mb-1 font-medium">Purpose (Optional)</label>
                   <input
                     type="text"
                     value={purpose}
                     onChange={(e) => setPurpose(e.target.value)}
-                    className="w-full border-black-300 rounded-lg p-2"
+                    className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-red-700 focus:outline-none"
                     placeholder="Enter purpose"
                     disabled={actionLoading}
                   />
@@ -588,12 +691,12 @@ export default function Dashboard() {
                 <button
                   type="submit"
                   disabled={actionLoading}
-                  className="bg-red-700 text-white px-4 py-2 rounded-lg hover:bg-red-800 disabled:opacity-50 flex items-center justify-center gap-2"
+                  className="bg-red-700 text-white px-4 py-2 rounded-lg hover:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {actionLoading ? (
                     <>
                       <LoadingSpinner size="sm" />
-                      Submitting...
+                      <span>Submitting...</span>
                     </>
                   ) : (
                     "Submit Request"
@@ -614,7 +717,7 @@ export default function Dashboard() {
                 <XMarkIcon className="w-6 h-6" />
               </button>
               <h2 className="text-xl font-semibold mb-4 text-red-600">Request Denied</h2>
-              <p>{currentRejectionReason}</p>
+              <p className="text-gray-700">{currentRejectionReason}</p>
               <button
                 onClick={() => setShowRejectionModal(false)}
                 className="mt-4 bg-red-700 text-white px-4 py-2 rounded-lg hover:bg-red-800"
