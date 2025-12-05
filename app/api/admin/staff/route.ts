@@ -2,27 +2,61 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/../lib/prisma";
 
 /**
- * GET: return all staff rows (including related user)
+ * GET: return all staff rows (including related user and performance metrics)
  */
 export async function GET() {
   try {
     const staff = await prisma.staff.findMany({
       include: {
-        user: true,
+        user: {
+          include: {
+            _count: {
+              select: {
+                certificateApprovals: true,
+                claimedCertificates: true,
+                approvedRequests: true,
+              },
+            },
+          },
+        },
       },
       orderBy: { staff_id: "asc" },
     });
 
-    // Convert BigInt / Date objects to serializable values if needed
-    const result = staff.map((s) => ({
-      ...s,
-      // Ensure dates are serializable strings
-      birthdate: s.birthdate?.toISOString(),
-      created_at: s.created_at?.toISOString(),
-      updated_at: s.updated_at?.toISOString(),
-      // BigInt fields -> string (if any)
-      head_id: s.head_id !== null && s.head_id !== undefined ? String(s.head_id) : null,
-    }));
+    // Convert BigInt / Date objects to serializable values and calculate performance
+    const result = staff.map((s) => {
+      // Certificates processed = approvals + claimed
+      const certificatesProcessed = 
+        (s.user?._count?.certificateApprovals || 0) + 
+        (s.user?._count?.claimedCertificates || 0);
+      
+      // Registration resolved = approved requests (no rejected count available in schema)
+      const registrationResolved = s.user?._count?.approvedRequests || 0;
+      
+      // Total performance score
+      const performanceScore = certificatesProcessed + registrationResolved;
+
+      return {
+        ...s,
+        // Ensure dates are serializable strings
+        birthdate: s.birthdate?.toISOString(),
+        created_at: s.created_at?.toISOString(),
+        updated_at: s.updated_at?.toISOString(),
+        // BigInt fields -> string (if any)
+        head_id: s.head_id !== null && s.head_id !== undefined ? String(s.head_id) : null,
+        // Add performance metrics
+        performance: {
+          certificatesProcessed,
+          registrationResolved,
+          performanceScore,
+        },
+        // Clean up the user object to remove _count
+        user: {
+          user_id: s.user?.user_id,
+          role: s.user?.role,
+        },
+      };
+    });
 
     return NextResponse.json(result);
   } catch (error: any) {
