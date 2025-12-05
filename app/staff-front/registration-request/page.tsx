@@ -149,6 +149,15 @@ export default function StaffRegistrationRequestsPage() {
     filterRequests();
   }, [statusFilter, requests,searchQuery]);
 
+  // Reload entire page every 5 minutes
+  useEffect(() => {
+    const interval = setInterval(() => {
+      window.location.reload();
+    }, 300000); // 300000ms = 5 minutes
+    
+    return () => clearInterval(interval);
+  }, []);
+
   const filterRequests = () => {
   let filtered = [...requests];
   

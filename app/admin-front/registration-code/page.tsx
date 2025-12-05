@@ -90,6 +90,15 @@ export default function RegistrationCodePage() {
     fetchCodes();
   }, []);
 
+  // Reload entire page every 5 minutes
+  useEffect(() => {
+    const interval = setInterval(() => {
+      window.location.reload();
+    }, 300000); // 300000ms = 5 minutes
+    
+    return () => clearInterval(interval);
+  }, []);
+
   // Generate a new code
   const generateCode = async () => {
     if (!ownerName.trim()) {

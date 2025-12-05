@@ -113,6 +113,8 @@ export default function AdminCertificateRequestsPage() {
     { name: "reports", label: "Reports", icon: ChartBarIcon },
   ];
 
+  
+
   useEffect(() => {
     if (message) {
       const timer = setTimeout(() => setMessage(""), 3000);
@@ -135,6 +137,14 @@ export default function AdminCertificateRequestsPage() {
     }
   };
 
+  // Reload entire page every 5 minutes
+  useEffect(() => {
+    const interval = setInterval(() => {
+      window.location.reload();
+    }, 300000); // 300000ms = 5 minutes
+  
+  return () => clearInterval(interval);
+}, []);
   const fetchRequests = async () => {
     if (!token) return setMessage("Unauthorized: No token");
     setLoading(true);

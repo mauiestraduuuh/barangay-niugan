@@ -131,6 +131,15 @@ export default function ReportsSection() {
     fetchStats();
   }, []);
 
+  // Reload entire page every 5 minutes
+  useEffect(() => {
+    const interval = setInterval(() => {
+      window.location.reload();
+    }, 300000); // 300000ms = 5 minutes
+    
+    return () => clearInterval(interval);
+  }, []);
+
   // Quick date presets
   const applyPreset = (preset: string) => {
     const today = new Date();
