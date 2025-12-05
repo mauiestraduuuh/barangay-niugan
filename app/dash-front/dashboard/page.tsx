@@ -51,7 +51,7 @@ const SkeletonCard = () => (
   </div>
 );
 
-// NotificationDropdown Component (inline since we don't have the actual component)
+// NotificationDropdown Component
 const NotificationDropdown = ({ notifications }: { notifications: Notification[] }) => {
   const [isOpen, setIsOpen] = useState(false);
   const unreadCount = notifications.filter(n => !n.is_read).length;
