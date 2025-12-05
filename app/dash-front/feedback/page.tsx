@@ -159,6 +159,15 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
   filterRequests();
 }, [statusFilter, feedbacks]);
 
+// Reload entire page every 5 minutes
+useEffect(() => {
+  const interval = setInterval(() => {
+    window.location.reload();
+  }, 300000); // 300000ms = 5 minutes
+  
+  return () => clearInterval(interval);
+}, []);
+
 const filterRequests = () => {
   let filtered = [...feedbacks];
   if (statusFilter !== "") {

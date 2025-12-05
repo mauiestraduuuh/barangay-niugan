@@ -85,6 +85,15 @@ export default function AdminDashboard() {
     fetchDashboardData();
   }, []);
 
+  // Reload entire page every 5 minutes
+  useEffect(() => {
+    const interval = setInterval(() => {
+      window.location.reload();
+    }, 300000); // 300000ms = 5 minutes
+    
+    return () => clearInterval(interval);
+  }, []);
+
   const handleLogout = () => {
     localStorage.removeItem("token");
     router.push("/auth-front/login");

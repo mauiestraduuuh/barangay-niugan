@@ -51,7 +51,7 @@ const SkeletonCard = () => (
   </div>
 );
 
-// NotificationDropdown Component (inline since we don't have the actual component)
+// NotificationDropdown Component
 const NotificationDropdown = ({ notifications }: { notifications: Notification[] }) => {
   const [isOpen, setIsOpen] = useState(false);
   const unreadCount = notifications.filter(n => !n.is_read).length;
@@ -134,6 +134,15 @@ export default function Dashboard() {
     };
 
     loadDashboard();
+  }, []);
+
+  // Reload entire page every 5 minutes
+  useEffect(() => {
+    const interval = setInterval(() => {
+      window.location.reload();
+    }, 300000); // 300000ms = 5 minutes
+    
+    return () => clearInterval(interval);
   }, []);
 
   const fetchNotifications = async () => {

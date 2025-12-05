@@ -127,6 +127,15 @@ export default function AdminFeedbackPage() {
     fetchFeedbackAndCategories();
   }, []);
 
+  // Reload entire page every 5 minutes
+  useEffect(() => {
+    const interval = setInterval(() => {
+      window.location.reload();
+    }, 300000); // 300000ms = 5 minutes
+    
+    return () => clearInterval(interval);
+  }, []);
+
   const fetchFeedbackAndCategories = async () => {
     if (!token) return setMessage("Unauthorized: No token");
     setLoading(true);

@@ -105,6 +105,15 @@ export default function ManageAnnouncements() {
     fetchAnnouncements(currentPage);
   }, [currentPage, itemsPerPage]);
 
+  // Reload entire page every 5 minutes
+  useEffect(() => {
+    const interval = setInterval(() => {
+      window.location.reload();
+    }, 300000); // 300000ms = 5 minutes
+    
+    return () => clearInterval(interval);
+  }, []);
+
   const fetchAnnouncements = async (page: number) => {
     setLoading(true);
     try {
