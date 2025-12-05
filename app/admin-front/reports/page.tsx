@@ -5,8 +5,7 @@ import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import axios from "axios";
 import jsPDF from "jspdf";
-import "jspdf-autotable"; // <-- important
-import NotificationDropdown from "../../components/NotificationDropdown";
+import autoTable from "jspdf-autotable";
 import {
   BellIcon,
   UserIcon,
@@ -36,6 +35,8 @@ import {
   Cell,
   Legend,
   ResponsiveContainer,
+  LineChart,
+  Line,
 } from "recharts";
 
 interface Notification {
@@ -60,6 +61,13 @@ export default function ReportsSection() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
   const [lastUpdated, setLastUpdated] = useState<string>("");
+  const [householdMembers, setHouseholdMembers] = useState<any[]>([]);
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string>("");
+  const [imageTitle, setImageTitle] = useState<string>("");
+  const [showHouseholdModal, setShowHouseholdModal] = useState(false);
+  const [selectedHousehold, setSelectedHousehold] = useState<any>(null);
+  const [allCategoryDetails, setAllCategoryDetails] = useState<Record<string, any[]>>({});
 
   const [stats, setStats] = useState<Record<string, number>>({
     totalResidents: 0,
@@ -80,58 +88,128 @@ export default function ReportsSection() {
     { name: "registration-request", label: "Registration Requests", icon: ClipboardDocumentIcon },
     { name: "registration-code", label: "Registration Code", icon: KeyIcon },
     { name: "certificate-request", label: "Certificate Requests", icon: ClipboardDocumentIcon },
-    { name: "feedback", label: "Feedback", icon: ChatBubbleLeftEllipsisIcon },
+    { name: "feedback", label: "Complaint", icon: ChatBubbleLeftEllipsisIcon },
     { name: "staff-acc", label: "Staff Accounts", icon: UsersIcon },
     { name: "announcement", label: "Announcements", icon: MegaphoneIcon },
     { name: "reports", label: "Reports", icon: ChartBarIcon },
   ];
 
   const fetchStats = async () => {
-  if (!token) {
-    setMessage("You are not logged in.");
-    setLoading(false);
-    return;
-  }
-
-  setLoading(true);
-  try {
-    // Use absolute URL if needed; relative works if API is same domain
-    const res = await axios.get(`${window.location.origin}/api/admin/reports`, {
-      headers: { Authorization: `Bearer ${token}` },
-      params: { from: dateRange.from, to: dateRange.to },
-      timeout: 50000, // optional: fail if request takes too long
-    });
-
-    if (res.data.stats) {
-      setStats(res.data.stats);
-      setLastUpdated(new Date().toLocaleString());
-      setMessage("");
-    } else {
-      setMessage("No data received from server.");
+    if (!token) {
+      setMessage("You are not logged in.");
+      setLoading(false);
+      return;
     }
-  } catch (err: any) {
-    console.error("Axios fetchStats error:", err);
 
-    if (err.response) {
-      // Server responded with status outside 2xx
-      setMessage(`Server Error: ${err.response.status}`);
-    } else if (err.request) {
-      // Request made but no response
-      setMessage("Network Error: Could not reach server.");
-    } else {
-      // Something else
-      setMessage("Unexpected Error: " + err.message);
+    setLoading(true);
+    try {
+      const res = await axios.get(`${window.location.origin}/api/admin/reports`, {
+        headers: { Authorization: `Bearer ${token}` },
+        params: { from: dateRange.from, to: dateRange.to },
+        timeout: 50000,
+      });
+
+      if (res.data.stats) {
+        setStats(res.data.stats);
+        setLastUpdated(new Date().toLocaleString());
+        setMessage("");
+        
+        // Fetch all category details for charts
+        await fetchAllCategoryDetails();
+      } else {
+        setMessage("No data received from server.");
+      }
+    } catch (err: any) {
+      console.error("Axios fetchStats error:", err);
+
+      if (err.response) {
+        setMessage(`Server Error: ${err.response.status}`);
+      } else if (err.request) {
+        setMessage("Network Error: Could not reach server.");
+      } else {
+        setMessage("Unexpected Error: " + err.message);
+      }
+    } finally {
+      setLoading(false);
     }
-  } finally {
-    setLoading(false);
-  }
-};
+  };
+
+  const fetchAllCategoryDetails = async () => {
+    const categories = ['residents', 'staff', 'certificates', 'feedback', 'announcements', 'households'];
+    const categoryData: Record<string, any[]> = {};
+
+    for (const category of categories) {
+      try {
+        const res = await axios.get(`/api/admin/reports?category=${category}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        const flattened = res.data.details.map((item: any) => {
+          const newItem = { ...item };
+          if (item.resident) {
+            newItem.resident_id = item.resident.resident_id;
+            newItem.resident_first_name = item.resident.first_name;
+            newItem.resident_last_name = item.resident.last_name;
+            delete newItem.resident;
+          }
+          if (item.headResident) {
+            newItem.head_resident_id = item.headResident.resident_id;
+            newItem.head_resident_first_name = item.headResident.first_name;
+            newItem.head_resident_last_name = item.headResident.last_name;
+            delete newItem.headResident;
+          }
+          if (item.headStaff) {
+            newItem.head_staff_id = item.headStaff.staff_id;
+            newItem.head_staff_first_name = item.headStaff.first_name;
+            newItem.head_staff_last_name = item.headStaff.last_name;
+            delete newItem.headStaff;
+          }
+          if (item.members) {
+            newItem.member_count = item.members.length;
+            item.members.forEach((m: any, i: number) => {
+              newItem[`member_${i + 1}_id`] = m.resident_id;
+              newItem[`member_${i + 1}_first_name`] = m.first_name;
+              newItem[`member_${i + 1}_last_name`] = m.last_name;
+            });
+            delete newItem.members;
+          }
+          if (item.staff_members) {
+            newItem.staff_member_count = item.staff_members.length;
+            item.staff_members.forEach((s: any, i: number) => {
+              newItem[`staff_member_${i + 1}_id`] = s.staff_id;
+              newItem[`staff_member_${i + 1}_first_name`] = s.first_name;
+              newItem[`staff_member_${i + 1}_last_name`] = s.last_name;
+            });
+            delete newItem.staff_members;
+          }
+          if (item.category) {
+            newItem.category_name = item.category.english_name;
+            delete newItem.category;
+          }
+          if (item.respondedBy) {
+            newItem.responded_by_username = item.respondedBy.username;
+            delete newItem.respondedBy;
+          }
+          if (item.postedBy) {
+            newItem.posted_by_username = item.postedBy.username;
+            delete newItem.postedBy;
+          }
+          return newItem;
+        });
+
+        categoryData[category] = flattened;
+      } catch (err) {
+        console.error(`Error fetching ${category}:`, err);
+      }
+    }
+
+    setAllCategoryDetails(categoryData);
+  };
 
   useEffect(() => {
     fetchStats();
   }, []);
 
-  // Quick date presets
   const applyPreset = (preset: string) => {
     const today = new Date();
     let from = "";
@@ -157,78 +235,98 @@ export default function ReportsSection() {
         break;
     }
     setDateRange({ from, to });
-    setTimeout(fetchStats, 100); // Fetch after state update
+    setTimeout(fetchStats, 100);
   };
 
-  // Fetch details
   const fetchDetails = async (category: string) => {
     setActiveCategory(category);
-    setDetails([]);
     setCurrentPage(1);
     setSearchTerm("");
-    try {
-      const res = await axios.get(`/api/admin/reports?category=${category}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+    
+    // Use already fetched data if available
+    if (allCategoryDetails[category]) {
+      setDetails(allCategoryDetails[category]);
+    } else {
+      try {
+        const res = await axios.get(`/api/admin/reports?category=${category}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
 
-      const flattened = res.data.details.map((item: any) => {
-        const newItem = { ...item };
-        if (item.resident) {
-          newItem.resident_id = item.resident.resident_id;
-          newItem.resident_first_name = item.resident.first_name;
-          newItem.resident_last_name = item.resident.last_name;
-          delete newItem.resident;
-        }
-        if (item.headResident) {
-          newItem.head_resident_id = item.headResident.resident_id;
-          newItem.head_resident_first_name = item.headResident.first_name;
-          newItem.head_resident_last_name = item.headResident.last_name;
-          delete newItem.headResident;
-        }
-        if (item.headStaff) {
-          newItem.head_staff_id = item.headStaff.staff_id;
-          newItem.head_staff_first_name = item.headStaff.first_name;
-          newItem.head_staff_last_name = item.headStaff.last_name;
-          delete newItem.headStaff;
-        }
-        if (item.members) {
-          item.members.forEach((m: any, i: number) => {
-            newItem[`member_${i + 1}_id`] = m.resident_id;
-            newItem[`member_${i + 1}_first_name`] = m.first_name;
-            newItem[`member_${i + 1}_last_name`] = m.last_name;
-          });
-          delete newItem.members;
-        }
-        if (item.staff_members) {
-          item.staff_members.forEach((s: any, i: number) => {
-            newItem[`staff_member_${i + 1}_id`] = s.staff_id;
-            newItem[`staff_member_${i + 1}_first_name`] = s.first_name;
-            newItem[`staff_member_${i + 1}_last_name`] = s.last_name;
-          });
-          delete newItem.staff_members;
-        }
-        if (item.category) {
-          newItem.category_name = item.category.english_name;
-          delete newItem.category;
-        }
-        if (item.respondedBy) {
-          newItem.responded_by_username = item.respondedBy.username;
-          delete newItem.respondedBy;
-        }
-        if (item.postedBy) {
-          newItem.posted_by_username = item.postedBy.username;
-          delete newItem.postedBy;
-        }
-        return newItem;
-      });
+        const flattened = res.data.details.map((item: any) => {
+          const newItem = { ...item };
+          if (item.resident) {
+            newItem.resident_id = item.resident.resident_id;
+            newItem.resident_first_name = item.resident.first_name;
+            newItem.resident_last_name = item.resident.last_name;
+            delete newItem.resident;
+          }
+          if (item.headResident) {
+            newItem.head_resident_id = item.headResident.resident_id;
+            newItem.head_resident_first_name = item.headResident.first_name;
+            newItem.head_resident_last_name = item.headResident.last_name;
+            delete newItem.headResident;
+          }
+          if (item.headStaff) {
+            newItem.head_staff_id = item.headStaff.staff_id;
+            newItem.head_staff_first_name = item.headStaff.first_name;
+            newItem.head_staff_last_name = item.headStaff.last_name;
+            delete newItem.headStaff;
+          }
+          if (item.members) {
+            newItem.member_count = item.members.length;
+            item.members.forEach((m: any, i: number) => {
+              newItem[`member_${i + 1}_id`] = m.resident_id;
+              newItem[`member_${i + 1}_first_name`] = m.first_name;
+              newItem[`member_${i + 1}_last_name`] = m.last_name;
+            });
+            delete newItem.members;
+          }
+          if (item.staff_members) {
+            newItem.staff_member_count = item.staff_members.length;
+            item.staff_members.forEach((s: any, i: number) => {
+              newItem[`staff_member_${i + 1}_id`] = s.staff_id;
+              newItem[`staff_member_${i + 1}_first_name`] = s.first_name;
+              newItem[`staff_member_${i + 1}_last_name`] = s.last_name;
+            });
+            delete newItem.staff_members;
+          }
+          if (item.category) {
+            newItem.category_name = item.category.english_name;
+            delete newItem.category;
+          }
+          if (item.respondedBy) {
+            newItem.responded_by_username = item.respondedBy.username;
+            delete newItem.respondedBy;
+          }
+          if (item.postedBy) {
+            newItem.posted_by_username = item.postedBy.username;
+            delete newItem.postedBy;
+          }
+          return newItem;
+        });
 
-      setDetails(flattened);
-    } catch (err) {
-      console.error(err);
+        setDetails(flattened);
+      } catch (err) {
+        console.error(err);
+      }
     }
   };
 
-  // Search + Sort + Pagination
+  const fetchHouseholdMembers = async (householdId: number) => {
+    try {
+      const res = await axios.get(`/api/admin/reports?category=households&householdId=${householdId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      
+      const household = res.data.details[0];
+      setSelectedHousehold(household);
+      setHouseholdMembers([...(household.members || []), ...(household.staff_members || [])]);
+      setShowHouseholdModal(true);
+    } catch (err) {
+      console.error("Error fetching household members:", err);
+    }
+  };
+
   const filteredDetails = useMemo(() => {
     let filtered = details.filter((item) =>
       Object.values(item).some((v) => String(v).toLowerCase().includes(searchTerm.toLowerCase()))
@@ -247,9 +345,11 @@ export default function ReportsSection() {
     return filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
   }, [details, searchTerm, sortConfig, currentPage]);
 
-  const totalPages = Math.ceil(details.filter((item) =>
-    Object.values(item).some((v) => String(v).toLowerCase().includes(searchTerm.toLowerCase()))
-  ).length / itemsPerPage);
+  const totalPages = Math.ceil(
+    details.filter((item) =>
+      Object.values(item).some((v) => String(v).toLowerCase().includes(searchTerm.toLowerCase()))
+    ).length / itemsPerPage
+  );
 
   const requestSort = (key: string) => {
     let direction: "asc" | "desc" = "asc";
@@ -257,33 +357,91 @@ export default function ReportsSection() {
     setSortConfig({ key, direction });
   };
 
-  // Export PDF
-  const handleExportPDF = () => {
-    const doc = new jsPDF();
-    doc.text("Barangay Report Summary", 14, 16);
-    (doc as any).autoTable({
-      startY: 25,
-      head: [["Category", "Count"]],
-      body: Object.entries(stats)
-        .filter(([_, value]) => typeof value === "number")
-        .map(([key, value]) => [key.replace(/^total/i, ""), value]),
-    });
-    doc.save("barangay_report.pdf");
+  const getChartData = (category: string) => {
+    const categoryDetails = allCategoryDetails[category] || [];
+    if (categoryDetails.length === 0) return [];
+
+    switch (category) {
+      case "certificates":
+        const statusCount = categoryDetails.reduce((acc: any, item) => {
+          acc[item.status] = (acc[item.status] || 0) + 1;
+          return acc;
+        }, {});
+        return Object.entries(statusCount).map(([name, value]) => ({ name, value }));
+
+      case "feedback":
+        const feedbackStatus = categoryDetails.reduce((acc: any, item) => {
+          acc[item.status] = (acc[item.status] || 0) + 1;
+          return acc;
+        }, {});
+        return Object.entries(feedbackStatus).map(([name, value]) => ({ name, value }));
+
+      case "households":
+        return categoryDetails.slice(0, 10).map(item => ({
+          name: `H-${item.id}`,
+          members: (item.member_count || 0) + (item.staff_member_count || 0)
+        }));
+
+      case "residents":
+        const ageGroups = categoryDetails.reduce((acc: any, item) => {
+          const age = new Date().getFullYear() - new Date(item.birthdate).getFullYear();
+          const group = age < 18 ? "0-17" : age < 35 ? "18-34" : age < 60 ? "35-59" : "60+";
+          acc[group] = (acc[group] || 0) + 1;
+          return acc;
+        }, {});
+        return Object.entries(ageGroups).map(([name, value]) => ({ name, value }));
+
+      case "staff":
+      const performanceData: Record<string, number> = {};
+      
+      categoryDetails.forEach((staff: any) => {
+        if (staff.approved_requests) performanceData["Approved Requests"] = (performanceData["Approved Requests"] || 0) + staff.approved_requests;
+        if (staff.approved_certificates) performanceData["Approved Certificates"] = (performanceData["Approved Certificates"] || 0) + staff.approved_certificates;
+        if (staff.claimed_certificates) performanceData["Claimed Certificates"] = (performanceData["Claimed Certificates"] || 0) + staff.claimed_certificates;
+      });
+
+      return Object.entries(performanceData).map(([name, value]) => ({ name, value }));
+
+      case "announcements":
+        const now = new Date();
+        const activeExpired = categoryDetails.reduce((acc: any, item) => {
+          const expiryDate = item.expiry_date ? new Date(item.expiry_date) : null;
+          const status = expiryDate && expiryDate < now ? "Expired" : "Active";
+          acc[status] = (acc[status] || 0) + 1;
+          return acc;
+        }, {});
+        return Object.entries(activeExpired).map(([name, value]) => ({ name, value }));
+
+      default:
+        return [];
+    }
   };
 
-  const handleExportDetailedPDF = () => {
-    if (!activeCategory || details.length === 0) return;
-    const doc = new jsPDF();
-    doc.text(`${activeCategory} Details`, 14, 16);
-    (doc as any).autoTable({
-      startY: 25,
-      head: [Object.keys(details[0]).map((k) => k.replaceAll("_", " "))],
-      body: details.map((d) => Object.values(d).map((v) => String(v))),
-    });
-    doc.save(`${activeCategory}_details.pdf`);
-  };
+const handleExportPDF = () => {
+  const doc = new jsPDF();
+  doc.text("Barangay Report Summary", 14, 16);
+  autoTable(doc, {
+    startY: 25,
+    head: [["Category", "Count"]],
+    body: Object.entries(stats)
+      .filter(([_, value]) => typeof value === "number")
+      .map(([key, value]) => [key.replace(/^total/i, ""), value]),
+  });
+  doc.save("barangay_report.pdf");
+};
 
-  // Export CSV
+const handleExportDetailedPDF = () => {
+  if (!activeCategory || details.length === 0) return;
+  const doc = new jsPDF();
+  doc.text(`${activeCategory} Details`, 14, 16);
+  autoTable(doc, {
+    startY: 25,
+    head: [Object.keys(details[0]).map((k) => k.replaceAll("_", " "))],
+    body: details.map((d) => Object.values(d).map((v) => String(v))),
+  });
+  doc.save(`${activeCategory}_details.pdf`);
+};
+
   const handleExportCSV = () => {
     const csv = Object.entries(stats)
       .filter(([_, value]) => typeof value === "number")
@@ -310,21 +468,20 @@ export default function ReportsSection() {
   const COLORS = ["#FF6384", "#36A2EB", "#FFCE56", "#8AFF33", "#FF8A33", "#B833FF"];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to-black p-4 flex gap-4">
-{/* Sidebar */}
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to-black p-2 sm:p-4 flex flex-col md:flex-row gap-2 sm:gap-4">
+      {/* Sidebar */}
       <div
         className={`${
           sidebarOpen ? "w-64" : "w-16"
         } bg-gray-50 shadow-lg rounded-xl transition-all duration-300 ease-in-out flex flex-col 
-        ${sidebarOpen ? "fixed inset-y-0 left-0 z-50 md:static md:translate-x-0" : "hidden md:flex"}`}
+        ${sidebarOpen ? "fixed inset-y-0 left-0 z-50 md:static md:translate-x-0 m-2 sm:m-0" : "hidden md:flex"}`}
       >
-        {/* Logo + Close */}
-        <div className="p-4 flex items-center justify-center">
+        <div className="p-4 flex items-center justify-center relative">
           <img
             src="/niugan-logo.png"
             alt="Company Logo"
             className={`rounded-full object-cover transition-all duration-300 ${
-              sidebarOpen ? "w-30 h-30" : "w-8.5 h-8.5"
+              sidebarOpen ? "w-24 h-24 sm:w-30 sm:h-30" : "w-8 h-8"
             }`}
           />
           <button
@@ -334,9 +491,7 @@ export default function ReportsSection() {
             <XMarkIcon className="w-6 h-6" />
           </button>
         </div>
-          
 
-        {/* Navigation */}
         <nav className="flex-1 mt-6">
           <ul>
             {features.map(({ name, label, icon: Icon }) => (
@@ -345,9 +500,7 @@ export default function ReportsSection() {
                   href={`/admin-front/${name}`}
                   onClick={() => setActiveItem(name)}
                   className={`relative flex items-center w-full px-4 py-2 text-left group transition-colors duration-200 ${
-                    activeItem === name
-                      ? "text-red-700 font-semibold"
-                      : "text-black hover:text-red-700"
+                    activeItem === name ? "text-red-700 font-semibold" : "text-black hover:text-red-700"
                   }`}
                 >
                   {activeItem === name && (
@@ -355,19 +508,11 @@ export default function ReportsSection() {
                   )}
                   <Icon
                     className={`w-6 h-6 mr-2 ${
-                      activeItem === name
-                        ? "text-red-700"
-                        : "text-gray-600 group-hover:text-red-700"
+                      activeItem === name ? "text-red-700" : "text-gray-600 group-hover:text-red-700"
                     }`}
                   />
                   {sidebarOpen && (
-                    <span
-                      className={`${
-                        activeItem === name
-                          ? "text-red-700"
-                          : "group-hover:text-red-700"
-                      }`}
-                    >
+                    <span className={`${activeItem === name ? "text-red-700" : "group-hover:text-red-700"}`}>
                       {label}
                     </span>
                   )}
@@ -377,18 +522,16 @@ export default function ReportsSection() {
           </ul>
         </nav>
 
-      {/* Functional Logout Button */}
-    <div className="p-4">
-      <button
-        onClick={handleLogout}
-        className="flex items-center gap-3 text-black hover:text-red-700 transition w-full text-left"
-      >
-        <ArrowRightOnRectangleIcon className="w-6 h-6" />
-        {sidebarOpen && <span>Log Out</span>}
-      </button>
-    </div>
+        <div className="p-4">
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-3 text-black hover:text-red-700 transition w-full text-left"
+          >
+            <ArrowRightOnRectangleIcon className="w-6 h-6" />
+            {sidebarOpen && <span>Log Out</span>}
+          </button>
+        </div>
 
-        {/* Sidebar Toggle (desktop only) */}
         <div className="p-4 flex justify-center hidden md:flex">
           <button
             onClick={toggleSidebar}
@@ -403,150 +546,220 @@ export default function ReportsSection() {
         </div>
       </div>
 
-      {/* Mobile Overlay */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-white/80 z-40 md:hidden"
-          onClick={toggleSidebar}
-        ></div>
-      )}
+      {sidebarOpen && <div className="fixed inset-0 bg-white/80 z-40 md:hidden" onClick={toggleSidebar}></div>}
 
       {/* Main Section */}
-      <div className="flex-1 flex flex-col gap-4">
-        <header className="bg-gray-50 shadow-sm p-4 flex justify-between items-center rounded-xl text-black">
+      <div className="flex-1 flex flex-col gap-2 sm:gap-4 overflow-y-auto min-w-0">
+        <header className="bg-gray-50 shadow-sm p-3 sm:p-4 flex justify-between items-center rounded-xl text-black">
           <button
             onClick={toggleSidebar}
-            className="block md:hidden text-black hover:text-red-700 focus:outline-none"
+            className="block md:hidden text-black hover:text-red-700 focus:outline-none mr-2"
           >
             <Bars3Icon className="w-6 h-6" />
           </button>
-          <h1 className="text-large font-bold ">Manage Reports</h1>
-          <div className="flex items-center space-x-4"></div>
+          <h1 className="text-base sm:text-lg font-bold truncate">Manage Reports</h1>
+          <div className="flex items-center space-x-2 sm:space-x-4"></div>
         </header>
 
-        <main className="flex-1 bg-white/80 backdrop-blur-md shadow-md rounded-xl p-4 sm:p-6">
+        <main className="flex-1 bg-white/80 backdrop-blur-md shadow-md rounded-xl p-3 sm:p-4 md:p-6 min-w-0">
           {/* Date Range Form */}
-          <div className="flex flex-col sm:flex-row flex-wrap gap-4 items-start sm:items-end mb-6">
-            <div>
-              <label className="block text-sm font-medium text-black-600">Start Date</label>
-              <input
-                type="date"
-                className="mt-1 block w-full sm:w-48 rounded-md border border-gray-300 p-2 text-black focus:border-red-600 focus:ring-red-600"
-                value={dateRange.from}
-                onChange={(e) => setDateRange({ ...dateRange, from: e.target.value })}
-              />
+          <div className="flex flex-col gap-3 mb-4 sm:mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs sm:text-sm font-medium text-black mb-1">Start Date</label>
+                <input
+                  type="date"
+                  className="w-full rounded-md border border-gray-300 p-2 text-sm text-black focus:border-red-600 focus:ring-red-600"
+                  value={dateRange.from}
+                  onChange={(e) => setDateRange({ ...dateRange, from: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="block text-xs sm:text-sm font-medium text-black mb-1">End Date</label>
+                <input
+                  type="date"
+                  className="w-full rounded-md border border-gray-300 p-2 text-sm text-black focus:border-red-600 focus:ring-red-600"
+                  value={dateRange.to}
+                  onChange={(e) => setDateRange({ ...dateRange, to: e.target.value })}
+                />
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-black-600">End Date</label>
-              <input
-                type="date"
-                className="mt-1 block w-full sm:w-48 rounded-md border border-gray-300 p-2 text-black focus:border-red-600 focus:ring-red-600"
-                value={dateRange.to}
-                onChange={(e) => setDateRange({ ...dateRange, to: e.target.value })}
-              />
-            </div>
-            <div className="flex gap-2">
-              {["today","this-week","this-month","last-month","year-to-date"].map((preset) => (
-                <button key={preset} onClick={() => applyPreset(preset)} className="bg-gray-200 hover:bg-gray-300 px-3 py-1 rounded-lg text-black">{preset.replaceAll("-"," ")}</button>
+            
+            <div className="flex gap-2 flex-wrap">
+              {["today", "this-week", "this-month", "last-month", "year-to-date"].map((preset) => (
+                <button
+                  key={preset}
+                  onClick={() => applyPreset(preset)}
+                  className="bg-gray-200 hover:bg-gray-300 px-2 sm:px-3 py-1 rounded-lg text-black text-xs sm:text-sm whitespace-nowrap"
+                >
+                  {preset.replaceAll("-", " ")}
+                </button>
               ))}
             </div>
+            
             <button
               type="button"
               onClick={fetchStats}
-              className="bg-red-700 hover:bg-red-800 text-black px-4 py-2 rounded-lg shadow-sm transition-all w-full sm:w-auto flex items-center gap-2"
+              className="bg-red-700 hover:bg-red-800 text-white px-4 py-2 rounded-lg shadow-sm transition-all w-full sm:w-auto flex items-center justify-center gap-2"
             >
-              <ArrowPathIcon className="w-5 h-5"/>
-              Generate
+              <ArrowPathIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span className="text-sm sm:text-base">Generate</span>
             </button>
-            {lastUpdated && <p className="text-sm text-gray-500 mt-2">Last updated: {lastUpdated}</p>}
+            
+            {lastUpdated && <p className="text-xs sm:text-sm text-gray-500">Last updated: {lastUpdated}</p>}
           </div>
 
-         {/* Charts */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6">
-                    <div className="bg-white p-4 rounded-lg shadow">
-                      <h3 className="text-black font-semibold mb-2">Category Distribution</h3>
-                      <ResponsiveContainer width="100%" height={250}>
-                        <PieChart>
-                          <Pie
-                            data={Object.entries(stats)
-                              .filter(([_, v]) => typeof v === "number")
-                              .map(([k, v]) => ({ name: k.replace(/^total/i, ""), value: v }))}
-                            dataKey="value"
-                            nameKey="name"
-                            outerRadius={80}
-                            fill="#8884d8"
-                            labelLine={false} // remove connecting lines if desired
-                          >
-                            {Object.entries(stats).map((_, index) => (
-                              <Cell key={index} fill={COLORS[index % COLORS.length]} />
-                            ))}
-                          </Pie>
-                          <Tooltip
-                            contentStyle={{ backgroundColor: "white", color: "black" }}
-                            itemStyle={{ color: "black" }}
-                          />
-                          <Legend
-                            verticalAlign="bottom"
-                            align="center"
-                            wrapperStyle={{ color: "black", fontSize: "12px" }}
-                          />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    </div>
-                    <div className="bg-white p-4 rounded-lg shadow">
-                      <h3 className="text-black font-semibold mb-2">Totals Overview</h3>
-                      <ResponsiveContainer width="100%" height={200}>
-                        <BarChart
-                          data={Object.entries(stats)
-                            .filter(([_,v]) => typeof v === "number")
-                            .map(([k,v]) => ({ name: k.replace(/^total/i,""), value: v }))}
-                        >
-                          <XAxis dataKey="name" stroke="black" />
-                          <YAxis stroke="black" />
-                          <Tooltip contentStyle={{ color: "black" }} />
-                          <Bar dataKey="value" fill="#FF4B4B" />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </div>
-
-          {/* Square Panels */}
+          {/* Statistics Cards */}
           {loading ? (
-            <div className="text-center py-6 text-gray-500">Loading stats...</div>
+            <div className="text-center py-6 text-gray-500 text-sm">Loading stats...</div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-6 mb-6 sm:mb-8">
               {Object.entries(stats)
                 .filter(([_, value]) => typeof value === "number")
                 .map(([key, value]) => (
                   <div
                     key={key}
                     onClick={() => fetchDetails(key.replace(/^total/i, "").toLowerCase())}
-                    className="cursor-pointer bg-white shadow-md p-6 rounded-lg hover:bg-red-50 transition flex flex-col items-start"
+                    className="cursor-pointer bg-white shadow-md p-4 sm:p-6 rounded-lg hover:bg-red-50 transition flex flex-col items-start"
                   >
-                    <h3 className="text-lg font-semibold text-gray-800">
-                      {key.replace(/^total/i, "")}
-                    </h3>
-                    <p className="text-3xl font-bold text-red-700 mt-2">{value}</p>
-                    <p className="text-sm text-gray-600 mt-1">Click to view details</p>
+                    <h3 className="text-sm sm:text-base md:text-lg font-semibold text-gray-800">{key.replace(/^total/i, "")}</h3>
+                    <p className="text-2xl sm:text-3xl font-bold text-red-700 mt-2">{value}</p>
+                    <p className="text-xs sm:text-sm text-gray-600 mt-1">Click to view details</p>
                   </div>
                 ))}
             </div>
           )}
 
+          {/* Charts Section */}
+          {!loading && Object.keys(allCategoryDetails).length > 0 && (
+            <div className="mb-6 sm:mb-8">
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-4 sm:mb-6">Data Visualizations</h2>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                {/* Certificates Chart */}
+                {allCategoryDetails.certificates && allCategoryDetails.certificates.length > 0 && (
+                  <div className="bg-white shadow-md rounded-lg p-4 sm:p-6">
+                    <h3 className="text-sm sm:text-base md:text-lg font-semibold text-gray-800 mb-3 sm:mb-4">Certificate Requests Status</h3>
+                    <ResponsiveContainer width="100%" height={250}>
+                      <PieChart>
+                        <Pie
+                          data={getChartData('certificates')}
+                          dataKey="value"
+                          nameKey="name"
+                          cx="50%"
+                          cy="50%"
+                          outerRadius={80}
+                          label={(entry) => `${entry.name}: ${entry.value}`}
+                        >
+                          {getChartData('certificates').map((_, index) => (
+                            <Cell key={index} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip contentStyle={{ backgroundColor: "white", color: "black", fontSize: "12px" }} />
+                        <Legend wrapperStyle={{ color: "black", fontSize: "12px" }} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+
+                {/* Feedback Chart */}
+                {allCategoryDetails.feedback && allCategoryDetails.feedback.length > 0 && (
+                  <div className="bg-white shadow-md rounded-lg p-4 sm:p-6">
+                    <h3 className="text-sm sm:text-base md:text-lg font-semibold text-gray-800 mb-3 sm:mb-4">Feedback Status</h3>
+                    <ResponsiveContainer width="100%" height={250}>
+                      <PieChart>
+                        <Pie
+                          data={getChartData('feedback')}
+                          dataKey="value"
+                          nameKey="name"
+                          cx="50%"
+                          cy="50%"
+                          outerRadius={80}
+                          label={(entry) => `${entry.name}: ${entry.value}`}
+                        >
+                          {getChartData('feedback').map((_, index) => (
+                            <Cell key={index} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip contentStyle={{ backgroundColor: "white", color: "black", fontSize: "12px" }} />
+                        <Legend wrapperStyle={{ color: "black", fontSize: "12px" }} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+
+                {/* Households Chart */}
+                {allCategoryDetails.households && allCategoryDetails.households.length > 0 && (
+                  <div className="bg-white shadow-md rounded-lg p-4 sm:p-6">
+                    <h3 className="text-sm sm:text-base md:text-lg font-semibold text-gray-800 mb-3 sm:mb-4">Household Members (Top 10)</h3>
+                    <ResponsiveContainer width="100%" height={250}>
+                      <BarChart data={getChartData('households')}>
+                        <XAxis dataKey="name" stroke="#000" style={{ fontSize: '12px' }} />
+                        <YAxis stroke="#000" style={{ fontSize: '12px' }} />
+                        <Tooltip contentStyle={{ backgroundColor: "white", color: "black", fontSize: "12px" }} />
+                        <Bar dataKey="members" fill="#dc2626" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+
+                {/* Residents Age Distribution */}
+                {allCategoryDetails.residents && allCategoryDetails.residents.length > 0 && (
+                  <div className="bg-white shadow-md rounded-lg p-4 sm:p-6">
+                    <h3 className="text-sm sm:text-base md:text-lg font-semibold text-gray-800 mb-3 sm:mb-4">Residents Age Distribution</h3>
+                    <ResponsiveContainer width="100%" height={250}>
+                      <PieChart>
+                        <Pie
+                          data={getChartData('residents')}
+                          dataKey="value"
+                          nameKey="name"
+                          cx="50%"
+                          cy="50%"
+                          outerRadius={80}
+                          label={(entry) => `${entry.name}: ${entry.value}`}
+                        >
+                          {getChartData('residents').map((_, index) => (
+                            <Cell key={index} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip contentStyle={{ backgroundColor: "white", color: "black", fontSize: "12px" }} />
+                        <Legend wrapperStyle={{ color: "black", fontSize: "12px" }} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+
+                {/* Staff Performance Distribution */}
+                {allCategoryDetails.staff && allCategoryDetails.staff.length > 0 && getChartData('staff').length > 0 && (
+                  <div className="bg-white shadow-md rounded-lg p-4 sm:p-6">
+                    <h3 className="text-sm sm:text-base md:text-lg font-semibold text-gray-800 mb-3 sm:mb-4">Staff Performance Metrics</h3>
+                    <ResponsiveContainer width="100%" height={250}>
+                      <BarChart data={getChartData('staff')}>
+                        <XAxis dataKey="name" stroke="#000" angle={-45} textAnchor="end" height={100} style={{ fontSize: '10px' }} />
+                        <YAxis stroke="#000" style={{ fontSize: '12px' }} />
+                        <Tooltip contentStyle={{ backgroundColor: "white", color: "black", fontSize: "12px" }} />
+                        <Bar dataKey="value" fill="#dc2626" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Export Buttons */}
-          <div className="flex flex-col sm:flex-row justify-end mt-6 gap-3">
+          <div className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-3">
             <button
               onClick={handleExportPDF}
-              className="bg-red-700 hover:bg-red-800 text-white px-4 py-2 rounded-lg shadow-md flex items-center justify-center gap-2 transition w-full sm:w-auto"
+              className="bg-red-700 hover:bg-red-800 text-white px-3 sm:px-4 py-2 rounded-lg shadow-md flex items-center justify-center gap-2 transition w-full sm:w-auto text-sm"
             >
-              <DocumentTextIcon className="w-5 h-5" />
+              <DocumentTextIcon className="w-4 h-4 sm:w-5 sm:h-5" />
               Export PDF
             </button>
             <button
               onClick={handleExportCSV}
-              className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-lg shadow-md flex items-center justify-center gap-2 transition w-full sm:w-auto"
+              className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 sm:px-4 py-2 rounded-lg shadow-md flex items-center justify-center gap-2 transition w-full sm:w-auto text-sm"
             >
-              <ClipboardDocumentIcon className="w-5 h-5" />
+              <ClipboardDocumentIcon className="w-4 h-4 sm:w-5 sm:h-5" />
               Export CSV
             </button>
           </div>
@@ -555,80 +768,129 @@ export default function ReportsSection() {
 
       {/* Details Modal */}
       {activeCategory && (
-        <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50">
-          <div className="bg-white rounded-xl w-11/12 md:w-2/3 lg:w-1/2 p-6 relative max-h-[90vh] overflow-auto">
+        <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50 p-2 sm:p-4">
+          <div className="bg-white rounded-xl w-full max-w-6xl p-4 sm:p-6 relative max-h-[90vh] overflow-auto">
             <button
-              onClick={() => setActiveCategory(null)}
-              className="absolute top-3 right-3 text-gray-600 hover:text-red-700"
+              onClick={() => {
+                setActiveCategory(null);
+                setDetails([]);
+                setSearchTerm("");
+                setCurrentPage(1);
+              }}
+              className="absolute top-2 right-2 sm:top-3 sm:right-3 text-gray-600 hover:text-red-700 z-10 bg-white rounded-full p-1"
             >
-              <XMarkIcon className="w-6 h-6" />
+              <XMarkIcon className="w-5 h-5 sm:w-6 sm:h-6" />
             </button>
-            <h2 className="text-xl font-semibold text-black mb-4 capitalize">
-              {activeCategory} Details
-            </h2>
+            <h2 className="text-lg sm:text-xl font-semibold text-black mb-3 sm:mb-4 capitalize pr-8">{activeCategory} Details</h2>
 
             {/* Search */}
             <input
               type="text"
               placeholder="Search..."
               value={searchTerm}
-              onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
-              className="mb-3 w-full p-2 border border-gray-300 rounded-md focus:ring-red-600 focus:border-red-600 text-sm"
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="mb-3 sm:mb-4 w-full p-2 border border-gray-300 rounded-md focus:ring-red-600 focus:border-red-600 text-sm"
             />
 
             {/* Table */}
             {details.length === 0 ? (
-              <p className="text-center text-gray-500 py-6">No records found.</p>
+              <p className="text-center text-gray-500 py-6 text-sm">No records found.</p>
             ) : (
               <>
-                <div className="overflow-x-auto">
-                  <table className="min-w-full border border-gray-200 rounded-lg">
-                    <thead className="bg-red-700 text-white">
-                      <tr>
-                        {Object.keys(details[0]).map((key) => (
-                          <th
-                            key={key}
-                            className="px-4 py-2 text-left capitalize cursor-pointer"
-                            onClick={() => requestSort(key)}
-                          >
-                            {key.replaceAll("_", " ")}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredDetails.map((item, i) => (
-                        <tr key={i} className="border-t hover:bg-red-50 transition">
-                          {Object.entries(item).map(([key, val], j) => (
-                            <td key={j} className="px-4 py-2 text-sm text-gray-700">
-                              {["created_at", "requested_at", "approved_at", "submitted_at", "responded_at", "posted_at"].includes(
-                                key
-                              )
-                                ? new Date(val as string).toLocaleDateString()
-                                : String(val)}
-                            </td>
+                <div className="overflow-x-auto -mx-4 sm:mx-0">
+                  <div className="inline-block min-w-full align-middle">
+                    <div className="overflow-hidden">
+                      <table className="min-w-full border border-gray-200 rounded-lg">
+                        <thead className="bg-red-700 text-white">
+                          <tr>
+                            {Object.keys(details[0])
+                              .filter(key => !key.startsWith('member_') && !key.startsWith('staff_member_'))
+                              .map((key) => (
+                                <th
+                                  key={key}
+                                  className="px-3 sm:px-4 py-2 text-left capitalize cursor-pointer hover:bg-red-800 text-xs sm:text-sm whitespace-nowrap"
+                                  onClick={() => requestSort(key)}
+                                >
+                                  {key.replaceAll("_", " ")}
+                                </th>
+                              ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filteredDetails.map((item, i) => (
+                            <tr key={i} className="border-t hover:bg-red-50 transition">
+                              {Object.entries(item)
+                                .filter(([key]) => !key.startsWith('member_') && !key.startsWith('staff_member_'))
+                                .map(([key, val], j) => (
+                                  <td key={j} className="px-3 sm:px-4 py-2 text-xs sm:text-sm text-gray-700">
+                                    {key === "head_resident_first_name" && activeCategory === "households" ? (
+                                      <button
+                                        onClick={() => fetchHouseholdMembers(item.id)}
+                                        className="text-blue-600 hover:text-blue-800 underline font-medium"
+                                      >
+                                        {String(val)} {item.head_resident_last_name}
+                                      </button>
+                                    ) : key === "head_staff_first_name" && activeCategory === "households" ? (
+                                      <button
+                                        onClick={() => fetchHouseholdMembers(item.id)}
+                                        className="text-blue-600 hover:text-blue-800 underline font-medium"
+                                      >
+                                        {String(val)} {item.head_staff_last_name}
+                                      </button>
+                                    ) : (key === "proof_file" || key === "response_proof_file") && activeCategory === "feedback" && val ? (
+                                      <button
+                                        onClick={() => {
+                                          setSelectedImage(String(val));
+                                          setImageTitle(key === "proof_file" ? "Proof File" : "Response Proof File");
+                                          setShowImageModal(true);
+                                        }}
+                                        className="text-blue-600 hover:text-blue-800 underline font-medium whitespace-nowrap"
+                                      >
+                                        View Image
+                                      </button>
+                                    ) : key === "member_count" || key === "staff_member_count" ? (
+                                      <span className="font-semibold text-red-700">{String(val)}</span>
+                                    ) : [
+                                        "created_at",
+                                        "requested_at",
+                                        "approved_at",
+                                        "submitted_at",
+                                        "responded_at",
+                                        "posted_at",
+                                        "expiry_date",
+                                      ].includes(key) ? (
+                                      <span className="whitespace-nowrap">{val ? new Date(val as string).toLocaleDateString() : 'N/A'}</span>
+                                    ) : (
+                                      <span className="break-words">{String(val ?? '')}</span>
+                                    )}
+                                  </td>
+                                ))}
+                            </tr>
                           ))}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Pagination */}
-                <div className="flex justify-between mt-3 items-center">
+                <div className="flex justify-between mt-3 sm:mt-4 items-center text-sm">
                   <button
                     onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
-                    className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300"
+                    className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50 text-xs sm:text-sm"
                     disabled={currentPage === 1}
                   >
                     Prev
                   </button>
-                  <p>
+                  <p className="text-xs sm:text-sm">
                     Page {currentPage} of {totalPages}
                   </p>
                   <button
                     onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
-                    className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300"
+                    className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50 text-xs sm:text-sm"
                     disabled={currentPage === totalPages}
                   >
                     Next
@@ -638,15 +900,163 @@ export default function ReportsSection() {
                 {/* Export Detailed PDF */}
                 <button
                   onClick={handleExportDetailedPDF}
-                  className="mt-3 bg-red-700 hover:bg-red-800 text-white px-4 py-2 rounded-lg shadow-md flex items-center justify-center gap-2 transition w-full sm:w-auto"
+                  className="mt-3 sm:mt-4 bg-red-700 hover:bg-red-800 text-white px-3 sm:px-4 py-2 rounded-lg shadow-md flex items-center justify-center gap-2 transition w-full sm:w-auto text-sm"
                 >
-                  <DocumentTextIcon className="w-5 h-5" />
+                  <DocumentTextIcon className="w-4 h-4 sm:w-5 sm:h-5" />
                   Export Detailed PDF
                 </button>
               </>
             )}
           </div>
         </div>
+      )}
+
+      {/* Household Members Modal - Separate layer */}
+      {showHouseholdModal && selectedHousehold && (
+        <>
+          <div className="fixed inset-0 bg-black/60 z-[65]" onClick={() => {
+            setShowHouseholdModal(false);
+            setSelectedHousehold(null);
+            setHouseholdMembers([]);
+          }}></div>
+          <div className="fixed inset-0 flex justify-center items-center z-[70] p-2 sm:p-4 pointer-events-none">
+            <div className="bg-white rounded-xl w-full max-w-4xl p-4 sm:p-6 relative max-h-[90vh] overflow-auto pointer-events-auto shadow-2xl">
+              <button
+                onClick={() => {
+                  setShowHouseholdModal(false);
+                  setSelectedHousehold(null);
+                  setHouseholdMembers([]);
+                }}
+                className="absolute top-2 right-2 sm:top-3 sm:right-3 text-gray-600 hover:text-red-700 z-10 bg-white rounded-full p-1"
+              >
+                <XMarkIcon className="w-5 h-5 sm:w-6 sm:h-6" />
+              </button>
+              
+              <h2 className="text-lg sm:text-xl font-semibold text-black mb-4 sm:mb-6 pr-8">
+                Household #{selectedHousehold.id} Members
+              </h2>
+              
+              <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-gradient-to-r from-red-50 to-gray-50 rounded-lg border border-red-100">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+                  <div>
+                    <h3 className="font-semibold text-gray-800 mb-2 text-sm sm:text-base">Household Head</h3>
+                    {selectedHousehold.headResident && (
+                      <p className="text-gray-700 text-sm sm:text-base">
+                        <span className="font-medium">{selectedHousehold.headResident.first_name} {selectedHousehold.headResident.last_name}</span>
+                        <span className="text-xs sm:text-sm text-gray-500 ml-2 px-2 py-0.5 bg-blue-100 rounded">(Resident)</span>
+                      </p>
+                    )}
+                    {selectedHousehold.headStaff && (
+                      <p className="text-gray-700 text-sm sm:text-base">
+                        <span className="font-medium">{selectedHousehold.headStaff.first_name} {selectedHousehold.headStaff.last_name}</span>
+                        <span className="text-xs sm:text-sm text-gray-500 ml-2 px-2 py-0.5 bg-green-100 rounded">(Staff)</span>
+                      </p>
+                    )}
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-gray-800 mb-2 text-sm sm:text-base">Statistics</h3>
+                    <p className="text-gray-700 text-sm">
+                      <span className="font-medium">Total Members:</span> {householdMembers.length}
+                    </p>
+                    <p className="text-gray-700 text-sm">
+                      <span className="font-medium">Residents:</span> {householdMembers.filter(m => m.resident_id).length}
+                    </p>
+                    <p className="text-gray-700 text-sm">
+                      <span className="font-medium">Staff:</span> {householdMembers.filter(m => m.staff_id).length}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {householdMembers.length === 0 ? (
+                <p className="text-center text-gray-500 py-6 text-sm">No members found.</p>
+              ) : (
+                <div className="overflow-x-auto -mx-4 sm:mx-0">
+                  <div className="inline-block min-w-full align-middle">
+                    <div className="overflow-hidden">
+                      <table className="min-w-full border border-gray-200 rounded-lg">
+                        <thead className="bg-red-700 text-white">
+                          <tr>
+                            <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm">ID</th>
+                            <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm">Name</th>
+                            <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm">Type</th>
+                            <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm">Gender</th>
+                            <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm">Contact</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {householdMembers.map((member, i) => (
+                            <tr key={i} className="border-t hover:bg-red-50 transition">
+                              <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-700 font-medium">
+                                {member.resident_id || member.staff_id}
+                              </td>
+                              <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-700">
+                                {member.first_name} {member.last_name}
+                              </td>
+                              <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-700">
+                                <span className={`px-2 sm:px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${
+                                  member.resident_id ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
+                                }`}>
+                                  {member.resident_id ? 'Resident' : 'Staff'}
+                                </span>
+                              </td>
+                              <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-700">
+                                {member.gender || 'N/A'}
+                              </td>
+                              <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm text-gray-700">
+                                {member.contact_no || 'N/A'}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Image Modal */}
+      {showImageModal && (
+        <>
+          <div className="fixed inset-0 bg-black/80 z-[75]" onClick={() => {
+            setShowImageModal(false);
+            setSelectedImage("");
+            setImageTitle("");
+          }}></div>
+          <div className="fixed inset-0 flex justify-center items-center z-[80] p-2 sm:p-4 pointer-events-none">
+            <div className="bg-white rounded-xl w-full max-w-4xl p-4 sm:p-6 relative max-h-[90vh] overflow-auto pointer-events-auto shadow-2xl">
+              <button
+                onClick={() => {
+                  setShowImageModal(false);
+                  setSelectedImage("");
+                  setImageTitle("");
+                }}
+                className="absolute top-2 right-2 sm:top-3 sm:right-3 text-gray-600 hover:text-red-700 z-10 bg-white rounded-full p-1.5 sm:p-2 shadow-md"
+              >
+                <XMarkIcon className="w-5 h-5 sm:w-6 sm:h-6" />
+              </button>
+              
+              <h2 className="text-lg sm:text-xl font-semibold text-black mb-3 sm:mb-4 pr-10">
+                {imageTitle}
+              </h2>
+              
+              <div className="flex justify-center items-center">
+                <img 
+                  src={selectedImage} 
+                  alt={imageTitle}
+                  className="max-w-full max-h-[60vh] sm:max-h-[70vh] object-contain rounded-lg"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300"><rect width="400" height="300" fill="%23f3f4f6"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="Arial" font-size="16" fill="%236b7280">Image not available</text></svg>';
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );
