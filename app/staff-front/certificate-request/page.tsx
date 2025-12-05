@@ -93,6 +93,23 @@ export default function StaffCertificateRequestsPage() {
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE
   );
+  const [confirmModalOpen, setConfirmModalOpen] = useState(false);
+  const [confirmMessage, setConfirmMessage] = useState("");
+  const [onConfirmAction, setOnConfirmAction] = useState<(() => void) | null>(null);
+
+  const [errorModalOpen, setErrorModalOpen] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+
+  const showConfirmModal = (message: string, action: () => void) => {
+  setConfirmMessage(message);
+  setOnConfirmAction(() => action);
+  setConfirmModalOpen(true);
+};
+
+const showErrorModal = (message: string) => {
+  setErrorMessage(message);
+  setErrorModalOpen(true);
+};
 
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
@@ -172,10 +189,13 @@ export default function StaffCertificateRequestsPage() {
   };
 
   // Approve request
-  const handleApprove = async (requestId: string) => {
-    if (!token) return setMessage("Unauthorized");
+  const handleApprove = (requestId: string) => {
+  showConfirmModal("Are you sure you want to approve this request?", async () => {
+    if (!token) return showErrorModal("Unauthorized");
+
     setActionLoading(true);
     setLoadingMessage("Approving request...");
+
     try {
       await axios.put(
         "/api/staff/certificate-request",
@@ -184,12 +204,15 @@ export default function StaffCertificateRequestsPage() {
       );
       fetchRequests();
       setMessage("Request approved successfully");
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      setMessage("Failed to approve request");
+      showErrorModal(err.response?.data?.error || "Failed to approve request");
+    } finally {
+      setActionLoading(false);
     }
-    setActionLoading(false);
-  };
+  });
+};
+
 
   // Open modal for REJECT, ATTACH, SCHEDULE, Claim
   const openModal = (
@@ -728,6 +751,46 @@ export default function StaffCertificateRequestsPage() {
                   </div>
                 </div>
               )}
+              {/* Confirmation Modal */}
+                      {confirmModalOpen && (
+                        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 text-black">
+                          <div className="bg-white p-6 rounded-xl w-80 max-w-full text-center">
+                            <p className="mb-4 font-medium">{confirmMessage}</p>
+                            <div className="flex justify-center gap-4">
+                              <button
+                                onClick={() => setConfirmModalOpen(false)}
+                                className="px-4 py-2 rounded bg-gray-300 hover:bg-gray-400"
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                onClick={() => {
+                                  if (onConfirmAction) onConfirmAction();
+                                  setConfirmModalOpen(false);
+                                }}
+                                className="px-4 py-2 rounded bg-green-500 hover:bg-green-600 text-white"
+                              >
+                                Confirm
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Error Modal */}
+                      {errorModalOpen && (
+                        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 text-black">
+                          <div className="bg-white p-6 rounded-xl w-80 max-w-full text-center">
+                            <p className="mb-4 font-medium text-red-600">{errorMessage}</p>
+                            <button
+                              onClick={() => setErrorModalOpen(false)}
+                              className="px-4 py-2 rounded bg-gray-300 hover:bg-gray-400"
+                            >
+                              Close
+                            </button>
+                          </div>
+                        </div>
+                      )}
             </div>
           );
 }
