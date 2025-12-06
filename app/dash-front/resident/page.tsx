@@ -246,47 +246,109 @@ const getChangedProfileFields = () => {
     setPasswords({ ...passwords, [e.target.name]: e.target.value });
   };
 
-  const updateProfile = async () => {
-    if (!token) {
-      setMessageType("error");
-      setMessage("Unauthorized");
-      return;
-    }
+ const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const file = e.target.files?.[0];
+  if (!file) {
+    setSelectedFile(null);
+    return;
+  }
 
-    setActionLoading(true);
-    setLoadingMessage("Updating profile...");
+  // Validate file size (max 5MB)
+  const maxSize = 5 * 1024 * 1024; // 5MB
+  if (file.size > maxSize) {
+    setMessageType("error");
+    setMessage("File size must be less than 5MB");
+    e.target.value = ""; // Clear the input
+    return;
+  }
 
-    try {
-      const formData = new FormData();
-      formData.append("first_name", editingProfile.first_name);
-      formData.append("last_name", editingProfile.last_name);
-      formData.append("birthdate", editingProfile.birthdate);
-      formData.append("contact_no", editingProfile.contact_no || "");
-      formData.append("address", editingProfile.address || "");
-      if (selectedFile) {
-        formData.append("photo", selectedFile);
-      }
+  // Validate file type
+  const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+  if (!validTypes.includes(file.type)) {
+    setMessageType("error");
+    setMessage("Please select a valid image file (JPG, PNG, GIF, or WebP)");
+    e.target.value = ""; // Clear the input
+    return;
+  }
 
-      const res = await axios.put("/api/dash/resident", formData, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "multipart/form-data",
-        },
+  console.log("File selected:", {
+    name: file.name,
+    size: file.size,
+    type: file.type
+  });
+
+  setSelectedFile(file);
+};
+
+const updateProfile = async () => {
+  if (!token) {
+    setMessageType("error");
+    setMessage("Unauthorized");
+    return;
+  }
+
+  setActionLoading(true);
+  setLoadingMessage("Updating profile...");
+
+  try {
+    const formData = new FormData();
+    formData.append("first_name", editingProfile.first_name);
+    formData.append("last_name", editingProfile.last_name);
+    formData.append("birthdate", editingProfile.birthdate);
+    formData.append("contact_no", editingProfile.contact_no || "");
+    formData.append("address", editingProfile.address || "");
+    
+    if (selectedFile) {
+      console.log("Adding photo to FormData:", {
+        name: selectedFile.name,
+        size: selectedFile.size,
+        type: selectedFile.type
       });
-      setProfile(res.data);
-      setEditingProfile(res.data);
-      setSelectedFile(null);
-      setMessageType("success");
-      setMessage("Profile updated successfully");
-      setActiveSection("overview");
-    } catch (err: any) {
-      console.error(err);
-      setMessageType("error");
-      setMessage(err.response?.data?.error || "Failed to update profile");
-    } finally {
-      setActionLoading(false);
+      formData.append("photo", selectedFile);
+    } else {
+      console.log("No photo selected");
     }
-  };
+
+    // Log FormData contents (for debugging)
+    for (let pair of formData.entries()) {
+      if (pair[1] instanceof File) {
+        console.log(pair[0], "File:", pair[1].name, pair[1].size);
+      } else {
+        console.log(pair[0], pair[1]);
+      }
+    }
+
+    const res = await axios.put("/api/dash/resident", formData, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "multipart/form-data",
+      },
+    });
+
+    console.log("Server response:", res.data);
+    console.log("Updated photo_url:", res.data.photo_url);
+
+    setProfile(res.data);
+    setEditingProfile(res.data);
+    setSelectedFile(null);
+    setMessageType("success");
+    setMessage("Profile updated successfully");
+    setActiveSection("overview");
+
+    // Force a small delay to ensure state updates
+    setTimeout(() => {
+      window.location.reload();
+    }, 1000);
+
+  } catch (err: any) {
+    console.error("Error updating profile:", err);
+    console.error("Error response:", err.response?.data);
+    setMessageType("error");
+    setMessage(err.response?.data?.error || "Failed to update profile");
+  } finally {
+    setActionLoading(false);
+  }
+};
 
   const changePassword = async () => {
     if (passwords.new_password !== passwords.confirm_password) {
@@ -616,7 +678,7 @@ const getChangedProfileFields = () => {
                         type="file"
                         id="photo_url"
                         accept="image/*"
-                        onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                        onChange={handleFileSelect}
                         disabled={actionLoading}
                         className="border border-gray-200 p-4 rounded-xl w-full focus:ring-2 focus:ring-red-500 focus:border-red-400 shadow-sm transition disabled:opacity-50"
                       />
