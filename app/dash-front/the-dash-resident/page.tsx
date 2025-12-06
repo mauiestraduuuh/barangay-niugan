@@ -316,11 +316,11 @@ export default function Dashboard() {
                   <p className="text-3xl font-bold text-red-700">{summary.pendingCertificates}</p>
                 </div>
                 <div className="bg-white rounded-lg shadow p-4 text-center hover:shadow-lg transition">
-                  <p className="text-black">Total Feedbacks</p>
+                  <p className="text-black">Total Complaint</p>
                   <p className="text-3xl font-bold text-red-700">{summary.totalFeedbacks}</p>
                 </div>
                 <div className="bg-white rounded-lg shadow p-4 text-center hover:shadow-lg transition">
-                  <p className="text-black">Pending Feedbacks</p>
+                  <p className="text-black">Pending Complaint</p>
                   <p className="text-3xl font-bold text-red-700">{summary.pendingFeedbacks}</p>
                 </div>
               </div>
