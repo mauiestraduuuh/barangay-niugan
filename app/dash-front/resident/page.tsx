@@ -192,8 +192,12 @@ const getChangedProfileFields = () => {
   const [confirmAction, setConfirmAction] = useState<null | "updateProfile" | "changePassword">(null);
   const [messageType, setMessageType] = useState<"success" | "error" | "">("");
   const [activeSection, setActiveSection] = useState<"overview" | "edit" | "password">("overview");
+  const [token, setToken] = useState<string | null>(null);
 
-  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+  useEffect(() => {
+  const t = localStorage.getItem("token");
+  setToken(t);
+}, []);
 
   useEffect(() => {
     if (activeSection === "edit") {
@@ -215,9 +219,12 @@ const getChangedProfileFields = () => {
     setEditingProfile({ ...editingProfile, [e.target.name]: e.target.value });
   };
 
-  useEffect(() => {
+useEffect(() => {
+  if (token) {
     fetchProfile();
-  }, []);
+  }
+}, [token]);
+
 
   const fetchProfile = async () => {
     if (!token) {
@@ -609,19 +616,22 @@ const getChangedProfileFields = () => {
                     </div>
 
                     <div className="md:col-span-2">
-                      <label className="block text-gray-600 font-medium mb-1" htmlFor="photo">
-                        Profile Picture
+                      <label
+                        htmlFor="photo_url"
+                        className="border border-gray-200 p-4 rounded-xl w-full flex items-center justify-center cursor-pointer hover:border-red-500"
+                      >
+                        {selectedFile ? selectedFile.name : "Choose a profile picture"}
                       </label>
                       <input
                         type="file"
                         id="photo_url"
                         accept="image/*"
                         onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                        className="hidden"
                         disabled={actionLoading}
-                        className="border border-gray-200 p-4 rounded-xl w-full focus:ring-2 focus:ring-red-500 focus:border-red-400 shadow-sm transition disabled:opacity-50"
                       />
                       {selectedFile && (
-                        <div className="mt-2">
+                        <div className="mt-2 flex justify-center">
                           <img
                             src={URL.createObjectURL(selectedFile)}
                             alt="Preview"
