@@ -30,16 +30,38 @@ function safeBigInt(obj: any) {
 
 // Convert external photo URL to base64 (for the ID card only)
 async function photoUrlToBase64(url: string | null) {
-  if (!url) return null;
+  if (!url) {
+    console.log("No photo URL provided");
+    return null;
+  }
+  
   try {
-    const res = await fetch(url);
-    if (!res.ok) return null;
-    const buffer = Buffer.from(await res.arrayBuffer());
-    const ext = url.split(".").pop()?.split("?")[0] || "png";
-    return `data:image/${ext};base64,${buffer.toString("base64")}`;
+    console.log("Attempting to fetch photo from:", url);
+    
+    const res = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0',
+      },
+    });
+    
+    if (!res.ok) {
+      console.error(`Failed to fetch photo: ${res.status} ${res.statusText}`);
+      return url; // Return original URL if conversion fails
+    }
+    
+    const arrayBuffer = await res.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    
+    // Detect content type from response or URL
+    const contentType = res.headers.get('content-type') || 'image/png';
+    const base64 = buffer.toString("base64");
+    const dataUrl = `data:${contentType};base64,${base64}`;
+    
+    console.log("Successfully converted photo to base64");
+    return dataUrl;
   } catch (err) {
     console.error("Failed to convert photo to base64:", err);
-    return null;
+    return url; // Return original URL as fallback
   }
 }
 
@@ -71,12 +93,20 @@ export async function GET(req: NextRequest) {
     if (!resident)
       return NextResponse.json({ error: "Resident not found" }, { status: 404 });
 
-    // Use base64 photo if already stored; otherwise fetch external URL
-    let residentPhotoBase64: string | null = null;
-    if (resident.photo_url?.startsWith("data:")) {
-      residentPhotoBase64 = resident.photo_url;
-    } else {
-      residentPhotoBase64 = await photoUrlToBase64(resident.photo_url);
+    console.log("Resident photo_url from database:", resident.photo_url);
+
+    // Handle photo URL - try to convert to base64, fallback to original URL
+    let residentPhotoUrl: string | null = null;
+    if (resident.photo_url) {
+      if (resident.photo_url.startsWith("data:")) {
+        // Already base64
+        residentPhotoUrl = resident.photo_url;
+        console.log("Photo is already in base64 format");
+      } else {
+        // Try to convert external URL to base64, fallback to original URL
+        residentPhotoUrl = await photoUrlToBase64(resident.photo_url);
+        console.log("Photo conversion result:", residentPhotoUrl ? "Success" : "Failed");
+      }
     }
 
     // Determine household head
@@ -151,18 +181,22 @@ export async function GET(req: NextRequest) {
       qr_code: qrDataURL,
     });
 
-    return NextResponse.json({
+    const responseData = {
       digitalID: safeDigitalID,
       resident: safeBigInt({
         ...resident,
         household_number: resident.household_number?.replace(/^HH-/, "") ?? null,
         memberships,
-        photo_url: residentPhotoBase64,
+        photo_url: residentPhotoUrl, // This now includes the photo
       }),
       household_head: householdHeadName,
-    });
+    };
+
+    console.log("Sending photo_url to frontend:", responseData.resident.photo_url ? "Present" : "Missing");
+
+    return NextResponse.json(responseData);
   } catch (err) {
-    console.error(err);
+    console.error("Error in digital ID API:", err);
     return NextResponse.json({ error: "Failed to fetch digital ID" }, { status: 500 });
   }
 }
