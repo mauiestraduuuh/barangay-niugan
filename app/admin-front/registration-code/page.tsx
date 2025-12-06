@@ -380,13 +380,15 @@ export default function RegistrationCodePage() {
             <div className="overflow-x-auto">
               <table className="min-w-full border-collapse bg-white shadow-sm rounded-xl overflow-hidden text-sm sm:text-base">
                 <thead className="bg-gradient-to-br from-black via-red-800 to-black text-white">
-                  <tr>
-                    <th className="px-4 py-2 text-left">Code</th>
-                    <th className="px-4 py-2 text-left">Owner</th>
-                    <th className="px-4 py-2 text-center">Status</th>
-                    <th className="px-4 py-2 text-center">Actions</th>
-                  </tr>
-                </thead>
+                    <tr>
+                      <th className="px-4 py-2 text-left">Code</th>
+                      <th className="px-4 py-2 text-left">Owner</th>
+                      <th className="px-4 py-2 text-center">Status</th>
+                      {filter === "unused" && (
+                        <th className="px-4 py-2 text-center">Actions</th>
+                      )}
+                    </tr>
+                  </thead>
                 <tbody>
                 {currentItems.map((c, index) => (
                   <tr
@@ -408,17 +410,17 @@ export default function RegistrationCodePage() {
                         {c.isUsed ? "USED" : "UNUSED"}
                       </span>
                     </td>
+                  {filter === "unused" && (
                     <td className="px-4 py-2 text-center">
-                      {!c.isUsed && (
-                        <button
-                          onClick={() => setDeleteTargetId(c.id)}
-                          disabled={actionLoading}
-                          className="bg-gray-600 text-white px-3 py-1 rounded hover:bg-gray-700 text-xs sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          Delete
-                        </button>
-                      )}
+                      <button
+                        onClick={() => setDeleteTargetId(c.id)}
+                        disabled={actionLoading}
+                        className="bg-gray-600 text-white px-3 py-1 rounded hover:bg-gray-700 text-xs sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Delete
+                      </button>
                     </td>
+                  )}
                   </tr>
                 ))}
               </tbody>
