@@ -58,20 +58,6 @@ const LoadingOverlay = ({ message = "Processing..." }: { message?: string }) => 
   );
 };
 
-// Skeleton Table Row
-const SkeletonRow = () => (
-  <tr className="animate-pulse">
-    <td className="p-4"><div className="h-4 bg-gray-200 rounded w-12"></div></td>
-    <td className="p-4"><div className="h-4 bg-gray-200 rounded w-32"></div></td>
-    <td className="p-4"><div className="h-4 bg-gray-200 rounded w-24"></div></td>
-    <td className="p-4"><div className="h-4 bg-gray-200 rounded w-20"></div></td>
-    <td className="p-4"><div className="h-4 bg-gray-200 rounded w-16"></div></td>
-    <td className="p-4"><div className="h-4 bg-gray-200 rounded w-20"></div></td>
-    <td className="p-4"><div className="h-4 bg-gray-200 rounded w-28"></div></td>
-    <td className="p-4"><div className="h-4 bg-gray-200 rounded w-24 mx-auto"></div></td>
-  </tr>
-);
-
 export default function Dashboard() {
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -88,8 +74,7 @@ export default function Dashboard() {
   const [statusFilter, setStatusFilter] = useState<"PENDING" | "" | "APPROVED" | "REJECTED" | "CLAIMED">("PENDING");
   const [messageType, setMessageType] = useState<"success" | "error" | "">("");
   
-  // Loading States
-  const [initialLoading, setInitialLoading] = useState(true);
+  // Loading States 
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState("");
@@ -106,17 +91,8 @@ export default function Dashboard() {
     { name: "feedback", label: "Complaint", icon: ChatBubbleLeftEllipsisIcon },
   ];
 
-  // Initial load
   useEffect(() => {
-    const initializePage = async () => {
-      setInitialLoading(true);
-      await fetchRequests();
-      // Minimum loading time for smooth UX
-      await new Promise(resolve => setTimeout(resolve, 500));
-      setInitialLoading(false);
-    };
-    
-    initializePage();
+    fetchRequests();
   }, []);
 
   // Auto-refresh every 30 seconds (only when tab is active)
@@ -143,7 +119,6 @@ export default function Dashboard() {
   const fetchRequests = async () => {
     if (!token) {
       setMessage("Unauthorized: No token found");
-      setInitialLoading(false);
       return;
     }
     
@@ -315,23 +290,6 @@ export default function Dashboard() {
     }
   };
 
-  // Full Page Initial Loading
-  if (initialLoading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to-black flex items-center justify-center">
-        <div className="bg-white p-8 rounded-xl shadow-2xl flex flex-col items-center gap-6">
-          <img
-            src="/niugan-logo.png"
-            alt="Logo"
-            className="w-20 h-20 rounded-full object-cover"
-          />
-          <LoadingSpinner size="lg" />
-          <p className="text-gray-700 font-medium text-lg">Loading Certificate Requests...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to-black p-4 flex gap-4">
       {/* Action Loading Overlay */}
@@ -470,12 +428,6 @@ export default function Dashboard() {
           </button>
 
           <h1 className="text-large font-bold">Certificate Request</h1>
-
-          <div className="flex items-center space-x-4">
-            {loading && !initialLoading && (
-              <LoadingSpinner size="sm" />
-            )}
-          </div>
           
           <div className="flex justify-end">
             <button
@@ -517,27 +469,10 @@ export default function Dashboard() {
           </div>
 
           {/* Table */}
-          {loading && !initialLoading ? (
-            <div className="overflow-x-auto bg-white rounded-xl shadow-lg">
-              <table className="w-full text-left border-collapse text-black text-[0.65rem] sm:text-xs md:text-sm lg:text-base">
-                <thead className="bg-gradient-to-br from-black via-red-800 to-black text-white uppercase">
-                  <tr>
-                    <th className="p-4">ID</th>
-                    <th className="p-4">Type</th>
-                    <th className="p-4">Purpose</th>
-                    <th className="p-4">Requested At</th>
-                    <th className="p-4">Status</th>
-                    <th className="p-4">Claim Code</th>
-                    <th className="p-4">Pickup Schedule</th>
-                    <th className="p-4 text-center">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <SkeletonRow />
-                  <SkeletonRow />
-                  <SkeletonRow />
-                </tbody>
-              </table>
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-12 gap-4">
+              <LoadingSpinner size="lg" />
+              <p className="text-gray-600">Loading certificate requests...</p>
             </div>
           ) : filteredRequests.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 gap-2">
