@@ -60,45 +60,6 @@ const LoadingSpinner = ({ size = "md" }: { size?: "sm" | "md" | "lg" }) => {
   );
 };
 
-// Skeleton Components
-const SkeletonFormField = () => (
-  <div className="mb-6 animate-pulse">
-    <div className="h-4 bg-gray-300 rounded w-1/3 mb-2"></div>
-    <div className="h-12 bg-gray-200 rounded w-full"></div>
-  </div>
-);
-
-const SkeletonImagePreview = () => (
-  <div className="animate-pulse">
-    <div className="h-4 bg-gray-300 rounded w-1/3 mb-4"></div>
-    <div className="h-48 bg-gray-200 rounded-lg"></div>
-  </div>
-);
-
-const SkeletonTableRow = () => (
-  <tr className="animate-pulse">
-    <td className="p-2 sm:p-4 border-b border-gray-200">
-      <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-    </td>
-    <td className="p-2 sm:p-4 border-b border-gray-200">
-      <div className="h-4 bg-gray-200 rounded w-1/2 mx-auto"></div>
-    </td>
-    <td className="p-2 sm:p-4 border-b border-gray-200">
-      <div className="h-4 bg-gray-200 rounded w-full"></div>
-    </td>
-    <td className="p-2 sm:p-4 border-b border-gray-200">
-      <div className="h-4 bg-gray-200 rounded w-1/3 mx-auto"></div>
-    </td>
-    <td className="p-2 sm:p-4 border-b border-gray-200">
-      <div className="h-4 bg-gray-200 rounded w-2/3"></div>
-    </td>
-    <td className="p-2 sm:p-4 border-b border-gray-200">
-      <div className="h-4 bg-gray-200 rounded w-2/3"></div>
-    </td>
-  </tr>
-);
-
-
 export default function FeedbackPage() {
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -407,23 +368,9 @@ const filterRequests = () => {
                   )}
 
                   {pageLoading ? (
-                    // Loading state for Submit tab
-                    <div className="flex flex-col lg:flex-row gap-6">
-                      <div className="flex-1 bg-gray-50 p-6 rounded-xl shadow-md border border-gray-200">
-                        <div className="h-6 bg-gray-300 rounded w-1/3 mb-4 animate-pulse"></div>
-                        <div className="mb-6 animate-pulse">
-                          <div className="flex gap-3 mb-6">
-                            <div className="h-10 bg-gray-200 rounded-lg w-24"></div>
-                            <div className="h-10 bg-gray-200 rounded-lg w-24"></div>
-                          </div>
-                        </div>
-                        <SkeletonFormField />
-                        <SkeletonFormField />
-                      </div>
-
-                      <div className="flex-1 bg-gray-50 p-6 rounded-xl shadow-md border border-gray-200">
-                        <SkeletonImagePreview />
-                      </div>
+                    <div className="flex flex-col items-center justify-center py-20 gap-4">
+                      <LoadingSpinner size="lg" />
+                      <p className="text-gray-600">Loading complaint form...</p>
                     </div>
                   ) : (
                     // Loaded content
@@ -610,14 +557,14 @@ const filterRequests = () => {
                       </thead>
                       <tbody>
                         {pageLoading ? (
-                          // Loading skeleton rows
-                          <>
-                            <SkeletonTableRow />
-                            <SkeletonTableRow />
-                            <SkeletonTableRow />
-                            <SkeletonTableRow />
-                            <SkeletonTableRow />
-                          </>
+                          <tr>
+                            <td colSpan={6} className="p-12">
+                              <div className="flex flex-col items-center justify-center gap-4">
+                                <LoadingSpinner size="lg" />
+                                <p className="text-gray-600">Loading complaint history...</p>
+                              </div>
+                            </td>
+                          </tr>
                         ) : filteredFeedbacks.length === 0 ? (
                           <tr>
                             <td colSpan={6} className="p-8 text-center text-gray-500">
