@@ -45,6 +45,19 @@ interface Announcement {
   is_public: boolean;
 }
 
+// Loading Spinner Component
+const LoadingSpinner = ({ size = "md" }: { size?: "sm" | "md" | "lg" }) => {
+  const sizeClasses = {
+    sm: "w-4 h-4 border-2",
+    md: "w-8 h-8 border-3",
+    lg: "w-12 h-12 border-4"
+  };
+
+  return (
+    <div className={`${sizeClasses[size]} border-red-700 border-t-transparent rounded-full animate-spin`}></div>
+  );
+};
+
 export default function StaffDashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const router = useRouter();
@@ -52,11 +65,21 @@ export default function StaffDashboard() {
   const [pendingTasks, setPendingTasks] = useState<PendingTasks | null>(null);
   const [recentActivity, setRecentActivity] = useState<Activity[]>([]);
   const [recentAnnouncements, setRecentAnnouncements] = useState<Announcement[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
   useEffect(() => {
     fetchDashboardData();
+  }, []);
+
+  // Reload entire page every 5 minutes
+  useEffect(() => {
+    const interval = setInterval(() => {
+      window.location.reload();
+    }, 300000); // 300000ms = 5 minutes
+    
+    return () => clearInterval(interval);
   }, []);
 
   const handleLogout = () => {
@@ -65,6 +88,7 @@ export default function StaffDashboard() {
   };
 
   const fetchDashboardData = async () => {
+    setLoading(true); // Start loading
     try {
       const token = localStorage.getItem("token");
       if (!token) {
@@ -85,6 +109,8 @@ export default function StaffDashboard() {
       setRecentAnnouncements(data.recentAnnouncements || []);
     } catch (err) {
       console.error(err);
+    } finally {
+      setLoading(false); // Stop loading
     }
   };
 
@@ -203,75 +229,84 @@ export default function StaffDashboard() {
         </header>
 
         <main className="flex-1 bg-gray-50 rounded-xl p-6 shadow-sm overflow-auto text-black">
-          {staff && (
-            <div className="flex items-center gap-4 mb-6">
-              <h2 className="text-xl font-semibold">{`Welcome back, ${staff.firstName} ${staff.lastName}!`}</h2>
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-20 gap-4">
+              <LoadingSpinner size="lg" />
+              <p className="text-gray-600">Loading dashboard...</p>
             </div>
-          )}
-
-          {/* Overview Cards */}
-          {pendingTasks && (
-            <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-              {[
-                { label: "Pending Registrations", value: pendingTasks.pendingRegistrations },
-                { label: "Pending Certificates", value: pendingTasks.pendingCertificates },
-              ].map((item) => (
-                <div key={item.label} className="bg-white rounded-xl shadow p-6 hover:shadow-lg transition">
-                  <h3 className="text-red-900">{item.label}</h3>
-                  <p className="text-3xl font-bold text-red-700">{item.value}</p>
+          ) : (
+            <>
+              {staff && (
+                <div className="flex items-center gap-4 mb-6">
+                  <h2 className="text-xl font-semibold">{`Welcome back, ${staff.firstName} ${staff.lastName}!`}</h2>
                 </div>
-              ))}
-            </section>
-          )}
-
-          {/* Quick Actions */}
-          <section className="mt-8">
-            <h2 className="text-2xl font-semibold mb-4">Quick Actions</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              <Link href="/staff-front/registration-request">
-                <div className="bg-red-50 border border-red-200 p-4 rounded-lg hover:bg-red-100 transition cursor-pointer">
-                  <h4 className="font-semibold text-red-800">Review Registrations</h4>
-                  <p className="text-sm text-red-600">Approve or reject pending resident registrations</p>
-                </div>
-              </Link>
-              <Link href="/staff-front/certificate-request">
-                <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg hover:bg-blue-100 transition cursor-pointer">
-                  <h4 className="font-semibold text-red-800">Process Certificates</h4>
-                  <p className="text-sm text-red-600">Manage certificate requests and pickups</p>
-                </div>
-              </Link>
-              <Link href="/staff-front/announcement">
-                <div className="bg-green-50 border border-green-200 p-4 rounded-lg hover:bg-green-100 transition cursor-pointer">
-                  <h4 className="font-semibold text-red-800">Manage Announcements</h4>
-                  <p className="text-sm text-red-600">Create, edit, or delete announcements</p>
-                </div>
-              </Link>
-            </div>
-          </section>
-
-          {/* Recent Activity */}
-          <section className="mt-8">
-            <h2 className="text-2xl font-semibold mb-4">Recent Activity</h2>
-            <div className="bg-white rounded-xl shadow p-6">
-              {recentActivity.length === 0 ? (
-                <p>No recent requests.</p>
-              ) : (
-                <ul className="space-y-3">
-                  {recentActivity.map((req) => (
-                    <li key={req.request_id} className="border-b last:border-none pb-2 flex justify-between">
-                      <span>
-                        <strong className="text-red-900">{req.resident.first_name} {req.resident.last_name}</strong> requested a{" "}
-                        <span className="text-red-600 font-medium">{req.certificate_type}</span>
-                      </span>
-                      <span className="text-sm text-red-900">
-                        {new Date(req.requested_at).toLocaleDateString()}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
               )}
-            </div>
-          </section>
+
+              {/* Overview Cards */}
+              {pendingTasks && (
+                <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                  {[
+                    { label: "Pending Registrations", value: pendingTasks.pendingRegistrations },
+                    { label: "Pending Certificates", value: pendingTasks.pendingCertificates },
+                  ].map((item) => (
+                    <div key={item.label} className="bg-white rounded-xl shadow p-6 hover:shadow-lg transition">
+                      <h3 className="text-red-900">{item.label}</h3>
+                      <p className="text-3xl font-bold text-red-700">{item.value}</p>
+                    </div>
+                  ))}
+                </section>
+              )}
+
+              {/* Quick Actions */}
+              <section className="mt-8">
+                <h2 className="text-2xl font-semibold mb-4">Quick Actions</h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <Link href="/staff-front/registration-request">
+                    <div className="bg-red-50 border border-red-200 p-4 rounded-lg hover:bg-red-100 transition cursor-pointer">
+                      <h4 className="font-semibold text-red-800">Review Registrations</h4>
+                      <p className="text-sm text-red-600">Approve or reject pending resident registrations</p>
+                    </div>
+                  </Link>
+                  <Link href="/staff-front/certificate-request">
+                    <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg hover:bg-blue-100 transition cursor-pointer">
+                      <h4 className="font-semibold text-red-800">Process Certificates</h4>
+                      <p className="text-sm text-red-600">Manage certificate requests and pickups</p>
+                    </div>
+                  </Link>
+                  <Link href="/staff-front/announcement">
+                    <div className="bg-green-50 border border-green-200 p-4 rounded-lg hover:bg-green-100 transition cursor-pointer">
+                      <h4 className="font-semibold text-red-800">Manage Announcements</h4>
+                      <p className="text-sm text-red-600">Create, edit, or delete announcements</p>
+                    </div>
+                  </Link>
+                </div>
+              </section>
+
+              {/* Recent Activity */}
+              <section className="mt-8">
+                <h2 className="text-2xl font-semibold mb-4">Recent Activity</h2>
+                <div className="bg-white rounded-xl shadow p-6">
+                  {recentActivity.length === 0 ? (
+                    <p>No recent requests.</p>
+                  ) : (
+                    <ul className="space-y-3">
+                      {recentActivity.map((req) => (
+                        <li key={req.request_id} className="border-b last:border-none pb-2 flex justify-between">
+                          <span>
+                            <strong className="text-red-900">{req.resident.first_name} {req.resident.last_name}</strong> requested a{" "}
+                            <span className="text-red-600 font-medium">{req.certificate_type}</span>
+                          </span>
+                          <span className="text-sm text-red-900">
+                            {new Date(req.requested_at).toLocaleDateString()}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </section>
+            </>
+          )}
         </main>
       </div>
     </div>

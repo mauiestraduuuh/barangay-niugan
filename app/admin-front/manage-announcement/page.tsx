@@ -63,14 +63,14 @@ export default function ManageAnnouncements() {
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
   const features = [
-    { name: "dashboard", label: "Home", icon: HomeIcon },
+    { name: "the-dash-admin", label: "Home", icon: HomeIcon },
     { name: "admin-profile", label: "Manage Profile", icon: UserIcon },
     { name: "registration-request", label: "Registration Requests", icon: ClipboardDocumentIcon },
     { name: "registration-code", label: "Registration Code", icon: KeyIcon },
     { name: "certificate-request", label: "Certificate Requests", icon: ClipboardDocumentIcon },
-    { name: "feedback", label: "Feedback", icon: ChatBubbleLeftEllipsisIcon },
+    { name: "feedback", label: "Complaint", icon: ChatBubbleLeftEllipsisIcon },
     { name: "staff-acc", label: "Staff Accounts", icon: UsersIcon },
-    { name: "manage-announcement", label: "Announcements", icon: MegaphoneIcon },
+    { name: "announcement", label: "Announcements", icon: MegaphoneIcon },
     { name: "reports", label: "Reports", icon: ChartBarIcon },
   ];
 

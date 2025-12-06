@@ -25,23 +25,135 @@ interface RegistrationCode {
   usedById?: number | null;
 }
 
+// Loading Spinner Component
+const LoadingSpinner = ({ size = "md" }: { size?: "sm" | "md" | "lg" }) => {
+  const sizeClasses = {
+    sm: "w-4 h-4 border-2",
+    md: "w-8 h-8 border-3",
+    lg: "w-12 h-12 border-4",
+  };
+
+  return (
+    <div
+      className={`${sizeClasses[size]} border-red-700 border-t-transparent rounded-full animate-spin`}
+    ></div>
+  );
+};
+
+// Full Page Loading Overlay
+const LoadingOverlay = ({ message = "Processing..." }: { message?: string }) => {
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white p-6 rounded-xl flex flex-col items-center gap-4 shadow-2xl">
+        <LoadingSpinner size="lg" />
+        <p className="text-gray-700 font-medium">{message}</p>
+      </div>
+    </div>
+  );
+};
+
+// Confirmation Modal
+const ConfirmationModal = ({
+  title,
+  message,
+  onConfirm,
+  onCancel,
+}: {
+  title: string;
+  message: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) => (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+    <div className="bg-white rounded-xl shadow-2xl max-w-sm w-full p-6 text-center">
+      <h2 className="text-lg font-bold mb-2">{title}</h2>
+      <p className="mb-4 text-gray-700">{message}</p>
+      <div className="flex justify-center gap-4">
+        <button
+          onClick={onCancel}
+          className="px-4 py-2 rounded-xl border border-gray-300 hover:bg-gray-100"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={onConfirm}
+          className="px-4 py-2 rounded-xl bg-red-700 text-white hover:bg-red-800"
+        >
+          Confirm
+        </button>
+      </div>
+    </div>
+  </div>
+);
+
+// Error Modal
+const ErrorModal = ({
+  message,
+  onClose,
+}: {
+  message: string;
+  onClose: () => void;
+}) => (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+    <div className="bg-white rounded-xl shadow-2xl max-w-sm w-full p-6 text-center">
+      <h2 className="text-lg font-bold mb-2 text-red-700">Error</h2>
+      <p className="mb-4 text-gray-700">{message}</p>
+      <button
+        onClick={onClose}
+        className="px-4 py-2 rounded-xl bg-red-700 text-white hover:bg-red-800"
+      >
+        Close
+      </button>
+    </div>
+  </div>
+);
+
+// Success Modal
+const SuccessModal = ({
+  message,
+  onClose,
+}: {
+  message: string;
+  onClose: () => void;
+}) => (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+    <div className="bg-white rounded-xl shadow-2xl max-w-sm w-full p-6 text-center">
+      <h2 className="text-lg font-bold mb-2 text-green-700">Success</h2>
+      <p className="mb-4 text-gray-700">{message}</p>
+      <button
+        onClick={onClose}
+        className="px-4 py-2 rounded-xl bg-green-700 text-white hover:bg-green-800"
+      >
+        Close
+      </button>
+    </div>
+  </div>
+);
+
 export default function StaffRegistrationCodePage() {
   const [codes, setCodes] = useState<RegistrationCode[]>([]);
   const [filter, setFilter] = useState<"used" | "unused">("unused");
   const [ownerName, setOwnerName] = useState("");
-  const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [showError, setShowError] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [confirmCallback, setConfirmCallback] = useState<() => void>(() => {});
+  const [errorMessage, setErrorMessage] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
   const router = useRouter();
-  const filteredCodes = codes.filter((c) => (filter === "unused" ? !c.isUsed : c.isUsed));
+
+  const filteredCodes = codes.filter((c) =>
+    filter === "unused" ? !c.isUsed : c.isUsed
+  );
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const totalPages = Math.ceil(filteredCodes.length / itemsPerPage);
   const indexOfLast = currentPage * itemsPerPage;
   const indexOfFirst = indexOfLast - itemsPerPage;
   const currentItems = filteredCodes.slice(indexOfFirst, indexOfLast);
-
-
 
   // Fetch all registration codes
   const fetchCodes = async () => {
@@ -52,10 +164,10 @@ export default function StaffRegistrationCodePage() {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.data.success) setCodes(res.data.codes);
-      else setMessage(res.data.message);
+      else handleError(res.data.message || "Failed to fetch codes");
     } catch (err) {
       console.error(err);
-      setMessage("Failed to fetch codes");
+      handleError("Failed to fetch codes");
     }
     setLoading(false);
   };
@@ -64,52 +176,82 @@ export default function StaffRegistrationCodePage() {
     fetchCodes();
   }, []);
 
+  // Reload entire page every 5 minutes
+  useEffect(() => {
+    const interval = setInterval(() => {
+      window.location.reload();
+    }, 300000); // 5 min
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleError = (msg: string) => {
+    setErrorMessage(msg);
+    setShowError(true);
+  };
+
+  const handleSuccess = (msg: string) => {
+    setSuccessMessage(msg);
+    setShowSuccess(true);
+  };
+
   // Generate a new code
-  const generateCode = async () => {
+  const generateCode = () => {
     if (!ownerName.trim()) {
-      setMessage("Owner name is required");
+      handleError("Owner name is required");
       return;
     }
-    try {
-      const token = localStorage.getItem("token");
-      const res = await axios.post(
-        "/api/staff/registration-code",
-        { ownerName },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      if (res.data.success) {
-        setMessage("Code generated successfully!");
-        setOwnerName("");
-        fetchCodes();
-      } else setMessage(res.data.message);
-    } catch (err) {
-      console.error(err);
-      setMessage("Failed to create code");
-    }
+    setConfirmCallback(() => async () => {
+      setActionLoading(true);
+      try {
+        const token = localStorage.getItem("token");
+        const res = await axios.post(
+          "/api/staff/registration-code",
+          { ownerName },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (res.data.success) {
+          handleSuccess("Code generated successfully!");
+          setOwnerName("");
+          fetchCodes();
+        } else handleError(res.data.message);
+      } catch (err) {
+        console.error(err);
+        handleError("Failed to create code");
+      } finally {
+        setActionLoading(false);
+        setShowConfirm(false);
+      }
+    });
+    setShowConfirm(true);
   };
 
   // Delete unused code
-  const deleteCode = async (id: number) => {
-    if (!confirm("Are you sure you want to delete this code?")) return;
-    try {
-      const token = localStorage.getItem("token");
-      const res = await axios.delete("/api/staff/registration-code", {
-        data: { id },
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.data.success) {
-        setMessage("Code deleted successfully");
-        fetchCodes();
-      } else setMessage(res.data.message);
-    } catch (err) {
-      console.error(err);
-      setMessage("Failed to delete code");
-    }
+  const deleteCode = (id: number) => {
+    setConfirmCallback(() => async () => {
+      setActionLoading(true);
+      try {
+        const token = localStorage.getItem("token");
+        const res = await axios.delete("/api/staff/registration-code", {
+          data: { id },
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.data.success) {
+          handleSuccess("Code deleted successfully!");
+          fetchCodes();
+        } else handleError(res.data.message);
+      } catch (err) {
+        console.error(err);
+        handleError("Failed to delete code");
+      } finally {
+        setActionLoading(false);
+        setShowConfirm(false);
+      }
+    });
+    setShowConfirm(true);
   };
 
-  
+  const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
-  // Staff features - NO analytics/reports/feedback/staff accounts
   const features = [
     { name: "the-dash-staff", label: "Home", icon: HomeIcon },
     { name: "staff-profile", label: "Manage Profile", icon: UserIcon },
@@ -120,16 +262,27 @@ export default function StaffRegistrationCodePage() {
   ];
 
   const handleLogout = () => {
-    if (window.confirm("Are you sure you want to log out?")) {
+    setConfirmCallback(() => () => {
       localStorage.removeItem("token");
       router.push("/auth-front/login");
-    }
+    });
+    setShowConfirm(true);
   };
-
-  const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to-black p-4 flex gap-4">
+      {actionLoading && <LoadingOverlay message="Processing..." />}
+      {showConfirm && (
+        <ConfirmationModal
+          title="Are you sure?"
+          message="This action cannot be undone."
+          onConfirm={confirmCallback}
+          onCancel={() => setShowConfirm(false)}
+        />
+      )}
+      {showError && <ErrorModal message={errorMessage} onClose={() => setShowError(false)} />}
+      {showSuccess && <SuccessModal message={successMessage} onClose={() => setShowSuccess(false)} />}
+
       {/* Sidebar */}
       <div
         className={`${
@@ -138,7 +291,7 @@ export default function StaffRegistrationCodePage() {
         ${sidebarOpen ? "fixed inset-y-0 left-0 z-50 md:static md:translate-x-0" : "hidden md:flex"}`}
       >
         {/* Logo + Close */}
-        <div className="p-4 flex items-center justify-center">
+        <div className="p-4 flex items-center justify-center relative">
           <img
             src="/niugan-logo.png"
             alt="Company Logo"
@@ -181,13 +334,7 @@ export default function StaffRegistrationCodePage() {
                         }`}
                       />
                       {sidebarOpen && (
-                        <span
-                          className={`${
-                            isActive
-                              ? "text-red-700"
-                              : "group-hover:text-red-700"
-                          }`}
-                        >
+                        <span className={`${isActive ? "text-red-700" : "group-hover:text-red-700"}`}>
                           {label}
                         </span>
                       )}
@@ -199,7 +346,7 @@ export default function StaffRegistrationCodePage() {
           </ul>
         </nav>
 
-        {/* Functional Logout Button */}
+        {/* Logout */}
         <div className="p-4">
           <button
             onClick={handleLogout}
@@ -210,7 +357,7 @@ export default function StaffRegistrationCodePage() {
           </button>
         </div>
 
-        {/* Sidebar Toggle (desktop only) */}
+        {/* Sidebar Toggle */}
         <div className="p-4 flex justify-center hidden md:flex">
           <button
             onClick={toggleSidebar}
@@ -227,13 +374,10 @@ export default function StaffRegistrationCodePage() {
 
       {/* Mobile Overlay */}
       {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-white/80 z-40 md:hidden"
-          onClick={toggleSidebar}
-        ></div>
+        <div className="fixed inset-0 bg-white/80 z-40 md:hidden" onClick={toggleSidebar}></div>
       )}
 
-      {/* Main Section */}
+      {/* Main Content */}
       <div className="flex-1 flex flex-col gap-4">
         <header className="bg-gray-50 shadow-sm p-4 flex justify-between items-center rounded-xl text-black">
           <button
@@ -243,14 +387,10 @@ export default function StaffRegistrationCodePage() {
             <Bars3Icon className="w-6 h-6" />
           </button>
           <h1 className="text-large font-bold">Registration Codes</h1>
-          <div className="flex items-center space-x-4"></div>
         </header>
 
         <main className="flex-1 bg-gray-50 rounded-xl p-6 shadow-sm overflow-auto">
           <h3 className="text-large font-semibold mb-4 text-black">Registration History</h3>
-          {message && (
-            <div className="bg-green-100 text-green-800 px-4 py-2 rounded mb-4">{message}</div>
-          )}
 
           <div className="flex flex-col sm:flex-row gap-4 mb-6">
             <input
@@ -262,12 +402,19 @@ export default function StaffRegistrationCodePage() {
             />
             <button
               onClick={generateCode}
-              className="bg-black text-white px-4 py-2 rounded-xl hover:bg-red-700"
+              disabled={actionLoading}
+              className="bg-black text-white px-4 py-2 rounded-xl hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
-              Generate
+              {actionLoading ? (
+                <>
+                  <LoadingSpinner size="sm" />
+                  Processing...
+                </>
+              ) : (
+                "Generate"
+              )}
             </button>
 
-            {/* Filter Toggle */}
             <div className="flex items-center gap-2 ml-auto">
               <span className="text-black font-medium">Show:</span>
               <button
@@ -290,9 +437,10 @@ export default function StaffRegistrationCodePage() {
           </div>
 
           {loading ? (
-            <p className="text-black">Loading...</p>
-          ) : filteredCodes.length === 0 ? (
-            <p className="text-center text-black py-10">No {filter} codes found</p>
+            <div className="flex flex-col items-center justify-center py-20 gap-4">
+              <LoadingSpinner size="lg" />
+              <p className="text-gray-600">Loading Registration Code...</p>
+            </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full border-collapse bg-white shadow-sm rounded-xl overflow-hidden text-sm sm:text-base">
@@ -317,9 +465,7 @@ export default function StaffRegistrationCodePage() {
                       <td className="px-4 py-2 text-center">
                         <span
                           className={`px-2 py-1 rounded-full text-xs sm:text-sm font-semibold ${
-                            c.isUsed
-                              ? "bg-green-200 text-green-800"
-                              : "bg-yellow-200 text-yellow-800"
+                            c.isUsed ? "bg-green-200 text-green-800" : "bg-yellow-200 text-yellow-800"
                           }`}
                         >
                           {c.isUsed ? "USED" : "UNUSED"}
@@ -329,7 +475,8 @@ export default function StaffRegistrationCodePage() {
                         {!c.isUsed && (
                           <button
                             onClick={() => deleteCode(c.id)}
-                            className="bg-gray-600 text-white px-3 py-1 rounded hover:bg-gray-700 text-xs sm:text-sm"
+                            disabled={actionLoading}
+                            className="bg-gray-600 text-white px-3 py-1 rounded hover:bg-gray-700 text-xs sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             Delete
                           </button>
@@ -339,11 +486,10 @@ export default function StaffRegistrationCodePage() {
                   ))}
                 </tbody>
               </table>
+
               {/* Pagination */}
               <div className="w-full mt-4 flex justify-center">
                 <div className="flex items-center gap-2 px-3 py-1.5 ">
-
-                  {/* Prev */}
                   <button
                     onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
                     disabled={currentPage === 1}
@@ -352,51 +498,33 @@ export default function StaffRegistrationCodePage() {
                     ‹
                   </button>
 
-                  {/* Page numbers with ellipsis */}
                   {Array.from({ length: totalPages }).map((_, i) => {
                     const page = i + 1;
-
-                    if (
-                      page === 1 ||
-                      page === totalPages ||
-                      (page >= currentPage - 1 && page <= currentPage + 1)
-                    ) {
+                    if (page === 1 || page === totalPages || (page >= currentPage - 1 && page <= currentPage + 1)) {
                       return (
                         <button
                           key={i}
                           onClick={() => setCurrentPage(page)}
                           className={`w-8 h-8 flex items-center justify-center rounded-full text-sm font-medium transition-all ${
-                            currentPage === page
-                              ? "bg-red-200 text-red-800"
-                              : "text-gray-700 hover:bg-gray-100"
+                            currentPage === page ? "bg-red-200 text-red-800" : "text-gray-700 hover:bg-gray-100"
                           }`}
                         >
                           {page}
                         </button>
                       );
                     }
-
-                    if (page === currentPage - 2 || page === currentPage + 2) {
-                      return (
-                        <span key={i} className="px-1 text-gray-400">
-                          ...
-                        </span>
-                      );
-                    }
-
+                    if (page === currentPage - 2 || page === currentPage + 2) return <span key={i} className="px-1 text-gray-400">...</span>;
                     return null;
                   })}
 
-                  {/* Next */}
                   <button
                     onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
                     disabled={currentPage === totalPages}
-                    className="px-2 py-1 text-3xl text-gray-600 hover:text-black disabled:opacity-30  leading-none"
+                    className="px-2 py-1 text-3xl text-gray-600 hover:text-black disabled:opacity-30 leading-none"
                   >
                     ›
                   </button>
 
-                  {/* Rows per page */}
                   <select
                     value={itemsPerPage}
                     onChange={(e) => {

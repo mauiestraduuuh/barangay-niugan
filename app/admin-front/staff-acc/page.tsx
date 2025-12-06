@@ -22,6 +22,8 @@ import {
   TrashIcon,
 } from "@heroicons/react/24/outline";
 
+
+
 // Notification interface
 interface Notification {
   notification_id: number;
@@ -60,10 +62,35 @@ interface Staff {
   };
   performance: {
     certificatesProcessed: number;
-    feedbackResolved: number;
+    registrationResolved: number;
     performanceScore: number;
   };
 }
+
+// Loading Spinner Component
+const LoadingSpinner = ({ size = "md" }: { size?: "sm" | "md" | "lg" }) => {
+  const sizeClasses = {
+    sm: "w-4 h-4 border-2",
+    md: "w-8 h-8 border-3",
+    lg: "w-12 h-12 border-4"
+  };
+
+  return (
+    <div className={`${sizeClasses[size]} border-red-700 border-t-transparent rounded-full animate-spin`}></div>
+  );
+};
+
+// Full Page Loading Overlay
+const LoadingOverlay = ({ message = "Processing..." }: { message?: string }) => {
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white p-6 rounded-xl flex flex-col items-center gap-4 shadow-2xl">
+        <LoadingSpinner size="lg" />
+        <p className="text-gray-700 font-medium">{message}</p>
+      </div>
+    </div>
+  );
+};
 
 export default function StaffAccounts() {
   const router = useRouter();
@@ -74,6 +101,7 @@ export default function StaffAccounts() {
   const [selectedStaff, setSelectedStaff] = useState<Staff | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
+    const [actionLoading, setActionLoading] = useState(false);
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
@@ -83,7 +111,7 @@ export default function StaffAccounts() {
     { name: "registration-request", label: "Registration Requests", icon: ClipboardDocumentIcon },
     { name: "registration-code", label: "Registration Code", icon: KeyIcon },
     { name: "certificate-request", label: "Certificate Requests", icon: ClipboardDocumentIcon },
-    { name: "feedback", label: "Feedback", icon: ChatBubbleLeftEllipsisIcon },
+    { name: "feedback", label: "Complaint", icon: ChatBubbleLeftEllipsisIcon },
     { name: "staff-acc", label: "Staff Accounts", icon: UsersIcon },
     { name: "announcement", label: "Announcements", icon: MegaphoneIcon },
     { name: "reports", label: "Reports", icon: ChartBarIcon },
@@ -174,6 +202,15 @@ export default function StaffAccounts() {
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery]);
+
+  // Reload entire page every 5 minutes
+  useEffect(() => {
+    const interval = setInterval(() => {
+      window.location.reload();
+    }, 300000); // 300000ms = 5 minutes
+    
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to-black p-4 flex gap-4">
@@ -301,7 +338,10 @@ export default function StaffAccounts() {
           onChange={(e) => setSearchQuery(e.target.value)}
         />
           {loading ? (
-            <p className="text-center">Loading staff data...</p>
+            <div className="flex flex-col items-center justify-center py-20 gap-4">
+              <LoadingSpinner size="lg" />
+              <p className="text-gray-600">Loading Staff Information...</p>
+            </div>
           ) : (
             <div className="overflow-x-auto w-full">
             <table className="min-w-full border-collapse text-left bg-white shadow-sm rounded-xl overflow-hidden text-sm sm:text-base">
@@ -327,7 +367,7 @@ export default function StaffAccounts() {
                     <td className="py-3 px-4 capitalize">{staff.first_name} {staff.last_name}</td>
                     <td className="py-3 px-4">{staff.user?.role ?? "N/A"}</td>
                     <td className="py-3 px-4 text-center text-sm">
-                      Certificates: <b>{staff.performance?.certificatesProcessed ?? 0}</b> | Feedback: <b>{staff.performance?.feedbackResolved ?? 0}</b> | Total: <b>{staff.performance?.performanceScore ?? 0}</b>
+                      Certificates: <b>{staff.performance?.certificatesProcessed ?? 0}</b> | Registration: <b>{staff.performance?.registrationResolved ?? 0}</b> | Total: <b>{staff.performance?.performanceScore ?? 0}</b>
                     </td>
                     <td className="py-3 px-4 text-center flex justify-center gap-3">
                       <button
@@ -481,7 +521,7 @@ export default function StaffAccounts() {
                   <div className="mt-4">
                     <h3 className="font-semibold">Performance</h3>
                     <p className="text-sm">Certificates Processed: <b>{selectedStaff.performance?.certificatesProcessed ?? 0}</b></p>
-                    <p className="text-sm">Feedback Resolved: <b>{selectedStaff.performance?.feedbackResolved ?? 0}</b></p>
+                    <p className="text-sm">Registration Processed: <b>{selectedStaff.performance?.registrationResolved ?? 0}</b></p>
                     <p className="text-sm">Total Score: <b>{selectedStaff.performance?.performanceScore ?? 0}</b></p>
                   </div>
                 </div>
