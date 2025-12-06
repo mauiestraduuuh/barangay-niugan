@@ -159,21 +159,77 @@ export default function DigitalID() {
 
   const waitForImages = async (container: HTMLElement) => {
   const images = container.querySelectorAll("img");
-  await Promise.all(
-    Array.from(images).map(async (img) => {
-      const imageEl = img as HTMLImageElement;
-      if (!imageEl.complete) await new Promise<void>((res) => {
-        imageEl.addEventListener("load", () => res());
-        imageEl.addEventListener("error", () => res());
-      });
+  const imagePromises = Array.from(images).map(async (img) => {
+    const imageEl = img as HTMLImageElement;
+    
+    // If image is already complete and has dimensions, it's ready
+    if (imageEl.complete && imageEl.naturalHeight !== 0) {
       try {
-        await imageEl.decode(); // ensures image is fully decoded in memory
-      } catch {}
-    })
-  );
+        await imageEl.decode();
+      } catch (e) {
+        console.warn("Image decode failed:", e);
+      }
+      return;
+    }
+    
+    // Wait for the image to load
+    return new Promise<void>((resolve) => {
+      const onLoad = async () => {
+        try {
+          await imageEl.decode();
+        } catch (e) {
+          console.warn("Image decode failed:", e);
+        }
+        resolve();
+      };
+      
+      const onError = () => {
+        console.warn("Image failed to load:", imageEl.src);
+        resolve(); // Resolve anyway to not block the download
+      };
+      
+      imageEl.addEventListener("load", onLoad, { once: true });
+      imageEl.addEventListener("error", onError, { once: true });
+      
+      // If the image is already loaded while we were setting up listeners
+      if (imageEl.complete) {
+        imageEl.removeEventListener("load", onLoad);
+        imageEl.removeEventListener("error", onError);
+        onLoad();
+      }
+    });
+  });
+  
+  await Promise.all(imagePromises);
 };
 
- const handleDownload = async () => {
+// Preload images when resident data loads
+useEffect(() => {
+  if (resident?.photo_url || resident?.qr_code) {
+    const preloadImages = async () => {
+      const imagesToPreload = [
+        resident.photo_url,
+        resident.qr_code
+      ].filter(Boolean);
+
+      const promises = imagesToPreload.map((src) => {
+        return new Promise((resolve) => {
+          const img = new Image();
+          img.onload = resolve;
+          img.onerror = resolve; // Resolve even on error
+          img.src = src!;
+        });
+      });
+
+      await Promise.all(promises);
+      console.log("Images preloaded successfully");
+    };
+
+    preloadImages();
+  }
+}, [resident]);
+
+const handleDownload = async () => {
   if (!cardRef.current || !resident) return;
 
   setDownloading(true);
@@ -182,11 +238,25 @@ export default function DigitalID() {
   try {
     // Wait for all images to fully load & decode
     await waitForImages(card);
-    await new Promise((res) => setTimeout(res, 200)); // small delay for mobile rendering
+    
+    // Additional delay to ensure rendering is complete
+    await new Promise((res) => setTimeout(res, 500));
 
-    // Generate PNG and PDF
-    const dataUrl = await toPng(card, { cacheBust: true, backgroundColor: "white" });
-    const pdf = new jsPDF({ orientation: "landscape", unit: "px", format: "a4" });
+    // Generate PNG with higher quality settings
+    const dataUrl = await toPng(card, { 
+      cacheBust: true, 
+      backgroundColor: "white",
+      pixelRatio: 2, // Higher quality
+      skipFonts: false // Ensure fonts are rendered
+    });
+    
+    // Create PDF
+    const pdf = new jsPDF({ 
+      orientation: "landscape", 
+      unit: "px", 
+      format: "a4" 
+    });
+    
     const imgProps = pdf.getImageProperties(dataUrl);
     const pdfWidth = pdf.internal.pageSize.getWidth();
     const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
@@ -200,7 +270,6 @@ export default function DigitalID() {
     setDownloading(false);
   }
 };
-
   const handleLogout = () => {
     if (window.confirm("Are you sure you want to log out?")) {
       localStorage.removeItem("token");
