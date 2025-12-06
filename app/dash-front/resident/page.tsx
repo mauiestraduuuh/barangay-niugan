@@ -616,76 +616,69 @@ useEffect(() => {
                     </div>
 
                     <div className="md:col-span-2">
-                      <label className="block text-gray-600 font-medium mb-2">
-                        Profile Picture
-                      </label>
-                      
-                      {/* Show current or preview image */}
-                      <div className="flex flex-col items-center gap-4">
-                        <div className="relative">
-                          <img
-                            src={
-                              selectedFile 
-                                ? URL.createObjectURL(selectedFile)
-                                : editingProfile.photo_url || "/default-profile.png"
-                            }
-                            alt="Profile Preview"
-                            className="w-32 h-32 rounded-full object-cover border-4 border-gray-200"
-                            onError={(e) => {
-                              const target = e.target as HTMLImageElement;
-                              target.src = "/default-profile.png";
-                            }}
-                          />
-                          {selectedFile && (
-                            <button
-                              type="button"
-                              onClick={() => setSelectedFile(null)}
-                              className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1.5 hover:bg-red-600 shadow-lg"
-                              disabled={actionLoading}
-                            >
-                              <XMarkIcon className="w-4 h-4" />
-                            </button>
-                          )}
-                        </div>
-                        
-                        {/* File input - styled as button */}
-                        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-                          <label
-                            htmlFor="photo_url"
-                            className="bg-red-500 hover:bg-red-600 text-white py-2.5 px-6 rounded-xl font-bold font-medium shadow-sm transition cursor-pointer text-center"
-                          >
-                            📸 Choose Photo
-                          </label>
-                          <input
-                            type="file"
-                            id="photo_url"
-                            accept="image/*"
-                            capture="environment"
-                            onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (file) {
-                                // Check file size (max 5MB)
-                                if (file.size > 5 * 1024 * 1024) {
-                                  setMessageType("error");
-                                  setMessage("Image must be less than 5MB");
-                                  e.target.value = "";
-                                  return;
-                                }
-                                setSelectedFile(file);
-                              }
-                            }}
-                            className="hidden"
-                            disabled={actionLoading}
-                          />
-                        </div>
-                        
+                    <label className="block text-gray-600 font-medium mb-2">
+                      Profile Picture
+                    </label>
+                    
+                    {/* Show current or preview image */}
+                    <div className="flex flex-col items-center gap-4">
+                      <div className="relative">
+                        <img
+                          src={
+                            selectedFile 
+                              ? URL.createObjectURL(selectedFile)
+                              : editingProfile.photo_url || "/default-profile.png"
+                          }
+                          alt="Profile Preview"
+                          className="w-32 h-32 rounded-full object-cover border-4 border-gray-200"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.src = "/default-profile.png";
+                          }}
+                        />
                         {selectedFile && (
-                          <p className="text-sm text-gray-600 text-center">
-                            {selectedFile.name} ({(selectedFile.size / 1024).toFixed(1)} KB)
-                          </p>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedFile(null)}
+                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1.5 hover:bg-red-600 shadow-lg"
+                            disabled={actionLoading}
+                          >
+                            <XMarkIcon className="w-4 h-4" />
+                          </button>
                         )}
                       </div>
+                      
+                      {/* Direct file input button - NOT hidden */}
+                      <input
+                        type="file"
+                        id="photo_url"
+                        accept="image/*"
+                        onChange={(e) => {
+                          console.log("Mobile file input triggered");
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            console.log("File details:", file.name, file.size, file.type);
+                            // Check file size (max 5MB)
+                            if (file.size > 5 * 1024 * 1024) {
+                              setMessageType("error");
+                              setMessage("Image must be less than 5MB");
+                              e.target.value = "";
+                              return;
+                            }
+                            setSelectedFile(file);
+                          }
+                        }}
+                        className="block w-full text-sm text-gray-600 file:mr-4 file:py-2.5 file:px-6 file:rounded-xl file:border-0 file:text-sm file:font-medium file:bg-red-500 file:text-white hover:file:bg-red-600 file:cursor-pointer cursor-pointer"
+                        disabled={actionLoading}
+                      />
+                      
+                      {selectedFile && (
+                        <p className="text-sm text-gray-600 text-center">
+                          {selectedFile.name} ({(selectedFile.size / 1024).toFixed(1)} KB)
+                        </p>
+                      )}
                     </div>
+                  </div>
                   </div>
 
                   <div className="flex gap-4 justify-end">
