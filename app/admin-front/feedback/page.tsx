@@ -50,6 +50,31 @@ interface Feedback {
   } | null;
 }
 
+// Loading Spinner Component
+const LoadingSpinner = ({ size = "md" }: { size?: "sm" | "md" | "lg" }) => {
+  const sizeClasses = {
+    sm: "w-4 h-4 border-2",
+    md: "w-8 h-8 border-3",
+    lg: "w-12 h-12 border-4"
+  };
+
+  return (
+    <div className={`${sizeClasses[size]} border-red-700 border-t-transparent rounded-full animate-spin`}></div>
+  );
+};
+
+// Full Page Loading Overlay
+const LoadingOverlay = ({ message = "Processing..." }: { message?: string }) => {
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white p-6 rounded-xl flex flex-col items-center gap-4 shadow-2xl">
+        <LoadingSpinner size="lg" />
+        <p className="text-gray-700 font-medium">{message}</p>
+      </div>
+    </div>
+  );
+};
+
 export default function AdminFeedbackPage() {
   const router = useRouter();
   const [activeItem, setActiveItem] = useState("feedback");
@@ -82,22 +107,33 @@ export default function AdminFeedbackPage() {
     currentPage * ITEMS_PER_PAGE
   );
 
+  const [actionLoading, setActionLoading] = useState(false);
+
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
   const features = [
-    { name: "the-dash-admin", label: "Home", icon: HomeIcon },
-    { name: "admin-profile", label: "Manage Profile", icon: UserIcon },
-    { name: "registration-request", label: "Registration Requests", icon: ClipboardDocumentIcon },
-    { name: "registration-code", label: "Registration Code", icon: KeyIcon },
-    { name: "certificate-request", label: "Certificate Requests", icon: ClipboardDocumentIcon },
-    { name: "feedback", label: "Feedback", icon: ChatBubbleLeftEllipsisIcon },
-    { name: "staff-acc", label: "Staff Accounts", icon: UsersIcon },
-    { name: "announcement", label: "Announcements", icon: MegaphoneIcon },
-    { name: "reports", label: "Reports", icon: ChartBarIcon },
-  ];
+      { name: "the-dash-admin", label: "Home", icon: HomeIcon },
+      { name: "admin-profile", label: "Manage Profile", icon: UserIcon },
+      { name: "registration-request", label: "Registration Requests", icon: ClipboardDocumentIcon },
+      { name: "registration-code", label: "Registration Code", icon: KeyIcon },
+      { name: "certificate-request", label: "Certificate Requests", icon: ClipboardDocumentIcon },
+      { name: "feedback", label: "Complaint", icon: ChatBubbleLeftEllipsisIcon },
+      { name: "staff-acc", label: "Staff Accounts", icon: UsersIcon },
+      { name: "announcement", label: "Announcements", icon: MegaphoneIcon },
+      { name: "reports", label: "Reports", icon: ChartBarIcon },
+    ];
 
   useEffect(() => {
     fetchFeedbackAndCategories();
+  }, []);
+
+  // Reload entire page every 5 minutes
+  useEffect(() => {
+    const interval = setInterval(() => {
+      window.location.reload();
+    }, 300000); // 300000ms = 5 minutes
+    
+    return () => clearInterval(interval);
   }, []);
 
   const fetchFeedbackAndCategories = async () => {
@@ -126,46 +162,66 @@ export default function AdminFeedbackPage() {
   };
 
   const replyFeedback = async () => {
-    if (!selectedFeedback || !token) return setMessage("Unauthorized");
+  if (!selectedFeedback || !token) return setMessage("Unauthorized");
 
-    const formData = new FormData();
-    formData.append("feedbackId", selectedFeedback.feedback_id);
-    formData.append("response", replyText);
-    if (replyFile) formData.append("file", replyFile);
+  // Require a file
+  if (!replyFile) {
+    setMessage("Please attach a file/photo before replying.");
+    return;
+  }
 
-    try {
-      await axios.post("/api/admin/feedback", formData, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "multipart/form-data",
-        },
-      });
-      setSelectedFeedback(null);
-      setReplyText("");
-      setReplyFile(null);
-      fetchFeedbackAndCategories();
-      setMessage("Reply sent successfully");
-    } catch (err) {
-      console.error(err);
-      setMessage("Failed to send reply");
-    }
-  };
+  const formData = new FormData();
+  formData.append("feedbackId", selectedFeedback.feedback_id);
+  formData.append("response", replyText);
+  formData.append("file", replyFile); // file is guaranteed here
 
-  const updateStatus = async (feedbackId: string, status: string) => {
-    if (!token) return setMessage("Unauthorized");
-    try {
-      await axios.put(
-        "/api/admin/feedback",
-        { feedbackId, status },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      fetchFeedbackAndCategories();
-      setMessage("Status updated successfully");
-    } catch (err) {
-      console.error(err);
-      setMessage("Failed to update status");
-    }
-  };
+  setActionLoading(true);
+  try {
+    await axios.post("/api/admin/feedback", formData, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "multipart/form-data",
+      },
+    });
+    setSelectedFeedback(null);
+    setReplyText("");
+    setReplyFile(null);
+    fetchFeedbackAndCategories();
+    setMessage("Reply sent successfully");
+  } catch (err) {
+    console.error(err);
+    setMessage("Failed to send reply");
+  } finally {
+    setActionLoading(false);
+  }
+};
+
+  const updateStatus = async (feedbackId: string, status: string, currentResponse?: string) => {
+  if (!token) return setMessage("Unauthorized");
+
+  // Prevent resolving without reply
+  if (status === "RESOLVED" && (!currentResponse || currentResponse.trim() === "")) {
+    setMessage("Cannot mark as RESOLVED without a response.");
+    return;
+  }
+
+  setActionLoading(true);
+  try {
+    await axios.put(
+      "/api/admin/feedback",
+      { feedbackId, status },
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    fetchFeedbackAndCategories();
+    setMessage("Status updated successfully");
+  } catch (err) {
+    console.error(err);
+    setMessage("Failed to update status");
+  } finally {
+    setActionLoading(false);
+  }
+};
+
 
   const groups = Array.from(new Set(categories.map((c) => c.group).filter(Boolean)));
 
@@ -192,6 +248,8 @@ export default function AdminFeedbackPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to-black p-4 flex gap-4 text-black">
+      {/* Loading Overlay */}
+        {actionLoading && <LoadingOverlay message="Updating feedback..." />}
      {/* Sidebar */}
            <div
              className={`${
@@ -367,9 +425,10 @@ export default function AdminFeedbackPage() {
           )}
 
           {loading ? (
-            <p className="text-center text-black">Loading complaints...</p>
-          ) : filteredFeedbacks.length === 0 ? (
-            <p className="text-center text-black">No complaints available.</p>
+            <div className="flex flex-col items-center justify-center py-20 gap-4">
+              <LoadingSpinner size="lg" />
+              <p className="text-gray-600">Loading complaints...</p>
+            </div>
           ) : (
             <>
               {/* Desktop Table */}
@@ -394,7 +453,7 @@ export default function AdminFeedbackPage() {
                         <td className="px-4 py-3">
                           <select
                             value={f.status}
-                            onChange={(e) => updateStatus(f.feedback_id, e.target.value)}
+                            onChange={(e) => updateStatus(f.feedback_id, e.target.value, f.response)}
                             disabled={f.status === "RESOLVED"}
                             className={`border rounded-md px-2 py-1 text-xs font-medium focus:outline-none focus:ring-1 ${getStatusClass(
                               f.status
@@ -447,13 +506,13 @@ export default function AdminFeedbackPage() {
                     <div className="flex justify-between items-start mb-2">
                       <h3 className="font-semibold text-black">{f.resident?.first_name} {f.resident?.last_name}</h3>
                       <select
-                        value={f.status}
-                        onChange={(e) => updateStatus(f.feedback_id, e.target.value)}
-                        disabled={f.status === "RESOLVED"}
-                        className={`border rounded-md px-2 py-1 text-xs font-medium focus:outline-none focus:ring-1 ${getStatusClass(
-                          f.status
-                        )}`}
-                      >
+                          value={f.status}
+                          onChange={(e) => updateStatus(f.feedback_id, e.target.value, f.response)}
+                          disabled={f.status === "RESOLVED"}
+                          className={`border rounded-md px-2 py-1 text-xs font-medium focus:outline-none focus:ring-1 ${getStatusClass(
+                            f.status
+                          )}`}
+                        >
                         <option value="PENDING">Pending</option>
                         <option value="IN_PROGRESS">In Progress</option>
                         <option value="RESOLVED">Resolved</option>
@@ -615,11 +674,26 @@ export default function AdminFeedbackPage() {
             <input type="file" onChange={(e) => setReplyFile(e.target.files?.[0] || null)} className="border rounded-md p-2 mb-4 w-full" />
 
             <div className="flex justify-end gap-2">
-              <button onClick={() => setSelectedFeedback(null)} className="px-4 py-2 bg-gray-200 text-black rounded-lg hover:bg-gray-300 transition">
+              <button 
+                onClick={() => setSelectedFeedback(null)} 
+                disabled={actionLoading}
+                className="px-4 py-2 bg-gray-200 text-black rounded-lg hover:bg-gray-300 transition disabled:opacity-50"
+              >
                 Cancel
               </button>
-              <button onClick={replyFeedback} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition">
-                {selectedFeedback.response ? "Update Reply" : "Send Reply"}
+              <button 
+                onClick={replyFeedback} 
+                disabled={actionLoading || !replyFile} // disable if no file
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition disabled:opacity-50 flex items-center gap-2"
+              >
+                {actionLoading ? (
+                  <>
+                    <LoadingSpinner size="sm" />
+                    Sending...
+                  </>
+                ) : (
+                  selectedFeedback.response ? "Update Reply" : "Send Reply"
+                )}
               </button>
             </div>
           </div>

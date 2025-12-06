@@ -30,6 +30,38 @@ interface Announcement {
   posted_at: string;
 }
 
+// Loading Spinner Component
+const LoadingSpinner = ({ size = "md" }: { size?: "sm" | "md" | "lg" }) => {
+  const sizeClasses = {
+    sm: "w-4 h-4 border-2",
+    md: "w-8 h-8 border-3",
+    lg: "w-12 h-12 border-4"
+  };
+
+  return (
+    <div className={`${sizeClasses[size]} border-red-700 border-t-transparent rounded-full animate-spin`}></div>
+  );
+};
+
+// Skeleton Loading Cards
+const SkeletonCard = () => (
+  <div className="bg-white rounded-lg shadow p-4 text-center animate-pulse">
+    <div className="h-4 bg-gray-200 rounded w-3/4 mx-auto mb-2"></div>
+    <div className="h-8 bg-gray-300 rounded w-1/2 mx-auto"></div>
+  </div>
+);
+
+const SkeletonAnnouncement = () => (
+  <div className="bg-white rounded-lg shadow p-6 animate-pulse">
+    <div className="h-6 bg-gray-300 rounded w-3/4 mb-3"></div>
+    <div className="space-y-2">
+      <div className="h-4 bg-gray-200 rounded w-full"></div>
+      <div className="h-4 bg-gray-200 rounded w-5/6"></div>
+    </div>
+    <div className="h-3 bg-gray-200 rounded w-1/3 mt-3"></div>
+  </div>
+);
+
 export default function Dashboard() {
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -42,32 +74,66 @@ export default function Dashboard() {
     totalFeedbacks: 0,
     pendingFeedbacks: 0,
   });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   const fetchDashboard = async () => {
-  try {
-    const token = localStorage.getItem("token");
-    const res = await fetch("/api/dash/the-dash-resident", {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (!res.ok) throw new Error("Failed to fetch dashboard");
-    const data = await res.json();
-    setResident(data.resident);
-    setAnnouncements(data.announcements);
-    setSummary(data.summary);
-  } catch (error) {
-    console.error(error);
-  }
-};
+    setLoading(true);
+    setError("");
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setError("No authentication token found");
+        router.push("/auth-front/login");
+        return;
+      }
 
-useEffect(() => {
-  fetchDashboard();
-}, []);
+      const res = await fetch("/api/dash/the-dash-resident", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      
+      if (!res.ok) {
+        if (res.status === 401) {
+          setError("Session expired. Please login again.");
+          localStorage.removeItem("token");
+          router.push("/auth-front/login");
+          return;
+        }
+        throw new Error("Failed to fetch dashboard");
+      }
+      
+      const data = await res.json();
+      setResident(data.resident);
+      setAnnouncements(data.announcements);
+      setSummary(data.summary);
+    } catch (error: any) {
+      console.error(error);
+      setError(error.message || "Failed to load dashboard data");
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
+    fetchDashboard();
+  }, []);
+
+  // Reload entire page every 5 minutes
+  useEffect(() => {
+    const interval = setInterval(() => {
+      window.location.reload();
+    }, 300000); // 300000ms = 5 minutes
+    
+    return () => clearInterval(interval);
+  }, []);
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
+  
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    router.push("/auth-front/login");
+    if (window.confirm("Are you sure you want to log out?")) {
+      localStorage.removeItem("token");
+      router.push("/auth-front/login");
+    }
   };
 
   // Calculate expiry
@@ -84,7 +150,7 @@ useEffect(() => {
     { name: "resident", label: "Manage Profile", icon: UserIcon },
     { name: "digital-id", label: "Digital ID", icon: CreditCardIcon },
     { name: "certificate-request", label: "Certificates", icon: ClipboardDocumentIcon },
-    { name: "feedback", label: "Feedback / Complain", icon: ChatBubbleLeftEllipsisIcon },
+    { name: "feedback", label: "Complaint", icon: ChatBubbleLeftEllipsisIcon },
   ];
 
   return (
@@ -96,7 +162,6 @@ useEffect(() => {
         } bg-gray-50 shadow-lg rounded-xl transition-all duration-300 ease-in-out flex flex-col 
         ${sidebarOpen ? "fixed inset-y-0 left-0 z-50 md:static md:translate-x-0" : "hidden md:flex"}`}
       >
-        {/* Logo */}
         <div className="p-4 flex items-center justify-center">
           <img
             src="/niugan-logo.png"
@@ -113,7 +178,6 @@ useEffect(() => {
           </button>
         </div>
 
-        {/* Navigation */}
         <nav className="flex-1 mt-6">
           <ul>
             {features.map(({ name, label, icon: Icon }) => (
@@ -144,7 +208,6 @@ useEffect(() => {
           </ul>
         </nav>
 
-        {/* Logout */}
         <div className="p-4">
           <button
             onClick={handleLogout}
@@ -155,7 +218,6 @@ useEffect(() => {
           </button>
         </div>
 
-        {/* Sidebar Toggle */}
         <div className="p-4 flex justify-center hidden md:flex">
           <button
             onClick={toggleSidebar}
@@ -165,88 +227,135 @@ useEffect(() => {
           </button>
         </div>
       </div>
-            {/* Mobile Overlay */}
+
       {sidebarOpen && (
         <div className="fixed inset-0 bg-white/80 z-40 md:hidden" onClick={toggleSidebar}></div>
       )}
 
       {/* Main Section */}
       <div className="flex-1 flex flex-col gap-4">
-      {/* Header */}
-         <header className="bg-gray-50 shadow-sm p-4 flex justify-between items-center rounded-xl text-black">
+        <header className="bg-gray-50 shadow-sm p-4 flex justify-between items-center rounded-xl text-black">
           <button
             onClick={toggleSidebar}
             className="block md:hidden text-black hover:text-red-700 focus:outline-none"
           >
             <Bars3Icon className="w-6 h-6" />
           </button>
-          <h1 className="text-large font-bold ">Resident Dashboard</h1>
+          <h1 className="text-large font-bold">Resident Dashboard</h1>
           <div className="flex items-center space-x-4"></div>
         </header>
 
-        {/* Main Content */}
         <main className="flex-1 bg-gray-50 rounded-xl p-6 shadow-sm overflow-auto text-black">
-          {/* Resident Info */}
-          {resident && (
-            <div className="flex items-center gap-4 mb-6">
-              <img
-                src={resident.photo_url || "/default-profile.png"}
-                alt="Profile"
-                className="w-16 h-16 rounded-full border"
-              />
-              <h1 className="text-3xl font-semibold">
-                Welcome, {resident.first_name} {resident.last_name}!
-              </h1>
+          {error && (
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+              <p className="font-medium">Error</p>
+              <p>{error}</p>
+              <button
+                onClick={fetchDashboard}
+                className="mt-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded transition"
+              >
+                Retry
+              </button>
             </div>
           )}
 
-          {/* Summary Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            <div className="bg-white rounded-lg shadow p-4 text-center">
-              <p className="text-black">Total Certificates</p>
-              <p className="text-3xl font-bold text-red-700">{summary.totalCertificates}</p>
-            </div>
-            <div className="bg-white rounded-lg shadow p-4 text-center">
-              <p className="text-black">Pending Certificates</p>
-              <p className="text-3xl font-bold text-red-700">{summary.pendingCertificates}</p>
-            </div>
-            <div className="bg-white rounded-lg shadow p-4 text-center">
-              <p className="text-black">Total Feedbacks</p>
-              <p className="text-3xl font-bold text-red-700">{summary.totalFeedbacks}</p>
-            </div>
-            <div className="bg-white rounded-lg shadow p-4 text-center">
-              <p className="text-black">Pending Feedbacks</p>
-              <p className="text-3xl font-bold text-red-700">{summary.pendingFeedbacks}</p>
-            </div>
-          </div>
-
-          {/* Announcements */}
-          <section>
-            <header className="mb-6">
-              <h3 className="text-xl font-semibold">Announcements</h3>
-            </header>
-            {announcements.length === 0 ? (
-              <p className="text-gray-500">No announcements yet.</p>
-            ) : (
-              <div className="space-y-6">
-                {announcements.map((ann) => {
-                  const daysLeft = getExpiry(ann.posted_at);
-                  return (
-                    <div key={ann.announcement_id} className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition">
-                      <h3 className="text-xl font-semibold mb-2">{ann.title}</h3>
-                      <p className="text-black">{ann.content ?? "No content provided."}</p>
-                      <p className="text-sm text-gray-400 mt-2">
-                        Posted at: {new Date(ann.posted_at).toLocaleString()}
-                      </p>
-                      <p className={`text-sm font-medium mt-1 ${daysLeft <= 3 ? "text-red-600" : "text-green-600"}`}>
-                        Expires in {daysLeft} {daysLeft === 1 ? "day" : "days"}
-                      </p>
-                    </div>
-                  );
-                })}
+          {loading ? (
+            <>
+              {/* Loading Resident Info */}
+              <div className="flex items-center gap-4 mb-6 animate-pulse">
+                <div className="w-16 h-16 rounded-full bg-gray-300"></div>
+                <div className="h-8 bg-gray-300 rounded w-64"></div>
               </div>
-            )}
-          </section>
+
+              {/* Loading Summary Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <SkeletonCard />
+                <SkeletonCard />
+                <SkeletonCard />
+                <SkeletonCard />
+              </div>
+
+              {/* Loading Announcements */}
+              <section>
+                <div className="h-6 bg-gray-300 rounded w-48 mb-6"></div>
+                <div className="space-y-6">
+                  <SkeletonAnnouncement />
+                  <SkeletonAnnouncement />
+                  <SkeletonAnnouncement />
+                </div>
+              </section>
+            </>
+          ) : (
+            <>
+              {/* Resident Info */}
+              {resident && (
+                <div className="flex items-center gap-4 mb-6">
+                  <img
+                    src={resident.photo_url || "/default-profile.png"}
+                    alt="Profile"
+                    className="w-16 h-16 rounded-full border"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = "/default-profile.png";
+                    }}
+                  />
+                  <h1 className="text-3xl font-semibold">
+                    Welcome, {resident.first_name} {resident.last_name}!
+                  </h1>
+                </div>
+              )}
+
+              {/* Summary Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <div className="bg-white rounded-lg shadow p-4 text-center hover:shadow-lg transition">
+                  <p className="text-black">Total Certificates</p>
+                  <p className="text-3xl font-bold text-red-700">{summary.totalCertificates}</p>
+                </div>
+                <div className="bg-white rounded-lg shadow p-4 text-center hover:shadow-lg transition">
+                  <p className="text-black">Pending Certificates</p>
+                  <p className="text-3xl font-bold text-red-700">{summary.pendingCertificates}</p>
+                </div>
+                <div className="bg-white rounded-lg shadow p-4 text-center hover:shadow-lg transition">
+                  <p className="text-black">Total Feedbacks</p>
+                  <p className="text-3xl font-bold text-red-700">{summary.totalFeedbacks}</p>
+                </div>
+                <div className="bg-white rounded-lg shadow p-4 text-center hover:shadow-lg transition">
+                  <p className="text-black">Pending Feedbacks</p>
+                  <p className="text-3xl font-bold text-red-700">{summary.pendingFeedbacks}</p>
+                </div>
+              </div>
+
+              {/* Announcements */}
+              <section>
+                <header className="mb-6">
+                  <h3 className="text-xl font-semibold">Announcements</h3>
+                </header>
+                {announcements.length === 0 ? (
+                  <div className="text-center py-12">
+                    <p className="text-gray-500 text-lg">No announcements yet.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    {announcements.map((ann) => {
+                      const daysLeft = getExpiry(ann.posted_at);
+                      return (
+                        <div key={ann.announcement_id} className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition">
+                          <h3 className="text-xl font-semibold mb-2">{ann.title}</h3>
+                          <p className="text-black">{ann.content ?? "No content provided."}</p>
+                          <p className="text-sm text-gray-400 mt-2">
+                            Posted at: {new Date(ann.posted_at).toLocaleString()}
+                          </p>
+                          <p className={`text-sm font-medium mt-1 ${daysLeft <= 3 ? "text-red-600" : "text-green-600"}`}>
+                            Expires in {daysLeft} {daysLeft === 1 ? "day" : "days"}
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </section>
+            </>
+          )}
         </main>
       </div>
     </div>

@@ -28,6 +28,61 @@ interface RegistrationCode {
   usedById?: number | null;
 }
 
+// Loading Spinner
+const LoadingSpinner = ({ size = "md" }: { size?: "sm" | "md" | "lg" }) => {
+  const sizeClasses = { sm: "w-4 h-4 border-2", md: "w-8 h-8 border-3", lg: "w-12 h-12 border-4" };
+  return <div className={`${sizeClasses[size]} border-red-700 border-t-transparent rounded-full animate-spin`}></div>;
+};
+
+// Full Page Loading Overlay
+const LoadingOverlay = ({ message = "Processing..." }: { message?: string }) => (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div className="bg-white p-6 rounded-xl flex flex-col items-center gap-4 shadow-2xl">
+      <LoadingSpinner size="lg" />
+      <p className="text-gray-700 font-medium">{message}</p>
+    </div>
+  </div>
+);
+
+// Confirmation Modal
+const ConfirmationModal = ({
+  isOpen,
+  onConfirm,
+  onCancel,
+  title,
+  description,
+}: {
+  isOpen: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+  title: string;
+  description: string;
+}) => {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+      <div className="bg-white rounded-xl shadow-lg p-6 w-80 max-w-full">
+        <h2 className="text-lg font-semibold mb-2">{title}</h2>
+        <p className="mb-4 text-gray-700">{description}</p>
+        <div className="flex justify-end gap-3">
+          <button
+            onClick={onCancel}
+            className="px-4 py-2 rounded bg-gray-200 text-black hover:bg-gray-300"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            className="px-4 py-2 rounded bg-red-700 text-white hover:bg-red-800"
+          >
+            Confirm
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function RegistrationCodePage() {
   const [codes, setCodes] = useState<RegistrationCode[]>([]);
   const [filter, setFilter] = useState<"used" | "unused">("unused");
@@ -35,7 +90,11 @@ export default function RegistrationCodePage() {
   const [message, setMessage] = useState("");
   const [activeItem, setActiveItem] = useState("registration-code");
   const [loading, setLoading] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showGenerateModal, setShowGenerateModal] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
+
   const router = useRouter();
   const filteredCodes = codes.filter((c) => (filter === "unused" ? !c.isUsed : c.isUsed));
   const [currentPage, setCurrentPage] = useState(1);
@@ -45,8 +104,7 @@ export default function RegistrationCodePage() {
   const indexOfFirst = indexOfLast - itemsPerPage;
   const currentItems = filteredCodes.slice(indexOfFirst, indexOfLast);
 
-
-  // Fetch all registration codes
+  // Fetch codes
   const fetchCodes = async () => {
     setLoading(true);
     try {
@@ -64,12 +122,21 @@ export default function RegistrationCodePage() {
     fetchCodes();
   }, []);
 
-  // Generate a new code
+  // Reload page every 5 min
+  useEffect(() => {
+    const interval = setInterval(() => window.location.reload(), 300000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Generate code
   const generateCode = async () => {
+    setShowGenerateModal(false);
     if (!ownerName.trim()) {
       setMessage("Owner name is required");
       return;
     }
+
+    setActionLoading(true);
     try {
       const res = await axios.post("/api/admin/registration-code", { ownerName });
       if (res.data.success) {
@@ -80,12 +147,17 @@ export default function RegistrationCodePage() {
     } catch (err) {
       console.error(err);
       setMessage("Failed to create code");
+    } finally {
+      setActionLoading(false);
     }
   };
 
-  // Delete unused code
-  const deleteCode = async (id: number) => {
-    if (!confirm("Are you sure you want to delete this code?")) return;
+  // Delete code
+  const deleteCode = async () => {
+    if (!deleteTargetId) return;
+    setActionLoading(true);
+    const id = deleteTargetId;
+    setDeleteTargetId(null);
     try {
       const res = await axios.delete("/api/admin/registration-code", { data: { id } });
       if (res.data.success) {
@@ -95,6 +167,8 @@ export default function RegistrationCodePage() {
     } catch (err) {
       console.error(err);
       setMessage("Failed to delete code");
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -104,7 +178,7 @@ export default function RegistrationCodePage() {
     { name: "registration-request", label: "Registration Requests", icon: ClipboardDocumentIcon },
     { name: "registration-code", label: "Registration Code", icon: KeyIcon },
     { name: "certificate-request", label: "Certificate Requests", icon: ClipboardDocumentIcon },
-    { name: "feedback", label: "Feedback", icon: ChatBubbleLeftEllipsisIcon },
+    { name: "feedback", label: "Complaint", icon: ChatBubbleLeftEllipsisIcon },
     { name: "staff-acc", label: "Staff Accounts", icon: UsersIcon },
     { name: "announcement", label: "Announcements", icon: MegaphoneIcon },
     { name: "reports", label: "Reports", icon: ChartBarIcon },
@@ -120,7 +194,25 @@ export default function RegistrationCodePage() {
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to-black p-4 flex gap-4 ">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to-black p-4 flex gap-4">
+      {actionLoading && <LoadingOverlay message="Processing..." />}
+
+      {/* Modals */}
+      <ConfirmationModal
+        isOpen={showGenerateModal}
+        onConfirm={generateCode}
+        onCancel={() => setShowGenerateModal(false)}
+        title="Confirm Generate"
+        description={`Generate registration code for: "${ownerName}"?`}
+      />
+      <ConfirmationModal
+        isOpen={deleteTargetId !== null}
+        onConfirm={deleteCode}
+        onCancel={() => setDeleteTargetId(null)}
+        title="Confirm Delete"
+        description="Are you sure you want to delete this code? This action cannot be undone."
+      />
+      
        {/* Sidebar */}
            <div
              className={`${
@@ -248,12 +340,14 @@ export default function RegistrationCodePage() {
               onChange={(e) => setOwnerName(e.target.value)}
               className="border rounded px-3 py-2 flex-1 text-black"
             />
-            <button
-              onClick={generateCode}
-              className="bg-black text-white px-4 py-2 rounded-xl hover:bg-red-700"
-            >
-              Generate
-            </button>
+            {/* Generate button */}
+              <button
+                onClick={() => setShowGenerateModal(true)}
+                disabled={actionLoading}
+                className="bg-black text-white px-4 py-2 rounded-xl hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {actionLoading ? <><LoadingSpinner size="sm" /> Generating...</> : "Generate"}
+              </button>
 
             {/* Filter Toggle */}
             <div className="flex items-center gap-2 ml-auto">
@@ -278,9 +372,10 @@ export default function RegistrationCodePage() {
           </div>
 
           {loading ? (
-            <p className="text-black">Loading...</p>
-          ) : filteredCodes.length === 0 ? (
-            <p className="text-center text-black py-10">No {filter} codes found</p>
+            <div className="flex flex-col items-center justify-center py-20 gap-4">
+              <LoadingSpinner size="lg" />
+              <p className="text-gray-600">Loading Registration Code...</p>
+            </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full border-collapse bg-white shadow-sm rounded-xl overflow-hidden text-sm sm:text-base">
@@ -293,39 +388,40 @@ export default function RegistrationCodePage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {currentItems.map((c, index) => (
-                    <tr
-                      key={c.id}
-                      className={`border-t hover:bg-red-50 transition ${
-                        index % 2 === 0 ? "bg-white" : "bg-gray-50"
-                      }`}
-                    >
-                      <td className="px-4 py-2 font-medium text-black">{c.code}</td>
-                      <td className="px-4 py-2 text-black">{c.ownerName}</td>
-                      <td className="px-4 py-2 text-center">
-                        <span
-                          className={`px-2 py-1 rounded-full text-xs sm:text-sm font-semibold ${
-                            c.isUsed
-                              ? "bg-green-200 text-green-800"
-                              : "bg-yellow-200 text-yellow-800"
-                          }`}
+                {currentItems.map((c, index) => (
+                  <tr
+                    key={c.id}
+                    className={`border-t hover:bg-red-50 transition ${
+                      index % 2 === 0 ? "bg-white" : "bg-gray-50"
+                    }`}
+                  >
+                    <td className="px-4 py-2 font-medium text-black">{c.code}</td>
+                    <td className="px-4 py-2 text-black">{c.ownerName}</td>
+                    <td className="px-4 py-2 text-center">
+                      <span
+                        className={`px-2 py-1 rounded-full text-xs sm:text-sm font-semibold ${
+                          c.isUsed
+                            ? "bg-green-200 text-green-800"
+                            : "bg-yellow-200 text-yellow-800"
+                        }`}
+                      >
+                        {c.isUsed ? "USED" : "UNUSED"}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2 text-center">
+                      {!c.isUsed && (
+                        <button
+                          onClick={() => setDeleteTargetId(c.id)}
+                          disabled={actionLoading}
+                          className="bg-gray-600 text-white px-3 py-1 rounded hover:bg-gray-700 text-xs sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          {c.isUsed ? "USED" : "UNUSED"}
-                        </span>
-                      </td>
-                      <td className="px-4 py-2 text-center">
-                        {!c.isUsed && (
-                          <button
-                            onClick={() => deleteCode(c.id)}
-                            className="bg-gray-600 text-white px-3 py-1 rounded hover:bg-gray-700 text-xs sm:text-sm"
-                          >
-                            Delete
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
+                          Delete
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
               </table>
               {/* Pagination */}
               <div className="w-full mt-4 flex justify-center">
