@@ -1,20 +1,16 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/../lib/prisma";
-import bcrypt from "bcryptjs";
+import QRCode from "qrcode";
 import jwt from "jsonwebtoken";
-import fs from "fs";
-import path from "path";
 
 const JWT_SECRET = process.env.JWT_SECRET!;
 
-// Helper to get userId from JWT token
 function getUserIdFromToken(req: NextRequest): number | null {
   try {
     const authHeader = req.headers.get("authorization");
     if (!authHeader) return null;
-    const token = authHeader.split(" ")[1]; // expects "Bearer <token>"
+    const token = authHeader.split(" ")[1];
     if (!token) return null;
     const decoded = jwt.verify(token, JWT_SECRET) as { userId: number };
     return decoded.userId;
@@ -23,180 +19,184 @@ function getUserIdFromToken(req: NextRequest): number | null {
   }
 }
 
-// Helper to safely serialize BigInt fields
-function serializeResident(resident: any) {
-  return {
-    ...resident,
-    head_id: resident.head_id !== null ? resident.head_id.toString() : null,
-    household_id: resident.household_id !== null ? resident.household_id.toString() : null,
-  };
+// Convert BigInt fields to string
+function safeBigInt(obj: any) {
+  return JSON.parse(
+    JSON.stringify(obj, (_, value) =>
+      typeof value === "bigint" ? value.toString() : value
+    )
+  );
 }
 
-// GET resident info
+// Convert external photo URL to base64 (for the ID card only)
+async function photoUrlToBase64(url: string | null) {
+  if (!url) {
+    console.log("No photo URL provided");
+    return null;
+  }
+  
+  try {
+    console.log("Attempting to fetch photo from:", url);
+    
+    const res = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0',
+      },
+    });
+    
+    if (!res.ok) {
+      console.error(`Failed to fetch photo: ${res.status} ${res.statusText}`);
+      return url; // Return original URL if conversion fails
+    }
+    
+    const arrayBuffer = await res.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    
+    // Detect content type from response or URL
+    const contentType = res.headers.get('content-type') || 'image/png';
+    const base64 = buffer.toString("base64");
+    const dataUrl = `data:${contentType};base64,${base64}`;
+    
+    console.log("Successfully converted photo to base64");
+    return dataUrl;
+  } catch (err) {
+    console.error("Failed to convert photo to base64:", err);
+    return url; // Return original URL as fallback
+  }
+}
+
 export async function GET(req: NextRequest) {
   try {
     const userId = getUserIdFromToken(req);
-    if (!userId)
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+    // Fetch resident info
     const resident = await prisma.resident.findFirst({
       where: { user_id: userId },
-      include: {
-        user: {
-          select: {
-            username: true,
-            role: true,
-            created_at: true,
-          },
-        },
-        certificateRequests: true,
-        feedbacks: true,
+      select: {
+        resident_id: true,
+        first_name: true,
+        last_name: true,
+        birthdate: true,
+        address: true,
+        head_id: true,
+        household_number: true,
+        is_renter: true,
+        is_4ps_member: true,
+        is_pwd: true,
+        senior_mode: true,
+        is_slp_beneficiary: true,
+        photo_url: true,
       },
     });
 
     if (!resident)
       return NextResponse.json({ error: "Resident not found" }, { status: 404 });
 
-    const data = {
-      ...serializeResident(resident),
-      is_renter: resident.is_renter,
-      email: resident.user?.username || null,
-      role: resident.user?.role,
-      account_created: resident.user?.created_at,
-    };
+    console.log("Resident photo_url from database:", resident.photo_url);
 
-    return NextResponse.json(data);
-  } catch (error) {
-    console.error(error);
-    return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
-  }
-}
-
-// PATCH change password
-export async function PATCH(req: NextRequest) {
-  try {
-    const userId = getUserIdFromToken(req);
-    if (!userId)
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-    const data = await req.json();
-    const { current_password, new_password } = data;
-
-    if (!current_password || !new_password)
-      return NextResponse.json({ error: "All fields are required" }, { status: 400 });
-
-    const user = await prisma.user.findUnique({ where: { user_id: userId } });
-    if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
-
-    const isValid = await bcrypt.compare(current_password, user.password);
-    if (!isValid)
-      return NextResponse.json({ error: "Current password is incorrect" }, { status: 401 });
-
-    const hashedPassword = await bcrypt.hash(new_password, 10);
-    await prisma.user.update({
-      where: { user_id: userId },
-      data: { password: hashedPassword },
-    });
-
-    return NextResponse.json({ message: "Password updated successfully" });
-  } catch (error) {
-    console.error(error);
-    return NextResponse.json({ error: "Failed to update password" }, { status: 500 });
-  }
-}
-
-// PUT update resident profile
-export async function PUT(req: NextRequest) {
-  try {
-    const userId = getUserIdFromToken(req);
-    if (!userId)
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-    const formData = await req.formData();
-    const first_name = formData.get('first_name') as string;
-    const last_name = formData.get('last_name') as string;
-    const birthdate = formData.get('birthdate') as string;
-    const contact_no = formData.get('contact_no') as string;
-    const address = formData.get('address') as string;
-    const photo = formData.get('photo') as File | null;
-
-    console.log("Received photo file:", photo?.name, photo?.size);
-
-    let photo_url: string | undefined = undefined;
-
-    if (photo && photo.size > 0) {
-      try {
-        const buffer = Buffer.from(await photo.arrayBuffer());
-        const ext = photo.name.split('.').pop()?.toLowerCase() || 'jpg';
-        
-        // Validate file type
-        const validExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
-        if (!validExtensions.includes(ext)) {
-          return NextResponse.json({ error: "Invalid file type. Only images are allowed." }, { status: 400 });
-        }
-
-        const filename = `${userId}_${Date.now()}.${ext}`;
-        const uploadDir = path.join(process.cwd(), 'public', 'uploads');
-        
-        // Ensure directory exists
-        if (!fs.existsSync(uploadDir)) {
-          fs.mkdirSync(uploadDir, { recursive: true });
-        }
-
-        const filepath = path.join(uploadDir, filename);
-        fs.writeFileSync(filepath, buffer);
-        
-        // Use absolute URL path
-        photo_url = `/uploads/${filename}`;
-        
-        console.log("Photo saved successfully:", photo_url);
-      } catch (err) {
-        console.error("Error saving photo:", err);
-        return NextResponse.json({ error: "Failed to save photo" }, { status: 500 });
-      }
-    } else {
-      console.log("No photo file provided or file is empty");
-    }
-
-    const resident = await prisma.resident.findFirst({ where: { user_id: userId } });
-    if (!resident) return NextResponse.json({ error: "Resident not found" }, { status: 404 });
-
-    const updateData: any = {
-      first_name,
-      last_name,
-      birthdate: birthdate ? new Date(birthdate) : undefined,
-      address,
-      contact_no,
-    };
-
-    // Only update photo_url if a new photo was uploaded
-    if (photo_url !== undefined) {
-      updateData.photo_url = photo_url;
-      
-      // Optional: Delete old photo if it exists
-      if (resident.photo_url && resident.photo_url.startsWith('/uploads/')) {
-        const oldPhotoPath = path.join(process.cwd(), 'public', resident.photo_url);
-        if (fs.existsSync(oldPhotoPath)) {
-          try {
-            fs.unlinkSync(oldPhotoPath);
-            console.log("Deleted old photo:", oldPhotoPath);
-          } catch (err) {
-            console.error("Error deleting old photo:", err);
-          }
-        }
+    // Handle photo URL - try to convert to base64, fallback to original URL
+    let residentPhotoUrl: string | null = null;
+    if (resident.photo_url) {
+      if (resident.photo_url.startsWith("data:")) {
+        // Already base64
+        residentPhotoUrl = resident.photo_url;
+        console.log("Photo is already in base64 format");
+      } else {
+        // Try to convert external URL to base64, fallback to original URL
+        residentPhotoUrl = await photoUrlToBase64(resident.photo_url);
+        console.log("Photo conversion result:", residentPhotoUrl ? "Success" : "Failed");
       }
     }
 
-    const updatedResident = await prisma.resident.update({
+    // Determine household head
+    let householdHeadName = "N/A";
+    if (resident.head_id) {
+      const headIdNumber = Number(resident.head_id);
+      const headResident = await prisma.resident.findUnique({
+        where: { resident_id: headIdNumber },
+        select: { first_name: true, last_name: true },
+      });
+      const headStaff = await prisma.staff.findUnique({
+        where: { staff_id: headIdNumber },
+        select: { first_name: true, last_name: true },
+      });
+      if (headResident) householdHeadName = `${headResident.first_name} ${headResident.last_name}`;
+      else if (headStaff) householdHeadName = `${headStaff.first_name} ${headStaff.last_name}`;
+    }
+
+    // If renter, fetch landlord info
+    let landlord: any = null;
+    if (resident.is_renter && resident.household_number) {
+      const headResident = await prisma.resident.findFirst({
+        where: { household_number: resident.household_number, is_head_of_family: true },
+        select: { resident_id: true, first_name: true, last_name: true, contact_no: true, address: true },
+      });
+      if (headResident) landlord = headResident;
+    }
+
+    // Fetch Digital ID
+    const digitalID = await prisma.digitalID.findFirst({
       where: { resident_id: resident.resident_id },
-      data: updateData,
+      select: { id: true, id_number: true, issued_at: true, issued_by: true, qr_code: true },
+    });
+    if (!digitalID)
+      return NextResponse.json({ error: "Digital ID not found" }, { status: 404 });
+
+    // Memberships
+    const memberships: string[] = [];
+    if (resident.is_4ps_member) memberships.push("Member of 4PS");
+    if (resident.is_pwd) memberships.push("PWD");
+    if (resident.senior_mode) memberships.push("Senior");
+    if (resident.is_slp_beneficiary) memberships.push("SLP Beneficiary");
+    if (resident.is_renter) memberships.push("Renter");
+
+    // Prepare QR content (without the photo)
+    const qrContent: any = {
+      full_name: `${resident.first_name} ${resident.last_name}`,
+      id_number: `ID-${resident.resident_id}`,
+      issued: digitalID.issued_at.toISOString().split("T")[0],
+      issued_by_staff_id: digitalID.issued_by,
+      birthdate: resident.birthdate.toISOString().split("T")[0],
+      address: resident.address,
+      household_head: householdHeadName,
+      household_number: resident.household_number?.replace(/^HH-/, "") ?? null,
+      is_renter: resident.is_renter,
+      memberships: memberships.length ? memberships : undefined,
+      landlord: landlord
+        ? {
+            name: `${landlord.first_name} ${landlord.last_name}`,
+            contact_no: landlord.contact_no,
+            address: landlord.address,
+          }
+        : undefined,
+    };
+
+    // Generate QR code
+    const qrDataURL = await QRCode.toDataURL(JSON.stringify(qrContent));
+
+    const safeDigitalID = safeBigInt({
+      ...digitalID,
+      id_number: `ID-${resident.resident_id}`,
+      qr_code: qrDataURL,
     });
 
-    console.log("Updated resident photo_url:", updatedResident.photo_url);
+    const responseData = {
+      digitalID: safeDigitalID,
+      resident: safeBigInt({
+        ...resident,
+        household_number: resident.household_number?.replace(/^HH-/, "") ?? null,
+        memberships,
+        photo_url: residentPhotoUrl, // This now includes the photo
+      }),
+      household_head: householdHeadName,
+    };
 
-    return NextResponse.json(serializeResident(updatedResident));
+    console.log("Sending photo_url to frontend:", responseData.resident.photo_url ? "Present" : "Missing");
+
+    return NextResponse.json(responseData);
   } catch (err) {
-    console.error("Error in PUT /api/dash/resident:", err);
-    return NextResponse.json({ error: "Failed to update resident" }, { status: 500 });
+    console.error("Error in digital ID API:", err);
+    return NextResponse.json({ error: "Failed to fetch digital ID" }, { status: 500 });
   }
 }
