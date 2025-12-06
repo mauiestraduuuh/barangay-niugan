@@ -615,12 +615,11 @@ useEffect(() => {
                       />
                     </div>
 
-                    <div className="md:col-span-2">
+                   <div className="md:col-span-2">
                     <label className="block text-gray-600 font-medium mb-2">
                       Profile Picture
                     </label>
                     
-                    {/* Show current or preview image */}
                     <div className="flex flex-col items-center gap-4">
                       <div className="relative">
                         <img
@@ -648,16 +647,32 @@ useEffect(() => {
                         )}
                       </div>
                       
-                      {/* Direct file input button - NOT hidden */}
+                      {/* Button that triggers hidden file input */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const input = document.getElementById('photo_url_input') as HTMLInputElement;
+                          if (input) {
+                            input.click();
+                          }
+                        }}
+                        className="bg-red-500 hover:bg-red-600 text-white py-2.5 px-6 rounded-xl font-medium shadow-sm transition cursor-pointer text-center w-full sm:w-auto"
+                        disabled={actionLoading}
+                      >
+                        📸 Choose Photo
+                      </button>
+                      
+                      {/* Hidden file input */}
                       <input
                         type="file"
-                        id="photo_url"
+                        id="photo_url_input"
                         accept="image/*"
                         onChange={(e) => {
-                          console.log("Mobile file input triggered");
+                          console.log("File input triggered");
+                          console.log("Files available:", e.target.files?.length);
                           const file = e.target.files?.[0];
                           if (file) {
-                            console.log("File details:", file.name, file.size, file.type);
+                            console.log("File selected:", file.name, file.size, file.type);
                             // Check file size (max 5MB)
                             if (file.size > 5 * 1024 * 1024) {
                               setMessageType("error");
@@ -665,10 +680,13 @@ useEffect(() => {
                               e.target.value = "";
                               return;
                             }
+                            console.log("Setting file to state");
                             setSelectedFile(file);
+                          } else {
+                            console.log("No file found in input");
                           }
                         }}
-                        className="block w-full text-sm text-gray-600 file:mr-4 file:py-2.5 file:px-6 file:rounded-xl file:border-0 file:text-sm file:font-medium file:bg-red-500 file:text-white hover:file:bg-red-600 file:cursor-pointer cursor-pointer"
+                        style={{ display: 'none' }}
                         disabled={actionLoading}
                       />
                       
