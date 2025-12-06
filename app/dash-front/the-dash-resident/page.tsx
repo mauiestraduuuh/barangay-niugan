@@ -43,25 +43,6 @@ const LoadingSpinner = ({ size = "md" }: { size?: "sm" | "md" | "lg" }) => {
   );
 };
 
-// Skeleton Loading Cards
-const SkeletonCard = () => (
-  <div className="bg-white rounded-lg shadow p-4 text-center animate-pulse">
-    <div className="h-4 bg-gray-200 rounded w-3/4 mx-auto mb-2"></div>
-    <div className="h-8 bg-gray-300 rounded w-1/2 mx-auto"></div>
-  </div>
-);
-
-const SkeletonAnnouncement = () => (
-  <div className="bg-white rounded-lg shadow p-6 animate-pulse">
-    <div className="h-6 bg-gray-300 rounded w-3/4 mb-3"></div>
-    <div className="space-y-2">
-      <div className="h-4 bg-gray-200 rounded w-full"></div>
-      <div className="h-4 bg-gray-200 rounded w-5/6"></div>
-    </div>
-    <div className="h-3 bg-gray-200 rounded w-1/3 mt-3"></div>
-  </div>
-);
-
 export default function Dashboard() {
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -260,31 +241,10 @@ export default function Dashboard() {
           )}
 
           {loading ? (
-            <>
-              {/* Loading Resident Info */}
-              <div className="flex items-center gap-4 mb-6 animate-pulse">
-                <div className="w-16 h-16 rounded-full bg-gray-300"></div>
-                <div className="h-8 bg-gray-300 rounded w-64"></div>
-              </div>
-
-              {/* Loading Summary Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                <SkeletonCard />
-                <SkeletonCard />
-                <SkeletonCard />
-                <SkeletonCard />
-              </div>
-
-              {/* Loading Announcements */}
-              <section>
-                <div className="h-6 bg-gray-300 rounded w-48 mb-6"></div>
-                <div className="space-y-6">
-                  <SkeletonAnnouncement />
-                  <SkeletonAnnouncement />
-                  <SkeletonAnnouncement />
-                </div>
-              </section>
-            </>
+            <div className="flex flex-col items-center justify-center py-20 gap-4">
+              <LoadingSpinner size="lg" />
+              <p className="text-gray-600">Loading dashboard...</p>
+            </div>
           ) : (
             <>
               {/* Resident Info */}
@@ -307,22 +267,20 @@ export default function Dashboard() {
 
               {/* Summary Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                <div className="bg-white rounded-lg shadow p-4 text-center hover:shadow-lg transition">
-                  <p className="text-black">Total Certificates</p>
-                  <p className="text-3xl font-bold text-red-700">{summary.totalCertificates}</p>
-                </div>
-                <div className="bg-white rounded-lg shadow p-4 text-center hover:shadow-lg transition">
-                  <p className="text-black">Pending Certificates</p>
-                  <p className="text-3xl font-bold text-red-700">{summary.pendingCertificates}</p>
-                </div>
-                <div className="bg-white rounded-lg shadow p-4 text-center hover:shadow-lg transition">
-                  <p className="text-black">Total Feedbacks</p>
-                  <p className="text-3xl font-bold text-red-700">{summary.totalFeedbacks}</p>
-                </div>
-                <div className="bg-white rounded-lg shadow p-4 text-center hover:shadow-lg transition">
-                  <p className="text-black">Pending Feedbacks</p>
-                  <p className="text-3xl font-bold text-red-700">{summary.pendingFeedbacks}</p>
-                </div>
+                {[
+                  { label: "Total Certificates", value: summary.totalCertificates },
+                  { label: "Pending Certificates", value: summary.pendingCertificates },
+                  { label: "Total Feedbacks", value: summary.totalFeedbacks },
+                  { label: "Pending Feedbacks", value: summary.pendingFeedbacks },
+                ].map((item) => (
+                  <div
+                    key={item.label}
+                    className="bg-white rounded-lg shadow p-4 text-center hover:shadow-lg transition"
+                  >
+                    <p className="text-black">{item.label}</p>
+                    <p className="text-3xl font-bold text-red-700">{item.value}</p>
+                  </div>
+                ))}
               </div>
 
               {/* Announcements */}
