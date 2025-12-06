@@ -120,6 +120,9 @@ export default function StaffRegistrationRequestsPage() {
   const [message, setMessage] = useState("");
   const [viewRequest, setViewRequest] = useState<RegistrationRequest | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [rejectTargetId, setRejectTargetId] = useState<number | null>(null);
+
 
   // Pagination
   const [ITEMS_PER_PAGE, setITEMS_PER_PAGE] = useState(10);
@@ -288,12 +291,19 @@ export default function StaffRegistrationRequestsPage() {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col gap-4">
-        <header className="bg-gray-50 shadow-sm p-4 flex justify-between items-center rounded-xl text-black">
-          <button onClick={toggleSidebar} className="block md:hidden text-black hover:text-red-700">
-            <Bars3Icon className="w-6 h-6" />
-          </button>
-          <h1 className="text-large font-bold">Registration Request</h1>
-        </header>
+        <header className="bg-gray-50 shadow-sm p-4 flex items-center justify-center relative rounded-xl text-black">
+            {/* Mobile sidebar toggle */}
+            <button
+              onClick={toggleSidebar}
+              className="block md:hidden absolute left-4 text-black hover:text-red-700 focus:outline-none"
+            >
+              <Bars3Icon className="w-6 h-6" />
+            </button>
+
+            <h1 className="text-large font-bold text-center w-full">
+              Registration Request
+            </h1>
+          </header>
 
         <main className="bg-gray-50 p-4 sm:p-6 rounded-xl shadow-sm overflow-auto">
           {/* Filters */}
@@ -358,7 +368,14 @@ export default function StaffRegistrationRequestsPage() {
                             <button onClick={() => requestAction(req.request_id, true)} disabled={actionLoading} className="bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded flex items-center gap-1 text-xs sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed">
                               <CheckIcon className="w-4 h-4" /> Approve
                             </button>
-                            <button onClick={() => requestAction(req.request_id, false)} disabled={actionLoading} className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded flex items-center gap-1 text-xs sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed">
+                            <button
+                                onClick={() => {
+                                  setRejectTargetId(req.request_id);
+                                  setShowRejectModal(true);
+                                }}
+                              disabled={actionLoading}
+                              className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded flex items-center gap-1 text-xs sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
                               <XCircleIcon className="w-4 h-4" /> Reject
                             </button>
                           </>
@@ -393,6 +410,41 @@ export default function StaffRegistrationRequestsPage() {
               </div>
             </div>
           )}
+
+          {showRejectModal && (
+              <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
+                <div className="bg-white rounded-xl p-6 w-full max-w-sm shadow-2xl text-center">
+                  <h2 className="text-lg font-bold text-gray-800 mb-3">Confirm Rejection</h2>
+                  <p className="text-gray-600 mb-6">
+                    Are you sure you want to reject this registration request?
+                  </p>
+
+                  <div className="flex justify-center gap-3">
+                    <button
+                      onClick={() => {
+                        if (rejectTargetId !== null) {
+                          handleApproveReject(rejectTargetId, false);
+                        }
+                        setShowRejectModal(false);
+                      }}
+                      className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium"
+                    >
+                      Yes, Reject
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setShowRejectModal(false);
+                        setRejectTargetId(null);
+                      }}
+                      className="bg-gray-300 hover:bg-gray-400 text-black px-4 py-2 rounded-lg font-medium"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
 
           {/* Request Details Modal */}
           {viewRequest && (

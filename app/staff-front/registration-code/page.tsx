@@ -379,14 +379,18 @@ export default function StaffRegistrationCodePage() {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col gap-4">
-        <header className="bg-gray-50 shadow-sm p-4 flex justify-between items-center rounded-xl text-black">
+        <header className="bg-gray-50 shadow-sm p-4 flex items-center justify-center relative rounded-xl text-black">
+          {/* Mobile sidebar toggle */}
           <button
             onClick={toggleSidebar}
-            className="block md:hidden text-black hover:text-red-700 focus:outline-none"
+            className="block md:hidden absolute left-4 text-black hover:text-red-700 focus:outline-none"
           >
             <Bars3Icon className="w-6 h-6" />
           </button>
-          <h1 className="text-large font-bold">Registration Codes</h1>
+
+          <h1 className="text-large font-bold text-center w-full">
+            Registration Code
+          </h1>
         </header>
 
         <main className="flex-1 bg-gray-50 rounded-xl p-6 shadow-sm overflow-auto">
@@ -445,13 +449,18 @@ export default function StaffRegistrationCodePage() {
             <div className="overflow-x-auto">
               <table className="min-w-full border-collapse bg-white shadow-sm rounded-xl overflow-hidden text-sm sm:text-base">
                 <thead className="bg-gradient-to-br from-black via-red-800 to-black text-white">
-                  <tr>
-                    <th className="px-4 py-2 text-left">Code</th>
-                    <th className="px-4 py-2 text-left">Owner</th>
-                    <th className="px-4 py-2 text-center">Status</th>
+                <tr>
+                  <th className="px-4 py-2 text-left">Code</th>
+                  <th className="px-4 py-2 text-left">Owner</th>
+                  <th className="px-4 py-2 text-center">Status</th>
+
+                  {/* Only show Actions column for UNUSED */}
+                  {filter === "unused" && (
                     <th className="px-4 py-2 text-center">Actions</th>
-                  </tr>
-                </thead>
+                  )}
+                </tr>
+              </thead>
+
                 <tbody>
                   {currentItems.map((c, index) => (
                     <tr
@@ -471,8 +480,8 @@ export default function StaffRegistrationCodePage() {
                           {c.isUsed ? "USED" : "UNUSED"}
                         </span>
                       </td>
-                      <td className="px-4 py-2 text-center">
-                        {!c.isUsed && (
+                      {filter === "unused" && (
+                        <td className="px-4 py-2 text-center">
                           <button
                             onClick={() => deleteCode(c.id)}
                             disabled={actionLoading}
@@ -480,8 +489,8 @@ export default function StaffRegistrationCodePage() {
                           >
                             Delete
                           </button>
-                        )}
-                      </td>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>

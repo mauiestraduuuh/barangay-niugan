@@ -284,19 +284,18 @@ export default function StaffManageAnnouncements() {
       {/* Main Section */}
       <div className="flex-1 flex flex-col gap-4">
         {/* Header */}
-        <header className="bg-gray-50 shadow-sm p-4 flex justify-between items-center rounded-xl">
+        <header className="bg-gray-50 shadow-sm p-4 flex items-center justify-center relative rounded-xl text-black">
+          {/* Mobile sidebar toggle */}
           <button
             onClick={toggleSidebar}
-            className="block md:hidden text-black hover:text-red-700 focus:outline-none"
+            className="block md:hidden absolute left-4 text-black hover:text-red-700 focus:outline-none"
           >
             <Bars3Icon className="w-6 h-6" />
           </button>
-          <h1 className="text-xl font-semibold text-black">Manage Announcements</h1>
-          <div className="flex items-center space-x-4">
-            <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center shadow-sm">
-              <UserIcon className="w-5 h-5 text-black" />
-            </div>
-          </div>
+
+          <h1 className="text-large font-bold text-center w-full">
+            Manage Announcement
+          </h1>
         </header>
 
         {/* Main Content */}

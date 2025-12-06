@@ -282,7 +282,7 @@ const confirmDelete = async (announcement: Announcement) => {
   });
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to-black p-4 flex gap-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to-black p-2 md:p-4 flex gap-2 md:gap-4">
 
       {actionLoading && <LoadingOverlay message={loadingMessage} />}
 
@@ -290,7 +290,7 @@ const confirmDelete = async (announcement: Announcement) => {
       <div
         className={`${
           sidebarOpen ? "w-64" : "w-16"
-        } bg-gray-50 shadow-lg rounded-xl transition-all duration-300 ease-in-out flex flex-col 
+        } bg-gray-50 shadow-lg rounded-xl transition-all duration-300 ease-out flex flex-col 
         ${sidebarOpen ? "fixed inset-y-0 left-0 z-50 md:static md:translate-x-0" : "hidden md:flex"}`}
       >
         {/* Logo + Close */}
@@ -387,16 +387,19 @@ const confirmDelete = async (announcement: Announcement) => {
 
       {/* Main Section */}
       <div className="flex-1 flex flex-col gap-4">
-        <header className="bg-gray-50 shadow-sm p-4 flex justify-between items-center rounded-xl text-black">
-          <button
-            onClick={toggleSidebar}
-            className="block md:hidden text-black hover:text-red-700 focus:outline-none"
-          >
-            <Bars3Icon className="w-6 h-6" />
-          </button>
-          <h1 className="text-large font-bold">Manage Announcements</h1>
-          <div className="flex items-center space-x-4"></div>
-        </header>
+        <header className="bg-gray-50 shadow-sm p-4 flex items-center justify-center relative rounded-xl text-black">
+            {/* Mobile sidebar toggle */}
+            <button
+              onClick={toggleSidebar}
+              className="block md:hidden absolute left-4 text-black hover:text-red-700 focus:outline-none"
+            >
+              <Bars3Icon className="w-6 h-6" />
+            </button>
+
+            <h1 className="text-large font-bold text-center w-full">
+              Manage Announcement
+            </h1>
+          </header>
 
         <main className="flex-1 bg-gray-50 rounded-xl p-6 shadow-sm overflow-auto text-black">
           {message && (
@@ -476,7 +479,7 @@ const confirmDelete = async (announcement: Announcement) => {
               {/* Pagination Controls */}
               {pagination.totalPages > 1 && (
                 <div className="w-full mt-5 flex justify-center">
-                  <div className="flex items-center gap-2 px-3 py-1.5">
+                <div className="flex flex-wrap items-center justify-center gap-2 px-3 py-1.5">
                     {/* Previous Button */}
                     <button
                       onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
@@ -557,7 +560,7 @@ const confirmDelete = async (announcement: Announcement) => {
             {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md text-black">
+          <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md text-black mx-2">
             <h3 className="text-xl font-semibold mb-4">
               {editingAnnouncement ? "Edit Announcement" : "Add Announcement"}
             </h3>
@@ -628,7 +631,7 @@ const confirmDelete = async (announcement: Announcement) => {
             {/* Confirmation Modal */}
             {confirmModal.visible && confirmModal.payload && (
               <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                <div className="bg-white rounded-lg shadow-lg w-full max-w-lg max-h-full overflow-auto text-black p-6 sm:p-8">
+                <div className="bg-white rounded-lg shadow-lg w-full max-w-lg max-h-full overflow-auto text-black p-6 sm:p-8 mx-2">
                   {confirmModal.action === "delete" && (
                     <>
                       <h3 className="text-xl font-semibold mb-4 text-red-700">Confirm Delete</h3>
@@ -693,7 +696,7 @@ const confirmDelete = async (announcement: Announcement) => {
             {/* Error Modal */}
             {errorModal.visible && (
               <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                <div className="bg-white rounded-lg shadow-lg w-full max-w-sm max-h-full overflow-auto text-black p-6 sm:p-8">
+                <div className="bg-white rounded-lg shadow-lg w-full max-w-sm max-h-full overflow-auto text-black p-6 sm:p-8 mx-2">
                   <p className="mb-4 text-red-700 font-medium">{errorModal.message}</p>
                   <div className="flex justify-end">
                     <button

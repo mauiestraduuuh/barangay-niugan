@@ -85,6 +85,9 @@ export default function StaffCertificateRequestsPage() {
   const [pickupTime, setPickupTime] = useState("");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"PENDING" | "" | "APPROVED" | "REJECTED" | "CLAIMED">("PENDING");
+  const [rejectConfirmOpen, setRejectConfirmOpen] = useState(false);
+  const [requestToReject, setRequestToReject] = useState<CertificateRequest | null>(null);
+
   // Pagination
   const [ITEMS_PER_PAGE, setITEMS_PER_PAGE] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
@@ -417,16 +420,20 @@ const showErrorModal = (message: string) => {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col gap-4">
-        <header className="bg-gray-50 shadow-sm p-4 flex justify-between items-center rounded-xl text-black">
-          <button
-            onClick={toggleSidebar}
-            className="block md:hidden text-black hover:text-red-700 focus:outline-none"
-          >
-            <Bars3Icon className="w-6 h-6" />
-          </button>
-          <h1 className="text-large font-bold">Certificate Requests</h1>
-          <div className="flex items-center space-x-4"></div>
-        </header>
+        <header className="bg-gray-50 shadow-sm p-4 flex items-center justify-center relative rounded-xl text-black">
+            {/* Mobile sidebar toggle */}
+            <button
+              onClick={toggleSidebar}
+              className="block md:hidden absolute left-4 text-black hover:text-red-700 focus:outline-none"
+            >
+              <Bars3Icon className="w-6 h-6" />
+            </button>
+
+            <h1 className="text-large font-bold text-center w-full">
+              Certificate Request
+            </h1>
+          </header>
+
 
         <main className="bg-gray-50 p-4 sm:p-6 rounded-xl shadow-sm overflow-auto">
                   {message && (
@@ -525,7 +532,10 @@ const showErrorModal = (message: string) => {
                                       <CheckIcon className="w-4 h-4" /> Approve
                                     </button>
                                     <button
-                                      onClick={() => openModal(req, "REJECT")}
+                                      onClick={() => {
+                                        setRequestToReject(req);
+                                        setRejectConfirmOpen(true);
+                                      }}
                                       className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded flex items-center gap-1 text-xs sm:text-sm"
                                     >
                                       <XCircleIcon className="w-4 h-4" /> Reject
@@ -643,6 +653,43 @@ const showErrorModal = (message: string) => {
               </div>
         
               {/* Modal */}
+              {rejectConfirmOpen && requestToReject && (
+                        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                          <div className="bg-white p-6 rounded-xl w-96 max-h-[90vh] flex flex-col gap-4 text-black">
+                            <h2 className="text-lg font-bold">Confirm Rejection</h2>
+
+                            <p>
+                              Are you sure you want to reject the certificate request for{" "}
+                              <span className="font-semibold">
+                                {requestToReject.resident.first_name} {requestToReject.resident.last_name}
+                              </span>?
+                            </p>
+
+                            <div className="flex justify-end gap-2 mt-4">
+                              <button
+                                onClick={() => setRejectConfirmOpen(false)}
+                                className="px-4 py-2 rounded bg-gray-300 hover:bg-gray-400"
+                                disabled={actionLoading}
+                              >
+                                Cancel
+                              </button>
+
+                              {/* Confirm → open real rejection modal with the textarea */}
+                              <button
+                                onClick={() => {
+                                  setRejectConfirmOpen(false);
+                                  openModal(requestToReject, "REJECT");
+                                }}
+                                className="px-4 py-2 rounded bg-red-500 hover:bg-red-600 text-white"
+                                disabled={actionLoading}
+                              >
+                                Yes, Reject
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      
               {modalOpen && selectedRequest && modalType && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 text-black">
                   <div className="bg-white p-6 rounded-xl w-96 max-h-[90vh] overflow-y-auto">
