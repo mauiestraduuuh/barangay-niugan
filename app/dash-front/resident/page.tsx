@@ -616,29 +616,75 @@ useEffect(() => {
                     </div>
 
                     <div className="md:col-span-2">
-                      <label
-                        htmlFor="photo_url"
-                        className="border border-gray-200 p-4 rounded-xl w-full flex items-center justify-center cursor-pointer hover:border-red-500"
-                      >
-                        {selectedFile ? selectedFile.name : "Choose a profile picture"}
+                      <label className="block text-gray-600 font-medium mb-2">
+                        Profile Picture
                       </label>
-                      <input
-                        type="file"
-                        id="photo_url"
-                        accept="image/*"
-                        onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
-                        className="hidden"
-                        disabled={actionLoading}
-                      />
-                      {selectedFile && (
-                        <div className="mt-2 flex justify-center">
+                      
+                      {/* Show current or preview image */}
+                      <div className="flex flex-col items-center gap-4">
+                        <div className="relative">
                           <img
-                            src={URL.createObjectURL(selectedFile)}
-                            alt="Preview"
-                            className="w-20 h-20 rounded-full object-cover border border-gray-300"
+                            src={
+                              selectedFile 
+                                ? URL.createObjectURL(selectedFile)
+                                : editingProfile.photo_url || "/default-profile.png"
+                            }
+                            alt="Profile Preview"
+                            className="w-32 h-32 rounded-full object-cover border-4 border-gray-200"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.src = "/default-profile.png";
+                            }}
+                          />
+                          {selectedFile && (
+                            <button
+                              type="button"
+                              onClick={() => setSelectedFile(null)}
+                              className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1.5 hover:bg-red-600 shadow-lg"
+                              disabled={actionLoading}
+                            >
+                              <XMarkIcon className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                        
+                        {/* File input - styled as button */}
+                        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                          <label
+                            htmlFor="photo_url"
+                            className="bg-red-500 hover:bg-red-600 text-white py-2.5 px-6 rounded-xl font-bold font-medium shadow-sm transition cursor-pointer text-center"
+                          >
+                            📸 Choose Photo
+                          </label>
+                          <input
+                            type="file"
+                            id="photo_url"
+                            accept="image/*"
+                            capture="environment"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                // Check file size (max 5MB)
+                                if (file.size > 5 * 1024 * 1024) {
+                                  setMessageType("error");
+                                  setMessage("Image must be less than 5MB");
+                                  e.target.value = "";
+                                  return;
+                                }
+                                setSelectedFile(file);
+                              }
+                            }}
+                            className="hidden"
+                            disabled={actionLoading}
                           />
                         </div>
-                      )}
+                        
+                        {selectedFile && (
+                          <p className="text-sm text-gray-600 text-center">
+                            {selectedFile.name} ({(selectedFile.size / 1024).toFixed(1)} KB)
+                          </p>
+                        )}
+                      </div>
                     </div>
                   </div>
 
@@ -693,130 +739,129 @@ useEffect(() => {
                           type="button"
                           className="absolute right-4 top-1/2 -translate-y-1/2 p-1 opacity-0 group-focus-within:opacity-100 transition-opacity"
                           onClick={() => setShowCurrent(!showCurrent)}
-                        >
+                          >
                           {showCurrent ? (
-                            <EyeSlashIcon className="h-5 w-5 text-gray-700" />
+                          <EyeSlashIcon className="h-5 w-5 text-gray-700" />
                           ) : (
-                            <EyeIcon className="h-5 w-5 text-gray-700" />
+                          <EyeIcon className="h-5 w-5 text-gray-700" />
                           )}
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="group">
-                      <label className="block text-gray-600 font-medium mb-1" htmlFor="new_password">
-                        New Password
-                      </label>
-                      <div className="relative">
-                        <input
-                          type={showNew ? "text" : "password"}
-                          id="new_password"
-                          name="new_password"
-                          value={passwords.new_password}
-                          onChange={handlePasswordChange}
-                          placeholder="Enter new password"
-                          disabled={actionLoading}
-                          className="border border-gray-200 p-4 rounded-xl w-full focus:ring-2 focus:ring-red-500 focus:border-red-400 shadow-sm transition disabled:opacity-50"
-                        />
-                        <button
-                          key={showNew ? 'slash' : 'eye'}
-                          type="button"
-                          className="absolute right-4 top-1/2 -translate-y-1/2 p-1 opacity-0 group-focus-within:opacity-100 transition-opacity"
-                          onClick={() => setShowNew(!showNew)}
-                        >
-                          {showNew ? (
-                            <EyeSlashIcon className="h-5 w-5 text-gray-700" />
-                          ) : (
-                            <EyeIcon className="h-5 w-5 text-gray-700" />
-                          )}
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="group">
-                      <label className="block text-gray-600 font-medium mb-1" htmlFor="confirm_password">
-                        Confirm New Password
-                      </label>
-                      <div className="relative">
-                        <input
-                          type={showConfirm ? "text" : "password"}
-                          id="confirm_password"
-                          name="confirm_password"
-                          value={passwords.confirm_password}
-                          onChange={handlePasswordChange}
-                          placeholder="Confirm new password"
-                          disabled={actionLoading}
-                          className="border border-gray-200 p-4 rounded-xl w-full focus:ring-2 focus:ring-red-500 focus:border-red-400 shadow-sm transition disabled:opacity-50"
-                        />
-                        <button
-                          key={showConfirm ? 'slash' : 'eye'}
-                          type="button"
-                          className="absolute right-4 top-1/2 -translate-y-1/2 p-1 opacity-0 group-focus-within:opacity-100 transition-opacity"
-                          onClick={() => setShowConfirm(!showConfirm)}
-                        >
-                          {showConfirm ? (
-                            <EyeSlashIcon className="h-5 w-5 text-gray-700" />
-                          ) : (
-                            <EyeIcon className="h-5 w-5 text-gray-700" />
-                          )}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-4 justify-end">
-                    <button
-                      onClick={() => setConfirmAction("changePassword")}
+                          </button>
+                          </div>
+                          </div>
+                          <div className="group">
+                  <label className="block text-gray-600 font-medium mb-1" htmlFor="new_password">
+                    New Password
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showNew ? "text" : "password"}
+                      id="new_password"
+                      name="new_password"
+                      value={passwords.new_password}
+                      onChange={handlePasswordChange}
+                      placeholder="Enter new password"
                       disabled={actionLoading}
-                      className="bg-red-500 hover:bg-red-600 text-white py-3 px-8 rounded-xl font-medium shadow-md transition duration-300 disabled:opacity-50 flex items-center gap-2"
+                      className="border border-gray-200 p-4 rounded-xl w-full focus:ring-2 focus:ring-red-500 focus:border-red-400 shadow-sm transition disabled:opacity-50"
+                    />
+                    <button
+                      key={showNew ? 'slash' : 'eye'}
+                      type="button"
+                      className="absolute right-4 top-1/2 -translate-y-1/2 p-1 opacity-0 group-focus-within:opacity-100 transition-opacity"
+                      onClick={() => setShowNew(!showNew)}
                     >
-                      {actionLoading ? (
-                        <>
-                          <LoadingSpinner size="sm" />
-                          Updating...
-                        </>
+                      {showNew ? (
+                        <EyeSlashIcon className="h-5 w-5 text-gray-700" />
                       ) : (
-                        "Change Password"
+                        <EyeIcon className="h-5 w-5 text-gray-700" />
                       )}
-                    </button>
-                    <button
-                      onClick={() => setActiveSection("overview")}
-                      disabled={actionLoading}
-                      className="bg-gray-100 hover:bg-gray-200 text-gray-800 py-3 px-8 rounded-xl font-medium shadow-md transition duration-300 disabled:opacity-50"
-                    >
-                      Cancel
                     </button>
                   </div>
                 </div>
-              )}
-              {confirmAction && (
-                <ConfirmationModal
-                  message={
-                    confirmAction === "updateProfile"
-                      ? "Are you sure you want to update your profile information?"
-                      : "Are you sure you want to change your password?"
-                  }
-                  details={
-                    confirmAction === "updateProfile"
-                      ? getChangedProfileFields()
-                      : [
-                          { label: "Current Password", value: "********" },
-                          { label: "New Password", value: passwords.new_password ? "********" : "" },
-                        ]
-                  }
-                  onConfirm={() => {
-                    if (confirmAction === "updateProfile") updateProfile();
-                    else if (confirmAction === "changePassword") changePassword();
-                    setConfirmAction(null);
-                  }}
-                  onCancel={() => setConfirmAction(null)}
-                  loading={actionLoading}
-                />
-              )}
-            </>
+
+                <div className="group">
+                  <label className="block text-gray-600 font-medium mb-1" htmlFor="confirm_password">
+                    Confirm New Password
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showConfirm ? "text" : "password"}
+                      id="confirm_password"
+                      name="confirm_password"
+                      value={passwords.confirm_password}
+                      onChange={handlePasswordChange}
+                      placeholder="Confirm new password"
+                      disabled={actionLoading}
+                      className="border border-gray-200 p-4 rounded-xl w-full focus:ring-2 focus:ring-red-500 focus:border-red-400 shadow-sm transition disabled:opacity-50"
+                    />
+                    <button
+                      key={showConfirm ? 'slash' : 'eye'}
+                      type="button"
+                      className="absolute right-4 top-1/2 -translate-y-1/2 p-1 opacity-0 group-focus-within:opacity-100 transition-opacity"
+                      onClick={() => setShowConfirm(!showConfirm)}
+                    >
+                      {showConfirm ? (
+                        <EyeSlashIcon className="h-5 w-5 text-gray-700" />
+                      ) : (
+                        <EyeIcon className="h-5 w-5 text-gray-700" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-4 justify-end">
+                <button
+                  onClick={() => setConfirmAction("changePassword")}
+                  disabled={actionLoading}
+                  className="bg-red-500 hover:bg-red-600 text-white py-3 px-8 rounded-xl font-medium shadow-md transition duration-300 disabled:opacity-50 flex items-center gap-2"
+                >
+                  {actionLoading ? (
+                    <>
+                      <LoadingSpinner size="sm" />
+                      Updating...
+                    </>
+                  ) : (
+                    "Change Password"
+                  )}
+                </button>
+                <button
+                  onClick={() => setActiveSection("overview")}
+                  disabled={actionLoading}
+                  className="bg-gray-100 hover:bg-gray-200 text-gray-800 py-3 px-8 rounded-xl font-medium shadow-md transition duration-300 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
           )}
-        </main>
-      </div>
-    </div>
-  );
+          {confirmAction && (
+            <ConfirmationModal
+              message={
+                confirmAction === "updateProfile"
+                  ? "Are you sure you want to update your profile information?"
+                  : "Are you sure you want to change your password?"
+              }
+              details={
+                confirmAction === "updateProfile"
+                  ? getChangedProfileFields()
+                  : [
+                      { label: "Current Password", value: "********" },
+                      { label: "New Password", value: passwords.new_password ? "********" : "" },
+                    ]
+              }
+              onConfirm={() => {
+                if (confirmAction === "updateProfile") updateProfile();
+                else if (confirmAction === "changePassword") changePassword();
+                setConfirmAction(null);
+              }}
+              onCancel={() => setConfirmAction(null)}
+              loading={actionLoading}
+            />
+          )}
+        </>
+      )}
+    </main>
+  </div>
+</div>
+);
 }
