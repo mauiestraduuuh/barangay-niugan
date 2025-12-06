@@ -109,6 +109,76 @@ export default function ResidentProfilePage() {
     confirm_password: "",
   });
 
+ const ConfirmationModal = ({
+  message,
+  details,
+  onConfirm,
+  onCancel,
+  loading = false,
+}: {
+  message: string;
+  details?: { label: string; value: string }[];
+  onConfirm: () => void;
+  onCancel: () => void;
+  loading?: boolean;
+}) => (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div className="bg-white rounded-xl p-6 w-96 flex flex-col gap-4 shadow-2xl max-h-[80vh] overflow-auto">
+      <p className="text-gray-800 font-medium">{message}</p>
+      {details && details.length > 0 && (
+        <div className="mt-2 border border-gray-200 rounded-lg p-3 bg-gray-50">
+          {details.map(({ label, value }) => (
+            <p key={label} className="text-gray-700 text-sm mb-1">
+              <span className="font-semibold">{label}:</span> {value || "N/A"}
+            </p>
+          ))}
+        </div>
+      )}
+      <div className="flex justify-end gap-4 mt-4">
+        <button
+          onClick={onCancel}
+          disabled={loading}
+          className="px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium transition disabled:opacity-50"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={onConfirm}
+          disabled={loading}
+          className="px-4 py-2 rounded-xl bg-red-500 hover:bg-red-600 text-white font-medium transition disabled:opacity-50"
+        >
+          {loading ? "Processing..." : "Confirm"}
+        </button>
+      </div>
+    </div>
+  </div>
+);
+
+const getChangedProfileFields = () => {
+  const changes: { label: string; value: string }[] = [];
+
+  if (editingProfile.first_name !== profile.first_name)
+    changes.push({ label: "First Name", value: editingProfile.first_name });
+
+  if (editingProfile.last_name !== profile.last_name)
+    changes.push({ label: "Last Name", value: editingProfile.last_name });
+
+  if ((editingProfile.birthdate?.split("T")[0] || "") !== (profile.birthdate?.split("T")[0] || ""))
+    changes.push({ label: "Birthdate", value: editingProfile.birthdate.split("T")[0] });
+
+  if ((editingProfile.contact_no || "") !== (profile.contact_no || ""))
+    changes.push({ label: "Contact Number", value: editingProfile.contact_no || "" });
+
+  if ((editingProfile.address || "") !== (profile.address || ""))
+    changes.push({ label: "Address", value: editingProfile.address || "" });
+
+  if (selectedFile) 
+    changes.push({ label: "Profile Photo", value: selectedFile.name });
+
+  return changes;
+};
+
+
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
@@ -119,6 +189,7 @@ export default function ResidentProfilePage() {
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [message, setMessage] = useState("");
+  const [confirmAction, setConfirmAction] = useState<null | "updateProfile" | "changePassword">(null);
   const [messageType, setMessageType] = useState<"success" | "error" | "">("");
   const [activeSection, setActiveSection] = useState<"overview" | "edit" | "password">("overview");
 
@@ -563,7 +634,7 @@ export default function ResidentProfilePage() {
 
                   <div className="flex gap-4 justify-end">
                     <button
-                      onClick={updateProfile}
+                      onClick={() => setConfirmAction("updateProfile")}
                       disabled={actionLoading}
                       className="bg-red-500 hover:bg-red-600 text-white py-3 px-8 rounded-xl font-medium shadow-md transition duration-300 disabled:opacity-50 flex items-center gap-2"
                     >
@@ -685,7 +756,7 @@ export default function ResidentProfilePage() {
 
                   <div className="flex gap-4 justify-end">
                     <button
-                      onClick={changePassword}
+                      onClick={() => setConfirmAction("changePassword")}
                       disabled={actionLoading}
                       className="bg-red-500 hover:bg-red-600 text-white py-3 px-8 rounded-xl font-medium shadow-md transition duration-300 disabled:opacity-50 flex items-center gap-2"
                     >
@@ -707,6 +778,30 @@ export default function ResidentProfilePage() {
                     </button>
                   </div>
                 </div>
+              )}
+              {confirmAction && (
+                <ConfirmationModal
+                  message={
+                    confirmAction === "updateProfile"
+                      ? "Are you sure you want to update your profile information?"
+                      : "Are you sure you want to change your password?"
+                  }
+                  details={
+                    confirmAction === "updateProfile"
+                      ? getChangedProfileFields()
+                      : [
+                          { label: "Current Password", value: "********" },
+                          { label: "New Password", value: passwords.new_password ? "********" : "" },
+                        ]
+                  }
+                  onConfirm={() => {
+                    if (confirmAction === "updateProfile") updateProfile();
+                    else if (confirmAction === "changePassword") changePassword();
+                    setConfirmAction(null);
+                  }}
+                  onCancel={() => setConfirmAction(null)}
+                  loading={actionLoading}
+                />
               )}
             </>
           )}

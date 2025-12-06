@@ -157,44 +157,49 @@ export default function DigitalID() {
     fetchDigitalID();
   }, []);
 
-  const handleDownload = async () => {
-    if (!cardRef.current || !resident) return;
+  const waitForImages = async (container: HTMLElement) => {
+  const images = container.querySelectorAll("img");
+  await Promise.all(
+    Array.from(images).map(async (img) => {
+      const imageEl = img as HTMLImageElement;
+      if (!imageEl.complete) await new Promise<void>((res) => {
+        imageEl.addEventListener("load", () => res());
+        imageEl.addEventListener("error", () => res());
+      });
+      try {
+        await imageEl.decode(); // ensures image is fully decoded in memory
+      } catch {}
+    })
+  );
+};
 
-    setDownloading(true);
-    const card = cardRef.current;
+ const handleDownload = async () => {
+  if (!cardRef.current || !resident) return;
 
-    // Wait for all images inside the card to load (profile + QR)
-    const images = card.querySelectorAll("img");
-    await Promise.all(
-      Array.from(images).map(
-        (img) =>
-          new Promise<void>((resolve) => {
-            if ((img as HTMLImageElement).complete) resolve();
-            else {
-              img.addEventListener("load", () => resolve());
-              img.addEventListener("error", () => resolve());
-            }
-          })
-      )
-    );
+  setDownloading(true);
+  const card = cardRef.current;
 
-    try {
-      const dataUrl = await toPng(card, { cacheBust: true, backgroundColor: "white" });
+  try {
+    // Wait for all images to fully load & decode
+    await waitForImages(card);
+    await new Promise((res) => setTimeout(res, 200)); // small delay for mobile rendering
 
-      const pdf = new jsPDF({ orientation: "landscape", unit: "px", format: "a4" });
-      const imgProps = pdf.getImageProperties(dataUrl);
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+    // Generate PNG and PDF
+    const dataUrl = await toPng(card, { cacheBust: true, backgroundColor: "white" });
+    const pdf = new jsPDF({ orientation: "landscape", unit: "px", format: "a4" });
+    const imgProps = pdf.getImageProperties(dataUrl);
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
 
-      pdf.addImage(dataUrl, "PNG", 0, 0, pdfWidth, pdfHeight);
-      pdf.save(`${resident.first_name}-${resident.last_name}-DigitalID.pdf`);
-    } catch (error) {
-      console.error("Error generating PDF:", error);
-      alert("Failed to download PDF. Please try again.");
-    } finally {
-      setDownloading(false);
-    }
-  };
+    pdf.addImage(dataUrl, "PNG", 0, 0, pdfWidth, pdfHeight);
+    pdf.save(`${resident.first_name}-${resident.last_name}-DigitalID.pdf`);
+  } catch (error) {
+    console.error("Error generating PDF:", error);
+    alert("Failed to download PDF. Please try again.");
+  } finally {
+    setDownloading(false);
+  }
+};
 
   const handleLogout = () => {
     if (window.confirm("Are you sure you want to log out?")) {
