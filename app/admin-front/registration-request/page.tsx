@@ -76,6 +76,9 @@ export default function AdminRegistrationRequestsPage() {
   const [statusFilter, setStatusFilter] = useState<"PENDING" | "" | "APPROVED" | "REJECTED">("PENDING");
   const [viewRequest, setViewRequest] = useState<RegistrationRequest | null>(null);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [rejectTargetId, setRejectTargetId] = useState<number | null>(null);
+
 
   // Pagination
   const [ITEMS_PER_PAGE, setITEMS_PER_PAGE] = useState(10);
@@ -392,7 +395,10 @@ export default function AdminRegistrationRequestsPage() {
                             </button>
 
                             <button
-                              onClick={() => handleApproveReject(req.request_id, false)}
+                                onClick={() => {
+                                  setRejectTargetId(req.request_id);
+                                  setShowRejectModal(true);
+                                }}
                               disabled={actionLoading}
                               className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded flex items-center gap-1 text-xs sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                             >
@@ -473,6 +479,40 @@ export default function AdminRegistrationRequestsPage() {
           )}
 
           {/* Modal*/}
+          {showRejectModal && (
+            <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-xl p-6 w-full max-w-sm shadow-2xl text-center">
+                <h2 className="text-lg font-bold text-gray-800 mb-3">Confirm Rejection</h2>
+                <p className="text-gray-600 mb-6">
+                  Are you sure you want to reject this registration request?
+                </p>
+
+                <div className="flex justify-center gap-3">
+                  <button
+                    onClick={() => {
+                      if (rejectTargetId !== null) {
+                        handleApproveReject(rejectTargetId, false);
+                      }
+                      setShowRejectModal(false);
+                    }}
+                    className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium"
+                  >
+                    Yes, Reject
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setShowRejectModal(false);
+                      setRejectTargetId(null);
+                    }}
+                    className="bg-gray-300 hover:bg-gray-400 text-black px-4 py-2 rounded-lg font-medium"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
           {viewRequest && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 sm:p-0">
               <div className="bg-white p-4 sm:p-6 rounded-xl shadow-lg w-full sm:w-1/2 relative overflow-auto max-h-[90vh] text-black">

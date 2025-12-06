@@ -89,8 +89,8 @@ export default function AdminCertificateRequestsPage() {
   const [pickupDate, setPickupDate] = useState("");
   const [pickupTime, setPickupTime] = useState("");
   const [search, setSearch] = useState("");
-  const [approveModalOpen, setApproveModalOpen] = useState(false);
-  const [requestToApprove, setRequestToApprove] = useState<CertificateRequest | null>(null);
+  const [rejectConfirmOpen, setRejectConfirmOpen] = useState(false);
+  const [requestToReject, setRequestToReject] = useState<CertificateRequest | null>(null);
   const [statusFilter, setStatusFilter] = useState<"PENDING" | "" | "APPROVED" | "REJECTED" | "CLAIMED">("PENDING");
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
   
@@ -496,16 +496,16 @@ export default function AdminCertificateRequestsPage() {
                         {req.status === "PENDING" && (
                           <>
                             <button
-                              onClick={() => {
-                                setRequestToApprove(req);
-                                setApproveModalOpen(true);
-                              }}
+                              onClick={() => handleApprove(req.request_id)}
                               className="bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded flex items-center gap-1 text-xs sm:text-sm"
                             >
                               <CheckIcon className="w-4 h-4" /> Approve
                             </button>
                             <button
-                              onClick={() => openModal(req, "REJECT")}
+                              onClick={() => {
+                                setRequestToReject(req);
+                                setRejectConfirmOpen(true);
+                              }}
                               className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded flex items-center gap-1 text-xs sm:text-sm"
                             >
                               <XCircleIcon className="w-4 h-4" /> Reject
@@ -623,62 +623,43 @@ export default function AdminCertificateRequestsPage() {
       </div>
 
       {/* Modal */}
-      {approveModalOpen && requestToApprove && (
-  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-    <div className="bg-white p-6 rounded-xl w-96 max-h-[90vh] flex flex-col gap-4 text-black">
-      <h2 className="text-lg font-bold">Confirm Approval</h2>
-      <p>
-        Are you sure you want to approve the certificate request for{" "}
-        <span className="font-semibold">
-          {requestToApprove.resident.first_name} {requestToApprove.resident.last_name}
-        </span>?
-      </p>
+      {rejectConfirmOpen && requestToReject && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-xl w-96 max-h-[90vh] flex flex-col gap-4 text-black">
+            <h2 className="text-lg font-bold">Confirm Rejection</h2>
 
-      <div className="flex justify-end gap-2 mt-4">
-        <button
-          onClick={() => setApproveModalOpen(false)}
-          className="px-4 py-2 rounded bg-gray-300 hover:bg-gray-400"
-          disabled={actionLoading}
-        >
-          Cancel
-        </button>
+            <p>
+              Are you sure you want to reject the certificate request for{" "}
+              <span className="font-semibold">
+                {requestToReject.resident.first_name} {requestToReject.resident.last_name}
+              </span>?
+            </p>
 
-        <button
-          onClick={async () => {
-            if (!token || !requestToApprove) return;
-            setActionLoading(true);
-            setLoadingMessage("Approving request...");
-            try {
-              await axios.put(
-                "/api/admin/certificate-request",
-                { request_id: requestToApprove.request_id, action: "APPROVE" },
-                { headers: { Authorization: `Bearer ${token}` } }
-              );
-              await fetchRequests();
-              setMessage("Request approved successfully");
-            } catch (err) {
-              console.error(err);
-              setMessage("Failed to approve request");
-            }
-            setActionLoading(false);
-            setApproveModalOpen(false);
-            setRequestToApprove(null);
-          }}
-          className="px-4 py-2 rounded bg-green-500 hover:bg-green-600 text-white flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-          disabled={actionLoading}
-        >
-          {actionLoading ? (
-            <>
-              <LoadingSpinner size="sm" /> Processing...
-            </>
-          ) : (
-            "Confirm"
-          )}
-        </button>
-      </div>
-    </div>
-  </div>
-)}
+            <div className="flex justify-end gap-2 mt-4">
+              <button
+                onClick={() => setRejectConfirmOpen(false)}
+                className="px-4 py-2 rounded bg-gray-300 hover:bg-gray-400"
+                disabled={actionLoading}
+              >
+                Cancel
+              </button>
+
+              {/* Confirm → open real rejection modal with the textarea */}
+              <button
+                onClick={() => {
+                  setRejectConfirmOpen(false);
+                  openModal(requestToReject, "REJECT");
+                }}
+                className="px-4 py-2 rounded bg-red-500 hover:bg-red-600 text-white"
+                disabled={actionLoading}
+              >
+                Yes, Reject
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {modalOpen && selectedRequest && modalType && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 text-black">
           <div className="bg-white p-6 rounded-xl w-96 max-h-[90vh] overflow-y-auto">
