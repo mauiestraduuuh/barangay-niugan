@@ -293,56 +293,71 @@ export default function ResidentProfilePage() {
     setPasswords({ ...passwords, [e.target.name]: e.target.value });
   };
 
-  const updateProfile = async () => {
-    if (!token) {
-      setMessageType("error");
-      setMessage("Unauthorized");
-      return;
+  // In the updateProfile function, replace it with this:
+const updateProfile = async () => {
+  if (!token) {
+    setMessageType("error");
+    setMessage("Unauthorized");
+    return;
+  }
+
+  // Validate required fields
+  if (!editingProfile.first_name?.trim() || !editingProfile.last_name?.trim()) {
+    setMessageType("error");
+    setMessage("First name and last name are required");
+    return;
+  }
+
+  setActionLoading(true);
+  setLoadingMessage("Updating profile...");
+
+  try {
+    const formData = new FormData();
+    formData.append("first_name", editingProfile.first_name.trim());
+    formData.append("last_name", editingProfile.last_name.trim());
+    
+    // Ensure birthdate is in correct format (YYYY-MM-DD)
+    if (editingProfile.birthdate) {
+      const dateOnly = editingProfile.birthdate.split("T")[0];
+      formData.append("birthdate", dateOnly);
+    }
+    
+    formData.append("contact_no", editingProfile.contact_no?.trim() || "");
+    formData.append("address", editingProfile.address?.trim() || "");
+    
+    if (selectedFile) {
+      formData.append("photo", selectedFile);
     }
 
-    setActionLoading(true);
-    setLoadingMessage("Updating profile...");
-
-    try {
-      const formData = new FormData();
-      formData.append("first_name", editingProfile.first_name);
-      formData.append("last_name", editingProfile.last_name);
-      formData.append("birthdate", editingProfile.birthdate);
-      formData.append("contact_no", editingProfile.contact_no || "");
-      formData.append("address", editingProfile.address || "");
-      
-      if (selectedFile) {
-        formData.append("photo", selectedFile);
-      }
-
-      const res = await axios.put("/api/dash/resident", formData, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          // DON'T set Content-Type - browser will set it with boundary
-        },
-      });
-      
-      setProfile(res.data);
-      setEditingProfile(res.data);
-      
-      // Cleanup after successful upload
-      setSelectedFile(null);
-      if (previewUrl) {
-        URL.revokeObjectURL(previewUrl);
-        setPreviewUrl(null);
-      }
-      
-      setMessageType("success");
-      setMessage("Profile updated successfully");
-      setActiveSection("overview");
-    } catch (err: any) {
-      console.error(err);
-      setMessageType("error");
-      setMessage(err.response?.data?.error || "Failed to update profile");
-    } finally {
-      setActionLoading(false);
+    const res = await axios.put("/api/dash/resident", formData, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        // Browser will automatically set Content-Type with boundary for FormData
+      },
+    });
+    
+    setProfile(res.data);
+    setEditingProfile(res.data);
+    
+    // Cleanup after successful upload
+    setSelectedFile(null);
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+      setPreviewUrl(null);
     }
-  };
+    
+    setMessageType("success");
+    setMessage("Profile updated successfully");
+    setActiveSection("overview");
+  } catch (err: any) {
+    console.error("Update profile error:", err);
+    setMessageType("error");
+    setMessage(err.response?.data?.error || "Failed to update profile");
+  } finally {
+    setActionLoading(false);
+    setLoadingMessage("");
+  }
+};
 
   const changePassword = async () => {
     if (passwords.new_password !== passwords.confirm_password) {

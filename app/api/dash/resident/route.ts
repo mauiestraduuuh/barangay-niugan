@@ -4,8 +4,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/../lib/prisma";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import fs from "fs";
-import path from "path";
 
 const JWT_SECRET = process.env.JWT_SECRET!;
 
@@ -14,7 +12,7 @@ function getUserIdFromToken(req: NextRequest): number | null {
   try {
     const authHeader = req.headers.get("authorization");
     if (!authHeader) return null;
-    const token = authHeader.split(" ")[1]; // expects "Bearer <token>"
+    const token = authHeader.split(" ")[1];
     if (!token) return null;
     const decoded = jwt.verify(token, JWT_SECRET) as { userId: number };
     return decoded.userId;
@@ -65,7 +63,6 @@ export async function GET(req: NextRequest) {
       role: resident.user?.role,
       account_created: resident.user?.created_at,
     };
-
 
     return NextResponse.json(data);
   } catch (error) {
@@ -122,28 +119,69 @@ export async function PUT(req: NextRequest) {
     const address = formData.get('address') as string;
     const photo = formData.get('photo') as File | null;
 
+    // Validate required fields
+    if (!first_name || !last_name) {
+      return NextResponse.json(
+        { error: "First name and last name are required" }, 
+        { status: 400 }
+      );
+    }
+
+    // Validate birthdate format
+    if (birthdate && isNaN(new Date(birthdate).getTime())) {
+      return NextResponse.json(
+        { error: "Invalid birthdate format" }, 
+        { status: 400 }
+      );
+    }
+
     let photo_url: string | undefined = undefined;
 
-    if (photo) {
-      const buffer = Buffer.from(await photo.arrayBuffer());
-      const ext = photo.name.split('.').pop() || 'jpg'; // default to jpg if no ext
-      const filename = `${userId}_${Date.now()}.${ext}`;
-      const uploadDir = path.join(process.cwd(), 'public', 'uploads');
-      fs.mkdirSync(uploadDir, { recursive: true });
-      const filepath = path.join(uploadDir, filename);
-      fs.writeFileSync(filepath, buffer);
-      photo_url = `/uploads/${filename}`;
+    if (photo && photo.size > 0) {
+      // Validate file size (5MB limit)
+      const maxSize = 5 * 1024 * 1024;
+      if (photo.size > maxSize) {
+        return NextResponse.json(
+          { error: "Image size must be less than 5MB" }, 
+          { status: 400 }
+        );
+      }
+
+      // Validate file type
+      const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/heic'];
+      if (!validTypes.includes(photo.type)) {
+        return NextResponse.json(
+          { error: "Invalid file type. Please upload JPEG, PNG, or WEBP image" }, 
+          { status: 400 }
+        );
+      }
+
+      try {
+        const buffer = Buffer.from(await photo.arrayBuffer());
+        const base64Image = buffer.toString('base64');
+        const mimeType = photo.type;
+        
+        // Store as data URL (works everywhere including Vercel)
+        photo_url = `data:${mimeType};base64,${base64Image}`;
+      } catch (uploadError) {
+        console.error("File upload error:", uploadError);
+        return NextResponse.json(
+          { error: "Failed to process image" }, 
+          { status: 500 }
+        );
+      }
     }
 
     const resident = await prisma.resident.findFirst({ where: { user_id: userId } });
-    if (!resident) return NextResponse.json({ error: "Resident not found" }, { status: 404 });
+    if (!resident) 
+      return NextResponse.json({ error: "Resident not found" }, { status: 404 });
 
     const updateData: any = {
-      first_name,
-      last_name,
+      first_name: first_name.trim(),
+      last_name: last_name.trim(),
       birthdate: birthdate ? new Date(birthdate) : undefined,
-      address,
-      contact_no,
+      address: address?.trim() || null,
+      contact_no: contact_no?.trim() || null,
     };
 
     if (photo_url !== undefined) {
@@ -157,7 +195,7 @@ export async function PUT(req: NextRequest) {
 
     return NextResponse.json(serializeResident(updatedResident));
   } catch (err) {
-    console.error(err);
+    console.error("Update resident error:", err);
     return NextResponse.json({ error: "Failed to update resident" }, { status: 500 });
   }
 }
