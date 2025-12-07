@@ -413,7 +413,11 @@ export default function ManageAnnouncements() {
               <p className="text-gray-600">Loading announcements...</p>
             </div>
           ) : announcements.length === 0 ? (
-            <div className="text-center py-20 text-gray-600">No announcements yet.</div>
+            <div className="text-center py-20 text-gray-600">
+              {filterType === "active"
+                ? "No latest announcements available."
+                : "No expired announcements found."}
+            </div>
           ) : (
             <>
               <div className="space-y-4">

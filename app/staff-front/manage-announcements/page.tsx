@@ -32,6 +32,7 @@ interface Announcement {
 export default function StaffManageAnnouncements() {
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [filterType, setFilterType] = useState<"active" | "expired">("active");
   const [activeItem, setActiveItem] = useState("announcement");
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(false);
@@ -329,7 +330,11 @@ export default function StaffManageAnnouncements() {
           {loading ? (
             <div className="text-center py-10">Loading...</div>
           ) : announcements.length === 0 ? (
-            <div className="text-center text-gray-500 py-10">No announcements yet.</div>
+            <div className="text-center py-20 text-gray-600">
+              {filterType === "active"
+                ? "No latest announcements available."
+                : "No expired announcements found."}
+            </div>
           ) : (
             <div className="space-y-4">
               {announcements.map((announcement) => (

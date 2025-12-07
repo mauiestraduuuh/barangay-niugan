@@ -258,8 +258,9 @@ export default function StaffProfilePage() {
     }
   };
 
-  const handleLogout = () => {
-    if (window.confirm("Are you sure you want to log out?")) {
+ const handleLogout = () => {
+    const confirmed = window.confirm("Are you sure you want to log out?");
+    if (confirmed) {
       localStorage.removeItem("token");
       router.push("/auth-front/login");
     }

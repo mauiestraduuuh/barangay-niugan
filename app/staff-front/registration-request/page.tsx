@@ -157,8 +157,9 @@ export default function StaffRegistrationRequestsPage() {
     return () => clearInterval(interval);
   }, []);
 
-  const handleLogout = () => {
-    if (window.confirm("Are you sure you want to log out?")) {
+ const handleLogout = () => {
+    const confirmed = window.confirm("Are you sure you want to log out?");
+    if (confirmed) {
       localStorage.removeItem("token");
       router.push("/auth-front/login");
     }
@@ -330,14 +331,22 @@ export default function StaffRegistrationRequestsPage() {
           {message && <p className="text-center text-white bg-gray-900 p-2 rounded mb-4">{message}</p>}
 
           {loading ? (
-            <div className="flex flex-col items-center justify-center py-20 gap-4">
-              <LoadingSpinner size="lg" />
-              <p className="text-gray-600">Loading requests...</p>
-            </div>
-          ) : requests.length === 0 ? (
-            <p className="text-center">No registration requests found</p>
-          ) : (
-            <div className="overflow-x-auto">
+          <div className="flex flex-col items-center justify-center py-20 gap-4">
+            <LoadingSpinner size="lg" />
+            <p className="text-gray-600">Loading requests...</p>
+          </div>
+        ) : filteredRequests.length === 0 ? (
+          <p className="text-center text-gray-700 py-10">
+            {statusFilter === "PENDING"
+              ? "No pending requests"
+              : statusFilter === "APPROVED"
+              ? "No approved requests"
+              : statusFilter === "REJECTED"
+              ? "No rejected requests"
+              : "No registration requests found"}
+          </p>
+        ) : (
+          <div className="overflow-x-auto">
               <table className="min-w-full border-collapse bg-white shadow-sm rounded-xl overflow-hidden text-sm sm:text-base text-black">
                 <thead className="bg-gradient-to-br from-black via-red-800 to-black text-white">
                   <tr>

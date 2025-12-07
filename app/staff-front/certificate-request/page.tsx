@@ -114,7 +114,9 @@ const showErrorModal = (message: string) => {
   setErrorModalOpen(true);
 };
 
-  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+  const token = localStorage.getItem("token");
+  if (!token) return showErrorModal("Unauthorized");
+
 
   // Staff navigation - NO Feedback, Reports, Staff Accounts (Requirement E)
   const features = [
@@ -251,72 +253,68 @@ const showErrorModal = (message: string) => {
     setModalOpen(false);
   };
 
-  const handleModalSubmit = async () => {
-    if (!selectedRequest || !modalType || !token) return;
+      const handleModalSubmit = async () => {
+        if (!selectedRequest || !modalType || !token) return;
 
-    setActionLoading(true);
-
-    try {
-      if (modalType === "REJECT") {
-        setLoadingMessage("Rejecting request...");
-        await axios.put(
-          "/api/staff/certificate-request",
-          { request_id: Number(selectedRequest.request_id), action: "REJECT", rejection_reason: remarks },
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        setMessage("Request rejected successfully");
-      } else if (modalType === "SCHEDULE") {
-        if (!pickupDate || !pickupTime) {
-          setMessage("Pickup date and time are required");
-          setActionLoading(false);
-          return;
-        }
+        setActionLoading(true);
 
         try {
-          setLoadingMessage("Scheduling pickup...");
-          await axios.put(
-            "/api/staff/certificate-request",
-            {
-              request_id: Number(selectedRequest.request_id),
-              action: "SCHEDULE_PICKUP",
-              pickup_date: pickupDate,
-              pickup_time: pickupTime,
-            },
-            { headers: { Authorization: `Bearer ${token}` } }
-          );
+          if (modalType === "REJECT") {
+            // Open confirm modal instead of executing API directly
+            setRequestToReject(selectedRequest);
+            setRejectConfirmOpen(true);
+            setModalOpen(false);
+            setActionLoading(false);
+            return;
+          } else if (modalType === "SCHEDULE") {
+            if (!pickupDate || !pickupTime) {
+              setMessage("Pickup date and time are required");
+              setActionLoading(false);
+              return;
+            }
 
-          setMessage("Pickup scheduled successfully");
+            setLoadingMessage("Scheduling pickup...");
+            await axios.put(
+              "/api/staff/certificate-request",
+              {
+                request_id: Number(selectedRequest.request_id),
+                action: "SCHEDULE_PICKUP",
+                pickup_date: pickupDate,
+                pickup_time: pickupTime,
+              },
+              { headers: { Authorization: `Bearer ${token}` } }
+            );
+            setMessage("Pickup scheduled successfully");
+          } else if (modalType === "ATTACH") {
+            setLoadingMessage("Uploading file...");
+            const formData = new FormData();
+            formData.append("request_id", selectedRequest.request_id);
+            if (file) formData.append("file", file);
+            if (remarks) formData.append("remarks", remarks);
+            await axios.post("/api/staff/certificate-request", formData, {
+              headers: { Authorization: `Bearer ${token}`, "Content-Type": "multipart/form-data" },
+            });
+            setMessage("File attached successfully");
+          } else if (modalType === "CLAIMED") {
+            setLoadingMessage("Marking as claimed...");
+            await axios.put(
+              "/api/staff/certificate-request",
+              { request_id: Number(selectedRequest.request_id), action: "CLAIMED" },
+              { headers: { Authorization: `Bearer ${token}` } }
+            );
+            setMessage("Certificate marked as claimed");
+          }
+
+          closeModal();
+          await fetchRequests();
         } catch (err: any) {
-          console.error("Backend error:", err.response?.data || err);
-          setMessage(err.response?.data?.error || "Failed to update request");
+          console.error(err.response?.data || err);
+          setMessage(err.response?.data?.error || "Action failed");
+          setActionLoading(false);
         }
-      } else if (modalType === "ATTACH") {
-        setLoadingMessage("Uploading file...");
-        const formData = new FormData();
-        formData.append("request_id", selectedRequest.request_id);
-        if (file) formData.append("file", file);
-        if (remarks) formData.append("remarks", remarks);
-        await axios.post("/api/staff/certificate-request", formData, {
-          headers: { Authorization: `Bearer ${token}`, "Content-Type": "multipart/form-data" },
-        });
-        setMessage("File attached successfully");
-      } else if (modalType === "CLAIMED") {
-        setLoadingMessage("Marking as claimed...");
-        await axios.put(
-          "/api/staff/certificate-request",
-          { request_id: Number(selectedRequest.request_id), action: "CLAIMED" },
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        setMessage("Certificate marked as claimed");
-      }
-      closeModal();
-      fetchRequests();
-    } catch (err: any) {
-      console.error(err.response?.data || err);
-      setMessage(err.response?.data?.error || "Action failed");
-    }
-    setActionLoading(false);
-  };
+
+        setActionLoading(false);
+      };
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
  
@@ -448,8 +446,9 @@ const showErrorModal = (message: string) => {
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
                     />
+                   <div className="relative w-full md:w-auto">
                     <select
-                      className="border p-2 rounded"
+                      className="appearance-none bg-white border border-gray-300 rounded-lg px-3 py-2 pr-8 text-sm font-medium text-gray-700 shadow-sm hover:border-red-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-200"
                       value={statusFilter}
                       onChange={(e) => setStatusFilter(e.target.value as any)}
                     >
@@ -459,17 +458,43 @@ const showErrorModal = (message: string) => {
                       <option value="REJECTED">Rejected</option>
                       <option value="CLAIMED">Claimed</option>
                     </select>
+
+                    {/* Chevron Icon */}
+                    <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                      <svg
+                        className="w-4 h-4 text-gray-400"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M19 9l-7 7-7-7"
+                        />
+                      </svg>
+                    </div>
+                  </div>
                   </div>
         
                   {loading ? (
-                    <div className="flex flex-col items-center justify-center py-12 gap-4">
-                      <LoadingSpinner size="lg" />
-                      <p className="text-gray-600">Loading certificate requests...</p>
-                    </div>
-                  ) : filteredRequests.length === 0 ? (
-                    <p className="text-center py-12 text-gray-600">No certificate requests found</p>
-                  ) : (
-                    <div className="overflow-x-auto">
+                  <div className="flex flex-col items-center justify-center py-20 gap-4">
+                    <LoadingSpinner size="lg" />
+                    <p className="text-gray-600">Loading requests...</p>
+                  </div>
+                ) : filteredRequests.length === 0 ? (
+                  <p className="text-center text-gray-700 py-10">
+                    {statusFilter === "PENDING"
+                      ? "No pending requests"
+                      : statusFilter === "APPROVED"
+                      ? "No approved requests"
+                      : statusFilter === "REJECTED"
+                      ? "No rejected requests"
+                      : "No registration requests found"}
+                  </p>
+                ) : (
+                  <div className="overflow-x-auto">
                       <table className="min-w-full border-collapse bg-white shadow-sm rounded-xl overflow-hidden text-sm sm:text-base">
                         <thead className="bg-gradient-to-br from-black via-red-800 to-black text-white">
                           <tr>
@@ -532,10 +557,7 @@ const showErrorModal = (message: string) => {
                                       <CheckIcon className="w-4 h-4" /> Approve
                                     </button>
                                     <button
-                                      onClick={() => {
-                                        setRequestToReject(req);
-                                        setRejectConfirmOpen(true);
-                                      }}
+                                      onClick={() => openModal(req, "REJECT")}
                                       className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded flex items-center gap-1 text-xs sm:text-sm"
                                     >
                                       <XCircleIcon className="w-4 h-4" /> Reject
@@ -676,10 +698,31 @@ const showErrorModal = (message: string) => {
 
                               {/* Confirm → open real rejection modal with the textarea */}
                               <button
-                                onClick={() => {
-                                  setRejectConfirmOpen(false);
-                                  openModal(requestToReject, "REJECT");
-                                }}
+                                onClick={async () => {
+                                    setRejectConfirmOpen(false);
+                                    setActionLoading(true);
+                                    setLoadingMessage("Rejecting request...");
+
+                                    try {
+                                      await axios.put(
+                                        "/api/staff/certificate-request",
+                                        {
+                                          request_id: Number(requestToReject.request_id),
+                                          action: "REJECT",
+                                          rejection_reason: remarks,
+                                        },
+                                        { headers: { Authorization: `Bearer ${token}` } }
+                                      );
+
+                                      setMessage("Request rejected successfully");
+                                      await fetchRequests();
+                                    } catch (err: any) {
+                                      console.error(err);
+                                      setMessage("Failed to reject request");
+                                    }
+
+                                    setActionLoading(false);
+                                  }}
                                 className="px-4 py-2 rounded bg-red-500 hover:bg-red-600 text-white"
                                 disabled={actionLoading}
                               >

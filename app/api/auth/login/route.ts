@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
       { expiresIn: "2h" }
     );
 
-    let redirectUrl = "/";
+    let redirectUrl = "/barangay-niugan"; // Default fallback
     let userInfo: any = { id: user.user_id, role: user.role, username: user.username };
 
     if (user.role === "RESIDENT" && user.residents.length > 0) {
@@ -90,7 +90,7 @@ export async function POST(req: NextRequest) {
         contact_no,
         photo_url,
         household_number,
-        head_id: head_id ? head_id.toString() : null, // serialize BigInt
+        head_id: head_id ? head_id.toString() : null,
       };
 
       if (registrationRequest?.temp_password) {
@@ -134,6 +134,8 @@ export async function POST(req: NextRequest) {
       redirectUrl = "/admin-front/the-dash-admin";
     }
 
+    console.log(`✅ Login successful - User: ${username}, Role: ${user.role}, Redirect: ${redirectUrl}`);
+
     return NextResponse.json({
       message: "Login successful",
       token,
@@ -141,7 +143,7 @@ export async function POST(req: NextRequest) {
       redirectUrl,
     });
   } catch (error) {
-    console.error("Login error:", error);
+    console.error("❌ Login error:", error);
     return NextResponse.json(
       { message: "Login failed", error: error instanceof Error ? error.message : String(error) },
       { status: 500 }

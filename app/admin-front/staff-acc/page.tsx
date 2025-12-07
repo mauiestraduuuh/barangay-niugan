@@ -164,9 +164,12 @@ export default function StaffAccounts() {
 
   const [searchQuery, setSearchQuery] = useState("");
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    router.push("/auth-front/login");
+ const handleLogout = () => {
+    const confirmed = window.confirm("Are you sure you want to log out?");
+    if (confirmed) {
+      localStorage.removeItem("token");
+      router.push("/auth-front/login");
+    }
   };
 
   // utility to format ISO date -> readable

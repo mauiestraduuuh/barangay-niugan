@@ -161,10 +161,9 @@ export default function AdminFeedbackPage() {
     setLoading(false);
   };
 
-  const replyFeedback = async () => {
+const replyFeedback = async () => {
   if (!selectedFeedback || !token) return setMessage("Unauthorized");
 
-  // Require a file
   if (!replyFile) {
     setMessage("Please attach a file/photo before replying.");
     return;
@@ -173,11 +172,12 @@ export default function AdminFeedbackPage() {
   const formData = new FormData();
   formData.append("feedbackId", selectedFeedback.feedback_id);
   formData.append("response", replyText);
-  formData.append("file", replyFile); // file is guaranteed here
+  formData.append("status", "IN_PROGRESS");
+  formData.append("file", replyFile);
 
   setActionLoading(true);
   try {
-    await axios.post("/api/admin/feedback", formData, {
+    await axios.patch("/api/admin/feedback", formData, {
       headers: {
         Authorization: `Bearer ${token}`,
         "Content-Type": "multipart/form-data",
@@ -187,7 +187,7 @@ export default function AdminFeedbackPage() {
     setReplyText("");
     setReplyFile(null);
     fetchFeedbackAndCategories();
-    setMessage("Reply sent successfully");
+    setMessage("Reply sent successfully with proof attached");
   } catch (err) {
     console.error(err);
     setMessage("Failed to send reply");
@@ -199,7 +199,6 @@ export default function AdminFeedbackPage() {
   const updateStatus = async (feedbackId: string, status: string, currentResponse?: string) => {
   if (!token) return setMessage("Unauthorized");
 
-  // Prevent resolving without reply
   if (status === "RESOLVED" && (!currentResponse || currentResponse.trim() === "")) {
     setMessage("Cannot mark as RESOLVED without a response.");
     return;

@@ -257,10 +257,12 @@ const confirmDelete = async (announcement: Announcement) => {
 };
 
 
-  // Logout
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    router.push("/auth-front/login");
+ const handleLogout = () => {
+    const confirmed = window.confirm("Are you sure you want to log out?");
+    if (confirmed) {
+      localStorage.removeItem("token");
+      router.push("/auth-front/login");
+    }
   };
 
   // Pagination handlers

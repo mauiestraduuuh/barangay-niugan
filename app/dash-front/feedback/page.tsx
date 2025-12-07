@@ -31,6 +31,7 @@ interface Feedback {
   response?: string | null;
   submitted_at: string;
   proof_file? : string;
+  response_proof_file?: string | null;
   responded_at?: string | null;
   category?: {
     category_id: number;
@@ -90,6 +91,9 @@ const SkeletonTableRow = () => (
       <div className="h-4 bg-gray-200 rounded w-1/3 mx-auto"></div>
     </td>
     <td className="p-2 sm:p-4 border-b border-gray-200">
+      <div className="h-4 bg-gray-200 rounded w-1/3 mx-auto"></div>
+    </td>
+    <td className="p-2 sm:p-4 border-b border-gray-200">
       <div className="h-4 bg-gray-200 rounded w-2/3"></div>
     </td>
     <td className="p-2 sm:p-4 border-b border-gray-200">
@@ -134,22 +138,39 @@ export default function FeedbackPage() {
   const fetchResident = async () => {
     try {
       const user = JSON.parse(localStorage.getItem("user") || "{}");
-      const res = await fetch("/api/dash/the-dash", { headers: { "x-user-id": user.id } });
+      if (!user.id) return;
+      
+      const res = await fetch("/api/dash/the-dash", { 
+        headers: { "x-user-id": user.id }
+      });
+      
+      if (!res.ok) return;
+      
       const data = await res.json();
-      if (res.ok) setResident(data.resident);
+      if (data && data.resident) {
+        setResident(data.resident);
+      }
     } catch (error) {
-      console.error(error);
+      // Silently handle errors - resident data is optional
     }
   };
 
   const fetchFeedbackData = async () => {
     if (!token) return;
     try {
-      const res = await axios.get("/api/dash/feedback", { headers: { Authorization: `Bearer ${token}` } });
-      setFeedbacks(res.data.feedbacks);
-      setCategories(res.data.categories);
+      const res = await axios.get("/api/dash/feedback", { 
+        headers: { Authorization: `Bearer ${token}` },
+        validateStatus: (status) => status < 500
+      });
+      
+      if (res.data && res.data.feedbacks && res.data.categories) {
+        setFeedbacks(res.data.feedbacks);
+        setCategories(res.data.categories);
+      }
     } catch (err) {
-      console.error(err);
+      console.error("Error fetching feedback data:", err);
+      setFeedbacks([]);
+      setCategories([]);
     }
   };
 
@@ -198,22 +219,27 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
           Authorization: `Bearer ${token}`,
           "Content-Type": "multipart/form-data",
         },
+        validateStatus: (status) => status < 500
       });
 
-      setFeedbacks([res.data.feedback, ...feedbacks]);
-      setSelectedGroup("");
-      setSelectedCategory("");
-      setFile(null);
-      setSelectedFile(null);
-      setInfoMessage("Feedback submitted successfully");
-    setTimeout(() => {
-      setInfoMessage("");
-    }, 3000);
-    if (fileInputRef.current) fileInputRef.current.value = "";
-    } catch (err) {
-      console.error(err);
-      setInfoMessage("Failed to submit feedback");
+      if (res.data && res.data.feedback) {
+        setFeedbacks([res.data.feedback, ...feedbacks]);
+        setSelectedGroup("");
+        setSelectedCategory("");
+        setFile(null);
+        setSelectedFile(null);
+        setInfoMessage("Feedback submitted successfully");
         setTimeout(() => {
+          setInfoMessage("");
+        }, 3000);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+      } else {
+        throw new Error("Invalid response from server");
+      }
+    } catch (err) {
+      console.error("Error submitting feedback:", err);
+      setInfoMessage("Failed to submit feedback");
+      setTimeout(() => {
         setInfoMessage("");
       }, 3000);
     }
@@ -604,6 +630,7 @@ const filterRequests = () => {
                           <th className="p-3 sm:p-4 border-b border-gray-200">Status</th>
                           <th className="p-3 sm:p-4 border-b border-gray-200">Response</th>
                           <th className="p-3 sm:p-4 border-b border-gray-200">Proof</th>
+                          <th className="p-3 sm:p-4 border-b border-gray-200">Response Proof</th>
                           <th className="p-3 sm:p-4 border-b border-gray-200">Submitted At</th>
                           <th className="p-3 sm:p-4 border-b border-gray-200">Responded At</th>
                         </tr>
@@ -620,7 +647,7 @@ const filterRequests = () => {
                           </>
                         ) : filteredFeedbacks.length === 0 ? (
                           <tr>
-                            <td colSpan={6} className="p-8 text-center text-gray-500">
+                            <td colSpan={7} className="p-8 text-center text-gray-500">
                               No complaints found
                             </td>
                           </tr>
@@ -641,6 +668,18 @@ const filterRequests = () => {
                                     className="text-indigo-600 hover:text-indigo-800 font-medium underline transition-colors duration-200 text-xs sm:text-sm"
                                   >
                                     View Proof
+                                  </button>
+                                ) : (
+                                  "-"
+                                )}
+                              </td>
+                              <td className="p-2 sm:p-4 border-b border-gray-200 text-center">
+                                {fb.status === "RESOLVED" && fb.response_proof_file ? (
+                                  <button
+                                    onClick={() => fb.response_proof_file && setModalImage(fb.response_proof_file)}
+                                    className="text-green-600 hover:text-green-800 font-medium underline transition-colors duration-200 text-xs sm:text-sm"
+                                  >
+                                    View Response
                                   </button>
                                 ) : (
                                   "-"

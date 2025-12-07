@@ -5,10 +5,10 @@ import jwt from "jsonwebtoken";
 import { supabase } from "@/../lib/supabase";
 
 const JWT_SECRET = process.env.JWT_SECRET!;
-const BUCKET = process.env.SUPABASE_PUBLIC_BUCKET!; // use uploads bucket
+const BUCKET = process.env.SUPABASE_PUBLIC_BUCKET!;
 
 export const config = {
-  api: { bodyParser: false }, // for FormData
+  api: { bodyParser: false },
 };
 
 // --- Helpers ---
@@ -135,9 +135,13 @@ export async function POST(req: NextRequest) {
       include: { category: true },
     });
 
-    feedback.proof_file = getPublicFileUrl(filePath);
+    const formattedFeedback = {
+      ...feedback,
+      proof_file: getPublicFileUrl(filePath),
+      response_proof_file: null,
+    };
 
-    return NextResponse.json({ feedback });
+    return NextResponse.json({ feedback: formattedFeedback });
   } catch (err) {
     console.error("POST /api/dash/feedback failed:", err);
     return NextResponse.json({ message: "Failed to submit feedback" }, { status: 500 });

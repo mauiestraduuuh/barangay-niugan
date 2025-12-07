@@ -346,8 +346,16 @@ export default function AdminRegistrationRequestsPage() {
               <LoadingSpinner size="lg" />
               <p className="text-gray-600">Loading requests...</p>
             </div>
-          ) : requests.length === 0 ? (
-            <p className="text-center">No registration requests found</p>
+          ) : filteredRequests.length === 0 ? (
+            <p className="text-center text-gray-700 py-10">
+              {statusFilter === "PENDING"
+                ? "No pending requests"
+                : statusFilter === "APPROVED"
+                ? "No approved requests"
+                : statusFilter === "REJECTED"
+                ? "No rejected requests"
+                : "No registration requests found"}
+            </p>
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full border-collapse bg-white shadow-sm rounded-xl overflow-hidden text-sm sm:text-base text-black">

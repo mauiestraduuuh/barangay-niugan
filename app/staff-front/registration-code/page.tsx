@@ -261,12 +261,12 @@ export default function StaffRegistrationCodePage() {
     { name: "announcement", label: "Announcements", icon: MegaphoneIcon },
   ];
 
-  const handleLogout = () => {
-    setConfirmCallback(() => () => {
+ const handleLogout = () => {
+    const confirmed = window.confirm("Are you sure you want to log out?");
+    if (confirmed) {
       localStorage.removeItem("token");
       router.push("/auth-front/login");
-    });
-    setShowConfirm(true);
+    }
   };
 
   return (

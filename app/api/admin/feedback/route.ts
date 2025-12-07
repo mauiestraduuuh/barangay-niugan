@@ -8,6 +8,10 @@ import { supabase } from "@/../lib/supabase";
 const JWT_SECRET = process.env.JWT_SECRET!;
 const BUCKET = process.env.SUPABASE_PUBLIC_BUCKET!;
 
+export const config = {
+  api: { bodyParser: false },
+};
+
 function getPublicFileUrl(filePath?: string | null) {
   if (!filePath) return null;
   const { data } = supabase.storage.from(BUCKET).getPublicUrl(filePath);
@@ -36,6 +40,7 @@ function safeFeedback(f: any) {
     feedback_id: f.feedback_id.toString(),
     resident_id: f.resident_id.toString(),
     proof_file: getPublicFileUrl(f.proof_file),
+    response_proof_file: getPublicFileUrl(f.response_proof_file),
     status: f.status,
     response: f.response,
     responded_by: f.responded_by?.toString() || null,
@@ -117,6 +122,72 @@ export async function POST(req: NextRequest) {
   }
 }
 
+// --- PATCH update feedback with response proof file ---
+export async function PATCH(req: NextRequest) {
+  const adminId = getAdminIdFromToken(req);
+  if (!adminId) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+
+  try {
+    const formData = await req.formData();
+    const feedbackId = formData.get("feedbackId") as string;
+    const status = formData.get("status") as string;
+    const responseText = formData.get("response") as string;
+    const file = formData.get("file") as File | null;
+
+    if (!feedbackId) {
+      return NextResponse.json({ message: "Missing feedbackId" }, { status: 400 });
+    }
+
+    // Validate status
+    if (status && !["PENDING", "IN_PROGRESS", "RESOLVED"].includes(status)) {
+      return NextResponse.json({ message: "Invalid status" }, { status: 400 });
+    }
+
+    let responseProofPath: string | null = null;
+
+    // Upload response proof file if provided
+    if (file) {
+      const filePath = `admin_responses/${feedbackId}/${Date.now()}_${file.name}`;
+      const fileBuffer = Buffer.from(await file.arrayBuffer());
+
+      const { data, error } = await supabase.storage
+        .from(BUCKET)
+        .upload(filePath, fileBuffer, { cacheControl: "3600", upsert: false });
+
+      if (error || !data) {
+        console.error("Supabase upload error:", error);
+        return NextResponse.json({ message: "File upload failed" }, { status: 500 });
+      }
+
+      responseProofPath = filePath;
+    }
+
+    // Build update data
+    const updateData: any = {
+      responded_by: adminId,
+      responded_at: new Date(),
+    };
+
+    if (status) updateData.status = status;
+    if (responseText) updateData.response = responseText;
+    if (responseProofPath) updateData.response_proof_file = responseProofPath;
+
+    const updated = await prisma.feedback.update({
+      where: { feedback_id: Number(feedbackId) },
+      data: updateData,
+      include: { resident: true, category: true },
+    });
+
+    return NextResponse.json({ 
+      message: "Feedback updated successfully", 
+      feedback: safeFeedback(updated) 
+    });
+  } catch (err) {
+    console.error("Error updating feedback with proof:", err);
+    return NextResponse.json({ message: "Failed to update feedback" }, { status: 500 });
+  }
+}
+
 // --- PUT update feedback status ---
 export async function PUT(req: NextRequest) {
   const adminId = getAdminIdFromToken(req);
@@ -137,33 +208,3 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ message: "Failed to update status" }, { status: 500 });
   }
 }
-
-// --- GET proof file by feedback_id ---
-export async function GET_PROOF(req: NextRequest) {
-  const adminId = getAdminIdFromToken(req);
-  if (!adminId) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-
-  try {
-    const { searchParams } = new URL(req.url);
-    const feedbackId = Number(searchParams.get("feedbackId"));
-
-    if (!feedbackId) {
-      return NextResponse.json({ message: "Missing feedbackId" }, { status: 400 });
-    }
-
-    const feedback = await prisma.feedback.findUnique({
-      where: { feedback_id: feedbackId },
-      select: { proof_file: true },
-    });
-
-    if (!feedback || !feedback.proof_file) {
-      return NextResponse.json({ message: "Proof file not found" }, { status: 404 });
-    }
-
-    return NextResponse.json({ proof_file: feedback.proof_file });
-  } catch (err) {
-    console.error("Error fetching proof file:", err);
-    return NextResponse.json({ message: "Failed to fetch proof file" }, { status: 500 });
-  }
-}
-
