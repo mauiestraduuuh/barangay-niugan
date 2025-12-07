@@ -159,12 +159,12 @@ export default function RegisterPage() {
               {/* 'Check Status' button if registration successful */}
               {!message.toLowerCase().includes("failed") &&
                 !message.toLowerCase().includes("household") && (
-                  <a
-                    href="http://localhost:3000/auth-front/no-email"
-                    className="mt-2 inline-block px-4 py-2 bg-red-600 text-white text-sm rounded-md hover:bg-red-700 transition"
-                  >
-                    Check Status
-                  </a>
+                  <button
+                  onClick={() => router.push("/auth-front/no-email")}
+                  className="mt-2 inline-block px-4 py-2 bg-red-600 text-white text-sm rounded-md hover:bg-red-700 transition"
+                >
+                  Check Status
+                </button>
                 )}
             </div>
           )}

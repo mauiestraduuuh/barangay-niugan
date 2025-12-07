@@ -493,11 +493,11 @@ export default function Dashboard() {
             <h3 className="text-large font-semibold text-gray-800 mb-4">Certificate History</h3>
 
             <div className="flex items-center gap-3">
-              <label className="text-sm font-semibold text-gray-600">Filter Status:</label>
+              <label className="text-sm font-semibold text-gray-700">Filter Status:</label>
 
               <div className="relative">
                 <select
-                  className="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-8 text-sm font-medium text-gray-700 shadow-sm hover:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
+                  className="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-8 text-sm font-medium font-semibold text-gray-700 shadow-sm hover:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value as any)}
                 >

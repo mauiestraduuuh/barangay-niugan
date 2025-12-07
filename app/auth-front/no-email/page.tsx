@@ -137,12 +137,12 @@ export default function NoEmailStatusPage() {
                       </div>
                       {/* LOGIN BUTTON */}
                       <div className="mt-4 text-center">
-                        <a
-                          href="https://barangay-niugan-iyf8.vercel.app/barangay-niugan"
-                          className="inline-block bg-red-600 text-white px-6 py-2 rounded-xl font-semibold hover:bg-red-700 transition"
+                        <button
+                          onClick={() => router.push("/auth-front/login")}
+                          className="mt-2 inline-block px-4 py-2 bg-red-600 text-white text-sm rounded-md hover:bg-red-700 transition"
                         >
                           Login
-                        </a>
+                        </button>
                       </div>
                     </>
                   )}
