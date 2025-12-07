@@ -59,11 +59,13 @@ export async function GET(req: NextRequest) {
 
     const data = {
       ...serializeResident(resident),
+      photo_url: resident.photo_url,
       is_renter: resident.is_renter,
       email: resident.user?.username || null,
       role: resident.user?.role,
       account_created: resident.user?.created_at,
     };
+
 
     return NextResponse.json(data);
   } catch (error) {
