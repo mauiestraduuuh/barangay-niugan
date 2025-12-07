@@ -109,77 +109,77 @@ export default function ResidentProfilePage() {
     confirm_password: "",
   });
 
- const ConfirmationModal = ({
-  message,
-  details,
-  onConfirm,
-  onCancel,
-  loading = false,
-}: {
-  message: string;
-  details?: { label: string; value: string }[];
-  onConfirm: () => void;
-  onCancel: () => void;
-  loading?: boolean;
-}) => (
-  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-    <div className="bg-white rounded-xl p-6 w-96 flex flex-col gap-4 shadow-2xl max-h-[80vh] overflow-auto">
-      <p className="text-gray-800 font-medium">{message}</p>
-      {details && details.length > 0 && (
-        <div className="mt-2 border border-gray-200 rounded-lg p-3 bg-gray-50">
-          {details.map(({ label, value }) => (
-            <p key={label} className="text-gray-700 text-sm mb-1">
-              <span className="font-semibold">{label}:</span> {value || "N/A"}
-            </p>
-          ))}
+  const ConfirmationModal = ({
+    message,
+    details,
+    onConfirm,
+    onCancel,
+    loading = false,
+  }: {
+    message: string;
+    details?: { label: string; value: string }[];
+    onConfirm: () => void;
+    onCancel: () => void;
+    loading?: boolean;
+  }) => (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-xl p-6 w-96 flex flex-col gap-4 shadow-2xl max-h-[80vh] overflow-auto">
+        <p className="text-gray-800 font-medium">{message}</p>
+        {details && details.length > 0 && (
+          <div className="mt-2 border border-gray-200 rounded-lg p-3 bg-gray-50">
+            {details.map(({ label, value }) => (
+              <p key={label} className="text-gray-700 text-sm mb-1">
+                <span className="font-semibold">{label}:</span> {value || "N/A"}
+              </p>
+            ))}
+          </div>
+        )}
+        <div className="flex justify-end gap-4 mt-4">
+          <button
+            onClick={onCancel}
+            disabled={loading}
+            className="px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium transition disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={loading}
+            className="px-4 py-2 rounded-xl bg-red-500 hover:bg-red-600 text-white font-medium transition disabled:opacity-50"
+          >
+            {loading ? "Processing..." : "Confirm"}
+          </button>
         </div>
-      )}
-      <div className="flex justify-end gap-4 mt-4">
-        <button
-          onClick={onCancel}
-          disabled={loading}
-          className="px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium transition disabled:opacity-50"
-        >
-          Cancel
-        </button>
-        <button
-          onClick={onConfirm}
-          disabled={loading}
-          className="px-4 py-2 rounded-xl bg-red-500 hover:bg-red-600 text-white font-medium transition disabled:opacity-50"
-        >
-          {loading ? "Processing..." : "Confirm"}
-        </button>
       </div>
     </div>
-  </div>
-);
+  );
 
-const getChangedProfileFields = () => {
-  const changes: { label: string; value: string }[] = [];
+  const getChangedProfileFields = () => {
+    const changes: { label: string; value: string }[] = [];
 
-  if (editingProfile.first_name !== profile.first_name)
-    changes.push({ label: "First Name", value: editingProfile.first_name });
+    if (editingProfile.first_name !== profile.first_name)
+      changes.push({ label: "First Name", value: editingProfile.first_name });
 
-  if (editingProfile.last_name !== profile.last_name)
-    changes.push({ label: "Last Name", value: editingProfile.last_name });
+    if (editingProfile.last_name !== profile.last_name)
+      changes.push({ label: "Last Name", value: editingProfile.last_name });
 
-  if ((editingProfile.birthdate?.split("T")[0] || "") !== (profile.birthdate?.split("T")[0] || ""))
-    changes.push({ label: "Birthdate", value: editingProfile.birthdate.split("T")[0] });
+    if ((editingProfile.birthdate?.split("T")[0] || "") !== (profile.birthdate?.split("T")[0] || ""))
+      changes.push({ label: "Birthdate", value: editingProfile.birthdate.split("T")[0] });
 
-  if ((editingProfile.contact_no || "") !== (profile.contact_no || ""))
-    changes.push({ label: "Contact Number", value: editingProfile.contact_no || "" });
+    if ((editingProfile.contact_no || "") !== (profile.contact_no || ""))
+      changes.push({ label: "Contact Number", value: editingProfile.contact_no || "" });
 
-  if ((editingProfile.address || "") !== (profile.address || ""))
-    changes.push({ label: "Address", value: editingProfile.address || "" });
+    if ((editingProfile.address || "") !== (profile.address || ""))
+      changes.push({ label: "Address", value: editingProfile.address || "" });
 
-  if (selectedFile) 
-    changes.push({ label: "Profile Photo", value: selectedFile.name });
+    if (selectedFile)
+      changes.push({ label: "Profile Photo", value: selectedFile.name });
 
-  return changes;
-};
-
+    return changes;
+  };
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
@@ -211,8 +211,55 @@ const getChangedProfileFields = () => {
     }
   }, [message]);
 
+  // Cleanup preview URL on unmount
+  useEffect(() => {
+    return () => {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+      }
+    };
+  }, [previewUrl]);
+
   const handleEditingProfileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setEditingProfile({ ...editingProfile, [e.target.name]: e.target.value });
+  };
+
+  // Handle file change with validation
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+
+    if (file) {
+      // Validate file size (5MB limit)
+      const maxSize = 5 * 1024 * 1024; // 5MB
+      if (file.size > maxSize) {
+        setMessageType("error");
+        setMessage("Image size must be less than 5MB. Please choose a smaller image.");
+        e.target.value = ""; // Reset input
+        return;
+      }
+
+      // Validate file type
+      const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/heic'];
+      if (!validTypes.includes(file.type)) {
+        setMessageType("error");
+        setMessage("Please select a valid image file (JPEG, PNG, WEBP)");
+        e.target.value = ""; // Reset input
+        return;
+      }
+    }
+
+    // Revoke old preview URL to prevent memory leak
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+    }
+
+    if (file) {
+      setSelectedFile(file);
+      setPreviewUrl(URL.createObjectURL(file));
+    } else {
+      setSelectedFile(null);
+      setPreviewUrl(null);
+    }
   };
 
   useEffect(() => {
@@ -263,6 +310,7 @@ const getChangedProfileFields = () => {
       formData.append("birthdate", editingProfile.birthdate);
       formData.append("contact_no", editingProfile.contact_no || "");
       formData.append("address", editingProfile.address || "");
+      
       if (selectedFile) {
         formData.append("photo", selectedFile);
       }
@@ -270,12 +318,20 @@ const getChangedProfileFields = () => {
       const res = await axios.put("/api/dash/resident", formData, {
         headers: {
           Authorization: `Bearer ${token}`,
-          "Content-Type": "multipart/form-data",
+          // DON'T set Content-Type - browser will set it with boundary
         },
       });
+      
       setProfile(res.data);
       setEditingProfile(res.data);
+      
+      // Cleanup after successful upload
       setSelectedFile(null);
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+        setPreviewUrl(null);
+      }
+      
       setMessageType("success");
       setMessage("Profile updated successfully");
       setActiveSection("overview");
@@ -615,18 +671,36 @@ const getChangedProfileFields = () => {
                       <input
                         type="file"
                         id="photo_url"
-                        accept="image/*"
-                        onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                        accept="image/jpeg,image/jpg,image/png,image/webp,image/heic"
+                        onChange={handleFileChange}
                         disabled={actionLoading}
                         className="border border-gray-200 p-4 rounded-xl w-full focus:ring-2 focus:ring-red-500 focus:border-red-400 shadow-sm transition disabled:opacity-50"
                       />
-                      {selectedFile && (
-                        <div className="mt-2">
+                      <p className="text-xs text-gray-500 mt-1">Max file size: 5MB. Supported formats: JPEG, PNG, WEBP</p>
+                      
+                      {previewUrl && (
+                        <div className="mt-3 flex items-center gap-3">
                           <img
-                            src={URL.createObjectURL(selectedFile)}
+                            src={previewUrl}
                             alt="Preview"
-                            className="w-20 h-20 rounded-full object-cover border border-gray-300"
+                            className="w-20 h-20 rounded-full object-cover border-2 border-gray-300 shadow-sm"
                           />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedFile(null);
+                              if (previewUrl) {
+                                URL.revokeObjectURL(previewUrl);
+                                setPreviewUrl(null);
+                              }
+                              // Reset file input
+                              const fileInput = document.getElementById('photo_url') as HTMLInputElement;
+                              if (fileInput) fileInput.value = '';
+                            }}
+                            className="text-sm text-red-600 hover:text-red-700 font-medium"
+                          >
+                            Remove
+                          </button>
                         </div>
                       )}
                     </div>
@@ -677,135 +751,136 @@ const getChangedProfileFields = () => {
                           placeholder="Enter current password"
                           disabled={actionLoading}
                           className="border border-gray-200 p-4 rounded-xl w-full focus:ring-2 focus:ring-red-500 focus:border-red-400 shadow-sm transition disabled:opacity-50"
-                        />
-                        <button
+                          />
+                          <button
                           key={showCurrent ? 'slash' : 'eye'}
                           type="button"
                           className="absolute right-4 top-1/2 -translate-y-1/2 p-1 opacity-0 group-focus-within:opacity-100 transition-opacity"
                           onClick={() => setShowCurrent(!showCurrent)}
-                        >
+                          >
                           {showCurrent ? (
-                            <EyeSlashIcon className="h-5 w-5 text-gray-700" />
+                          <EyeSlashIcon className="h-5 w-5 text-gray-700" />
                           ) : (
-                            <EyeIcon className="h-5 w-5 text-gray-700" />
+                          <EyeIcon className="h-5 w-5 text-gray-700" />
                           )}
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="group">
-                      <label className="block text-gray-600 font-medium mb-1" htmlFor="new_password">
-                        New Password
-                      </label>
-                      <div className="relative">
-                        <input
-                          type={showNew ? "text" : "password"}
-                          id="new_password"
-                          name="new_password"
-                          value={passwords.new_password}
-                          onChange={handlePasswordChange}
-                          placeholder="Enter new password"
-                          disabled={actionLoading}
-                          className="border border-gray-200 p-4 rounded-xl w-full focus:ring-2 focus:ring-red-500 focus:border-red-400 shadow-sm transition disabled:opacity-50"
-                        />
-                        <button
-                          key={showNew ? 'slash' : 'eye'}
-                          type="button"
-                          className="absolute right-4 top-1/2 -translate-y-1/2 p-1 opacity-0 group-focus-within:opacity-100 transition-opacity"
-                          onClick={() => setShowNew(!showNew)}
-                        >
-                          {showNew ? (
-                            <EyeSlashIcon className="h-5 w-5 text-gray-700" />
-                          ) : (
-                            <EyeIcon className="h-5 w-5 text-gray-700" />
-                          )}
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="group">
-                      <label className="block text-gray-600 font-medium mb-1" htmlFor="confirm_password">
-                        Confirm New Password
-                      </label>
-                      <div className="relative">
-                        <input
-                          type={showConfirm ? "text" : "password"}
-                          id="confirm_password"
-                          name="confirm_password"
-                          value={passwords.confirm_password}
-                          onChange={handlePasswordChange}
-                          placeholder="Confirm new password"
-                          disabled={actionLoading}
-                          className="border border-gray-200 p-4 rounded-xl w-full focus:ring-2 focus:ring-red-500 focus:border-red-400 shadow-sm transition disabled:opacity-50"
-                        />
-                        <button
-                          key={showConfirm ? 'slash' : 'eye'}
-                          type="button"
-                          className="absolute right-4 top-1/2 -translate-y-1/2 p-1 opacity-0 group-focus-within:opacity-100 transition-opacity"
-                          onClick={() => setShowConfirm(!showConfirm)}
-                        >
-                          {showConfirm ? (
-                            <EyeSlashIcon className="h-5 w-5 text-gray-700" />
-                          ) : (
-                            <EyeIcon className="h-5 w-5 text-gray-700" />
-                          )}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-4 justify-end">
-                    <button
-                      onClick={() => setConfirmAction("changePassword")}
+                          </button>
+                          </div>
+                          </div>
+                          <div className="group">
+                  <label className="block text-gray-600 font-medium mb-1" htmlFor="new_password">
+                    New Password
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showNew ? "text" : "password"}
+                      id="new_password"
+                      name="new_password"
+                      value={passwords.new_password}
+                      onChange={handlePasswordChange}
+                      placeholder="Enter new password"
                       disabled={actionLoading}
-                      className="bg-red-500 hover:bg-red-600 text-white py-3 px-8 rounded-xl font-medium shadow-md transition duration-300 disabled:opacity-50 flex items-center gap-2"
+                      className="border border-gray-200 p-4 rounded-xl w-full focus:ring-2 focus:ring-red-500 focus:border-red-400 shadow-sm transition disabled:opacity-50"
+                    />
+                    <button
+                      key={showNew ? 'slash' : 'eye'}
+                      type="button"
+                      className="absolute right-4 top-1/2 -translate-y-1/2 p-1 opacity-0 group-focus-within:opacity-100 transition-opacity"
+                      onClick={() => setShowNew(!showNew)}
                     >
-                      {actionLoading ? (
-                        <>
-                          <LoadingSpinner size="sm" />
-                          Updating...
-                        </>
+                      {showNew ? (
+                        <EyeSlashIcon className="h-5 w-5 text-gray-700" />
                       ) : (
-                        "Change Password"
+                        <EyeIcon className="h-5 w-5 text-gray-700" />
                       )}
-                    </button>
-                    <button
-                      onClick={() => setActiveSection("overview")}
-                      disabled={actionLoading}
-                      className="bg-gray-100 hover:bg-gray-200 text-gray-800 py-3 px-8 rounded-xl font-medium shadow-md transition duration-300 disabled:opacity-50"
-                    >
-                      Cancel
                     </button>
                   </div>
                 </div>
-              )}
-              {confirmAction && (
-                <ConfirmationModal
-                  message={
-                    confirmAction === "updateProfile"
-                      ? "Are you sure you want to update your profile information?"
-                      : "Are you sure you want to change your password?"
-                  }
-                  details={
-                    confirmAction === "updateProfile"
-                      ? getChangedProfileFields()
-                      : [
-                          { label: "Current Password", value: "********" },
-                          { label: "New Password", value: passwords.new_password ? "********" : "" },
-                        ]
-                  }
-                  onConfirm={() => {
-                    if (confirmAction === "updateProfile") updateProfile();
-                    else if (confirmAction === "changePassword") changePassword();
-                    setConfirmAction(null);
-                  }}
-                  onCancel={() => setConfirmAction(null)}
-                  loading={actionLoading}
-                />
-              )}
-            </>
+
+                <div className="group">
+                  <label className="block text-gray-600 font-medium mb-1" htmlFor="confirm_password">
+                    Confirm New Password
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showConfirm ? "text" : "password"}
+                      id="confirm_password"
+                      name="confirm_password"
+                      value={passwords.confirm_password}
+                      onChange={handlePasswordChange}
+                      placeholder="Confirm new password"
+                      disabled={actionLoading}
+                      className="border border-gray-200 p-4 rounded-xl w-full focus:ring-2 focus:ring-red-500 focus:border-red-400 shadow-sm transition disabled:opacity-50"
+                    />
+                    <button
+                      key={showConfirm ? 'slash' : 'eye'}
+                      type="button"
+                      className="absolute right-4 top-1/2 -translate-y-1/2 p-1 opacity-0 group-focus-within:opacity-100 transition-opacity"
+                      onClick={() => setShowConfirm(!showConfirm)}
+                    >
+                      {showConfirm ? (
+                        <EyeSlashIcon className="h-5 w-5 text-gray-700" />
+                      ) : (
+                        <EyeIcon className="h-5 w-5 text-gray-700" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-4 justify-end">
+                <button
+                  onClick={() => setConfirmAction("changePassword")}
+                  disabled={actionLoading}
+                  className="bg-red-500 hover:bg-red-600 text-white py-3 px-8 rounded-xl font-medium shadow-md transition duration-300 disabled:opacity-50 flex items-center gap-2"
+                >
+                  {actionLoading ? (
+                    <>
+                      <LoadingSpinner size="sm" />
+                      Updating...
+                    </>
+                  ) : (
+                    "Change Password"
+                  )}
+                </button>
+                <button
+                  onClick={() => setActiveSection("overview")}
+                  disabled={actionLoading}
+                  className="bg-gray-100 hover:bg-gray-200 text-gray-800 py-3 px-8 rounded-xl font-medium shadow-md transition duration-300 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
           )}
-        </main>
-      </div>
-    </div>
-  )};
+
+          {confirmAction && (
+            <ConfirmationModal
+              message={
+                confirmAction === "updateProfile"
+                  ? "Are you sure you want to update your profile information?"
+                  : "Are you sure you want to change your password?"
+              }
+              details={
+                confirmAction === "updateProfile"
+                  ? getChangedProfileFields()
+                  : [
+                      { label: "Current Password", value: "********" },
+                      { label: "New Password", value: passwords.new_password ? "********" : "" },
+                    ]
+              }
+              onConfirm={() => {
+                if (confirmAction === "updateProfile") updateProfile();
+                else if (confirmAction === "changePassword") changePassword();
+                setConfirmAction(null);
+              }}
+              onCancel={() => setConfirmAction(null)}
+              loading={actionLoading}
+            />
+          )}
+        </>
+      )}
+    </main>
+  </div>
+</div>
+  );
+}
