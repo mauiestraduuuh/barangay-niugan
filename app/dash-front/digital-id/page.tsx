@@ -173,19 +173,30 @@ export default function DigitalID() {
   );
 };
 
- const handleDownload = async () => {
+const handleDownload = async () => {
   if (!cardRef.current || !resident) return;
 
   setDownloading(true);
   const card = cardRef.current;
 
   try {
-    // Wait for all images to fully load & decode
+    // First pass: Load images
     await waitForImages(card);
-    await new Promise((res) => setTimeout(res, 200)); // small delay for mobile rendering
+    await new Promise((resolve) => setTimeout(resolve, 300));
 
-    // Generate PNG and PDF
-    const dataUrl = await toPng(card, { cacheBust: true, backgroundColor: "white" });
+    // Generate first time (ensures all images are cached)
+    await toPng(card, { cacheBust: false, backgroundColor: "white" });
+    
+    // Small delay
+    await new Promise((resolve) => setTimeout(resolve, 200));
+
+    // Second pass: Actually generate and save the PDF
+    const dataUrl = await toPng(card, { 
+      cacheBust: false, // Don't bust cache since we just loaded
+      backgroundColor: "white",
+      pixelRatio: 2
+    });
+    
     const pdf = new jsPDF({ orientation: "landscape", unit: "px", format: "a4" });
     const imgProps = pdf.getImageProperties(dataUrl);
     const pdfWidth = pdf.internal.pageSize.getWidth();
