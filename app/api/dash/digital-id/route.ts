@@ -28,43 +28,6 @@ function safeBigInt(obj: any) {
   );
 }
 
-// Convert external photo URL to base64 (for the ID card only)
-async function photoUrlToBase64(url: string | null) {
-  if (!url) {
-    console.log("No photo URL provided");
-    return null;
-  }
-  
-  try {
-    console.log("Attempting to fetch photo from:", url);
-    
-    const res = await fetch(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0',
-      },
-    });
-    
-    if (!res.ok) {
-      console.error(`Failed to fetch photo: ${res.status} ${res.statusText}`);
-      return url; // Return original URL if conversion fails
-    }
-    
-    const arrayBuffer = await res.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-    
-    // Detect content type from response or URL
-    const contentType = res.headers.get('content-type') || 'image/png';
-    const base64 = buffer.toString("base64");
-    const dataUrl = `data:${contentType};base64,${base64}`;
-    
-    console.log("Successfully converted photo to base64");
-    return dataUrl;
-  } catch (err) {
-    console.error("Failed to convert photo to base64:", err);
-    return url; // Return original URL as fallback
-  }
-}
-
 export async function GET(req: NextRequest) {
   try {
     const userId = getUserIdFromToken(req);
@@ -95,17 +58,21 @@ export async function GET(req: NextRequest) {
 
     console.log("Resident photo_url from database:", resident.photo_url);
 
-    // Handle photo URL - try to convert to base64, fallback to original URL
-    let residentPhotoUrl: string | null = null;
+    // Handle photo URL - just pass it through
+    // If it's base64 (data:image/...), it will work directly
+    // If it's a relative path, the frontend will handle it
+    let residentPhotoUrl: string | null = resident.photo_url;
+    
     if (resident.photo_url) {
       if (resident.photo_url.startsWith("data:")) {
-        // Already base64
-        residentPhotoUrl = resident.photo_url;
-        console.log("Photo is already in base64 format");
-      } else {
-        // Try to convert external URL to base64, fallback to original URL
-        residentPhotoUrl = await photoUrlToBase64(resident.photo_url);
-        console.log("Photo conversion result:", residentPhotoUrl ? "Success" : "Failed");
+        // Already base64 - perfect for PDF generation
+        console.log("Photo is in base64 format - ready for PDF");
+      } else if (resident.photo_url.startsWith("/")) {
+        // Relative path - will work in frontend but might need full URL for PDF
+        console.log("Photo is a relative path:", resident.photo_url);
+      } else if (resident.photo_url.startsWith("http")) {
+        // External URL - will work in frontend
+        console.log("Photo is an external URL");
       }
     }
 
@@ -151,7 +118,7 @@ export async function GET(req: NextRequest) {
     if (resident.is_slp_beneficiary) memberships.push("SLP Beneficiary");
     if (resident.is_renter) memberships.push("Renter");
 
-    // Prepare QR content (without the photo)
+    // Prepare QR content
     const qrContent: any = {
       full_name: `${resident.first_name} ${resident.last_name}`,
       id_number: `ID-${resident.resident_id}`,
@@ -187,7 +154,7 @@ export async function GET(req: NextRequest) {
         ...resident,
         household_number: resident.household_number?.replace(/^HH-/, "") ?? null,
         memberships,
-        photo_url: residentPhotoUrl, // This now includes the photo
+        photo_url: residentPhotoUrl,
       }),
       household_head: householdHeadName,
     };
