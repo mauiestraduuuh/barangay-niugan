@@ -114,8 +114,24 @@ const showErrorModal = (message: string) => {
   setErrorModalOpen(true);
 };
 
-  const token = localStorage.getItem("token");
-  if (!token) return showErrorModal("Unauthorized");
+const [token, setToken] = useState<string | null>(null);
+
+useEffect(() => {
+  const storedToken = localStorage.getItem("token");
+  if (!storedToken) {
+    router.push("/auth-front/login");
+  } else {
+    setToken(storedToken);
+  }
+}, []);
+
+if (!token) {
+  return (
+    <div className="min-h-screen flex items-center justify-center">
+      <LoadingSpinner size="lg" />
+    </div>
+  );
+}
 
 
   // Staff navigation - NO Feedback, Reports, Staff Accounts (Requirement E)
