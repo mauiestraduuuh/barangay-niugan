@@ -30,6 +30,8 @@ interface Announcement {
   posted_by: number;
   is_public: boolean;
   posted_at: string;
+  expiration_date?: string;
+  expiration_days?: number;
 }
 
 interface PaginationInfo {
@@ -39,7 +41,6 @@ interface PaginationInfo {
   totalPages: number;
 }
 
-// Loading Spinner Component
 const LoadingSpinner = ({ size = "md" }: { size?: "sm" | "md" | "lg" }) => {
   const sizeClasses = {
     sm: "w-4 h-4 border-2",
@@ -54,7 +55,6 @@ const LoadingSpinner = ({ size = "md" }: { size?: "sm" | "md" | "lg" }) => {
   );
 };
 
-// Full Page Loading Overlay
 const LoadingOverlay = ({ message = "Processing..." }: { message?: string }) => {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -81,6 +81,7 @@ export default function ManageAnnouncements() {
     title: "",
     content: "",
     is_public: true,
+    expiration_days: 14,
   });
   const [filterType, setFilterType] = useState<"active" | "expired">("active");
   const [currentPage, setCurrentPage] = useState(1);
@@ -148,71 +149,69 @@ export default function ManageAnnouncements() {
     fetchAnnouncements(filterType, currentPage);
   }, [filterType, currentPage, itemsPerPage]);
 
-  const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
     setFormData({
       ...formData,
-      [name]: type === "checkbox" ? (e.target as HTMLInputElement).checked : value,
+      [name]: type === "checkbox" ? (e.target as HTMLInputElement).checked : 
+              type === "number" ? parseInt(value) || 14 : value,
     });
   };
 
   useEffect(() => {
     const interval = setInterval(() => {
       window.location.reload();
-    }, 300000); // 5 minutes
+    }, 300000);
     return () => clearInterval(interval);
   }, []);
 
   const handleSubmitClick = (e: React.FormEvent) => {
-  e.preventDefault();
+    e.preventDefault();
 
-  // Show confirmation modal with the current form data
-  setConfirmModal({
-    visible: true,
-    action: "submit",
-    message: "Are you sure the details are correct?",
-    payload: { ...formData }, // <-- include title, content, is_public
-  });
-};
-
+    setConfirmModal({
+      visible: true,
+      action: "submit",
+      message: "Are you sure the details are correct?",
+      payload: { ...formData },
+    });
+  };
 
   const confirmSubmit = async () => {
-  if (!token || !confirmModal.payload) return;
+    if (!token || !confirmModal.payload) return;
 
-  setActionLoading(true);
-  setLoadingMessage(editingAnnouncement ? "Updating announcement..." : "Creating announcement...");
+    setActionLoading(true);
+    setLoadingMessage(editingAnnouncement ? "Updating announcement..." : "Creating announcement...");
 
-  try {
-    const method = editingAnnouncement ? "PUT" : "POST";
-    const body = editingAnnouncement
-      ? { id: editingAnnouncement.announcement_id, ...confirmModal.payload }
-      : { ...confirmModal.payload, posted_by: 1 };
+    try {
+      const method = editingAnnouncement ? "PUT" : "POST";
+      const body = editingAnnouncement
+        ? { id: editingAnnouncement.announcement_id, ...confirmModal.payload }
+        : { ...confirmModal.payload, posted_by: 1 };
 
-    const res = await fetch("/api/admin/announcement", {
-      method,
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(body),
-    });
+      const res = await fetch("/api/admin/announcement", {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(body),
+      });
 
-    if (!res.ok) throw new Error(await res.text());
+      if (!res.ok) throw new Error(await res.text());
 
-    setMessage(editingAnnouncement ? "Announcement updated successfully" : "Announcement created successfully");
-    setShowModal(false);
-    setEditingAnnouncement(null);
-    setFormData({ title: "", content: "", is_public: true });
-    await fetchAnnouncements(filterType, currentPage);
-  } catch (error) {
-    console.error("Submit error:", error);
-    setErrorModal({ visible: true, message: "Failed to save announcement" });
-  } finally {
-    setActionLoading(false);
-    setConfirmModal({ visible: false, action: null });
-  }
-};
-
+      setMessage(editingAnnouncement ? "Announcement updated successfully" : "Announcement created successfully");
+      setShowModal(false);
+      setEditingAnnouncement(null);
+      setFormData({ title: "", content: "", is_public: true, expiration_days: 14 });
+      await fetchAnnouncements(filterType, currentPage);
+    } catch (error) {
+      console.error("Submit error:", error);
+      setErrorModal({ visible: true, message: "Failed to save announcement" });
+    } finally {
+      setActionLoading(false);
+      setConfirmModal({ visible: false, action: null });
+    }
+  };
 
   const handleEdit = (announcement: Announcement) => {
     setEditingAnnouncement(announcement);
@@ -220,50 +219,48 @@ export default function ManageAnnouncements() {
       title: announcement.title,
       content: announcement.content,
       is_public: announcement.is_public,
+      expiration_days: announcement.expiration_days || 14,
     });
     setShowModal(true);
   };
 
   const handleDelete = (announcement: Announcement) => {
-  // Open confirmation modal with announcement details
-  setConfirmModal({
-    visible: true,
-    action: "delete",
-    message: "Are you sure you want to delete this announcement?",
-    payload: announcement, // send full announcement details
-  });
-};
-
+    setConfirmModal({
+      visible: true,
+      action: "delete",
+      message: "Are you sure you want to delete this announcement?",
+      payload: announcement,
+    });
+  };
 
   const confirmDelete = async (announcement: Announcement) => {
-  if (!token) return;
+    if (!token) return;
 
-  setActionLoading(true);
-  setLoadingMessage("Deleting announcement...");
+    setActionLoading(true);
+    setLoadingMessage("Deleting announcement...");
 
-  try {
-    const res = await fetch("/api/admin/announcement", {
-      method: "DELETE",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ id: announcement.announcement_id }),
-    });
+    try {
+      const res = await fetch("/api/admin/announcement", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ id: announcement.announcement_id }),
+      });
 
-    if (!res.ok) throw new Error(await res.text());
+      if (!res.ok) throw new Error(await res.text());
 
-    setMessage("Announcement deleted successfully");
-    await fetchAnnouncements(filterType, currentPage);
-  } catch (error) {
-    console.error("Delete error:", error);
-    setErrorModal({ visible: true, message: "Failed to delete announcement" });
-  } finally {
-    setActionLoading(false);
-    setConfirmModal({ visible: false, action: null });
-  }
-};
-
+      setMessage("Announcement deleted successfully");
+      await fetchAnnouncements(filterType, currentPage);
+    } catch (error) {
+      console.error("Delete error:", error);
+      setErrorModal({ visible: true, message: "Failed to delete announcement" });
+    } finally {
+      setActionLoading(false);
+      setConfirmModal({ visible: false, action: null });
+    }
+  };
 
   const handleLogout = () => {
     if (window.confirm("Are you sure you want to log out?")) {
@@ -276,10 +273,8 @@ export default function ManageAnnouncements() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to-slate-50 p-4 flex gap-4">
-      {/* Loading Overlay */}
       {actionLoading && <LoadingOverlay message={loadingMessage} />}
 
-      {/* Sidebar */}
       <div
         className={`${
           sidebarOpen ? "w-64" : "w-16"
@@ -350,7 +345,6 @@ export default function ManageAnnouncements() {
 
       {sidebarOpen && <div className="fixed inset-0 bg-white/80 z-40 md:hidden" onClick={toggleSidebar}></div>}
 
-      {/* Main Section */}
       <div className="flex-1 flex flex-col gap-4">
         <header className="bg-gray-50 shadow-sm p-4 flex justify-between items-center rounded-xl text-black">
           <button onClick={toggleSidebar} className="block md:hidden text-black hover:text-red-700 focus:outline-none">
@@ -398,7 +392,7 @@ export default function ManageAnnouncements() {
             <button
               onClick={() => {
                 setEditingAnnouncement(null);
-                setFormData({ title: "", content: "", is_public: true });
+                setFormData({ title: "", content: "", is_public: true, expiration_days: 14 });
                 setShowModal(true);
               }}
               className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition w-full sm:w-auto"
@@ -428,6 +422,9 @@ export default function ManageAnnouncements() {
                         <h3 className="text-lg md:text-xl font-semibold text-black">{a.title}</h3>
                         <p className="text-sm text-black">
                           Posted on {new Date(a.posted_at).toLocaleDateString()} • {a.is_public ? "Public" : "Private"}
+                          {a.expiration_date && (
+                            <span> • Expires: {new Date(a.expiration_date).toLocaleDateString()} ({a.expiration_days} days)</span>
+                          )}
                         </p>
                       </div>
                       <div className="flex gap-2">
@@ -444,9 +441,8 @@ export default function ManageAnnouncements() {
                 ))}
               </div>
 
-              {/* Pagination */}
-              {pagination.totalPages > 1 && (
-                <div className="w-full mt-5 flex justify-center">
+              <div className="w-full mt-5 flex justify-center">
+                {pagination.totalPages > 1 ? (
                   <div className="flex items-center gap-2 px-3 py-1.5">
                     <button
                       onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
@@ -481,17 +477,18 @@ export default function ManageAnnouncements() {
                       ›
                     </button>
                   </div>
-                </div>
-              )}
+                ) : (
+                  <div className="h-10"></div>
+                )}
+              </div>
             </>
           )}
         </main>
       </div>
 
-      {/* Add/Edit Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-lg text-black">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-lg w-full max-w-lg max-h-full overflow-auto text-black p-6 sm:p-8">
             <h2 className="text-xl font-semibold mb-4">{editingAnnouncement ? "Edit Announcement" : "Add Announcement"}</h2>
             <form onSubmit={handleSubmitClick} className="flex flex-col gap-4">
               <div>
@@ -512,6 +509,7 @@ export default function ManageAnnouncements() {
                   value={formData.content}
                   onChange={handleFormChange}
                   className="w-full border border-gray-300 rounded px-3 py-2"
+                  rows={4}
                   required
                 />
               </div>
@@ -524,11 +522,39 @@ export default function ManageAnnouncements() {
                 />
                 <label>Public Announcement</label>
               </div>
-              <div className="flex justify-end gap-2">
-                <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300">
+              <div>
+                <label className="block mb-1">Expiration Days</label>
+                <select
+                  name="expiration_days"
+                  value={formData.expiration_days}
+                  onChange={handleFormChange}
+                  className="w-full border border-gray-300 rounded px-3 py-2"
+                >
+                   <option value={7}>1 days</option>
+                  <option value={14}>3 days</option>
+                  <option value={30}>5 days</option>
+                  <option value={60}>7 days</option>
+                  <option value={90}>10 days</option>
+                  <option value={7}>12 days</option>
+                  <option value={14}>14 days (Default)</option>
+                  <option value={30}>20 days</option>
+                  <option value={60}>25 days</option>
+                  <option value={90}>30 days</option>
+                </select>
+                <p className="text-xs text-gray-500 mt-1">Choose how long this announcement will remain active</p>
+              </div>
+              <div className="flex flex-col sm:flex-row justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowModal(false)}
+                  className="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300 w-full sm:w-auto"
+                >
                   Cancel
                 </button>
-                <button type="submit" className="px-4 py-2 rounded bg-red-700 text-white hover:bg-red-800">
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded bg-red-700 text-white hover:bg-red-800 w-full sm:w-auto"
+                >
                   {editingAnnouncement ? "Update" : "Create"}
                 </button>
               </div>
@@ -537,139 +563,84 @@ export default function ManageAnnouncements() {
         </div>
       )}
 
-     {/* Add/Edit Modal */}
-{showModal && (
-  <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-    <div className="bg-white rounded-lg shadow-lg w-full max-w-lg max-h-full overflow-auto text-black p-6 sm:p-8">
-      <h2 className="text-xl font-semibold mb-4">{editingAnnouncement ? "Edit Announcement" : "Add Announcement"}</h2>
-      <form onSubmit={handleSubmitClick} className="flex flex-col gap-4">
-        <div>
-          <label className="block mb-1">Title</label>
-          <input
-            type="text"
-            name="title"
-            value={formData.title}
-            onChange={handleFormChange}
-            className="w-full border border-gray-300 rounded px-3 py-2"
-            required
-          />
+      {confirmModal.visible && confirmModal.payload && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-lg w-full max-w-lg max-h-full overflow-auto text-black p-6 sm:p-8">
+
+            {confirmModal.action === "delete" && (
+              <>
+                <h3 className="text-xl font-semibold mb-4 text-red-700">Confirm Delete</h3>
+                <p className="mb-4">{confirmModal.message}</p>
+                <div className="mb-4 space-y-2">
+                  <p><strong>Title:</strong> {confirmModal.payload.title}</p>
+                  <p><strong>Content:</strong></p>
+                  <div className="whitespace-pre-wrap border p-2 rounded bg-gray-50">{confirmModal.payload.content}</div>
+                  <p><strong>Visibility:</strong> {confirmModal.payload.is_public ? "Public" : "Private"}</p>
+                  {confirmModal.payload.expiration_date && (
+                    <p><strong>Expires:</strong> {new Date(confirmModal.payload.expiration_date).toLocaleString()} ({confirmModal.payload.expiration_days} days)</p>
+                  )}
+                </div>
+                <div className="flex flex-col sm:flex-row justify-end gap-3">
+                  <button
+                    onClick={() => setConfirmModal({ visible: false, action: null })}
+                    className="bg-gray-300 hover:bg-gray-400 px-4 py-2 rounded w-full sm:w-auto"
+                    disabled={actionLoading}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => confirmDelete(confirmModal.payload as Announcement)}
+                    className="bg-red-500 hover:bg-red-600 px-4 py-2 rounded text-white w-full sm:w-auto flex items-center justify-center gap-2"
+                    disabled={actionLoading}
+                  >
+                    {actionLoading ? (
+                      <>
+                        <LoadingSpinner size="sm" /> Deleting...
+                      </>
+                    ) : "Yes, Delete"}
+                  </button>
+                </div>
+              </>
+            )}
+
+            {confirmModal.action === "submit" && (
+              <>
+                <h3 className="text-xl font-semibold mb-4">{editingAnnouncement ? "Confirm Update" : "Confirm Creation"}</h3>
+                <p className="mb-4">{confirmModal.message}</p>
+                <div className="mb-4 space-y-2">
+                  <p><strong>Title:</strong> {confirmModal.payload.title}</p>
+                  <p><strong>Content:</strong></p>
+                  <div className="whitespace-pre-wrap border p-2 rounded bg-gray-50">{confirmModal.payload.content}</div>
+                  <p><strong>Visibility:</strong> {confirmModal.payload.is_public ? "Public" : "Private"}</p>
+                  <p><strong>Expiration:</strong> {confirmModal.payload.expiration_days} days from posting</p>
+                </div>
+                <div className="flex flex-col sm:flex-row justify-end gap-3">
+                  <button
+                    onClick={() => setConfirmModal({ visible: false, action: null })}
+                    className="bg-gray-300 hover:bg-gray-400 px-4 py-2 rounded w-full sm:w-auto"
+                    disabled={actionLoading}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={confirmSubmit}
+                    className="bg-red-500 hover:bg-red-600 px-4 py-2 rounded text-white w-full sm:w-auto flex items-center justify-center gap-2"
+                    disabled={actionLoading}
+                  >
+                    {actionLoading ? (
+                      <>
+                        <LoadingSpinner size="sm" /> {editingAnnouncement ? "Updating..." : "Creating..."}
+                      </>
+                    ) : editingAnnouncement ? "Yes, Update" : "Yes, Create"}
+                  </button>
+                </div>
+              </>
+            )}
+
+          </div>
         </div>
-        <div>
-          <label className="block mb-1">Content</label>
-          <textarea
-            name="content"
-            value={formData.content}
-            onChange={handleFormChange}
-            className="w-full border border-gray-300 rounded px-3 py-2"
-            rows={4}
-            required
-          />
-        </div>
-        <div className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            name="is_public"
-            checked={formData.is_public}
-            onChange={handleFormChange}
-          />
-          <label>Public Announcement</label>
-        </div>
-        <div className="flex flex-col sm:flex-row justify-end gap-2">
-          <button
-            type="button"
-            onClick={() => setShowModal(false)}
-            className="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300 w-full sm:w-auto"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            className="px-4 py-2 rounded bg-red-700 text-white hover:bg-red-800 w-full sm:w-auto"
-          >
-            {editingAnnouncement ? "Update" : "Create"}
-          </button>
-        </div>
-      </form>
-    </div>
-  </div>
-)}
+      )}
 
-      {/* Confirmation Modal */}
-          {confirmModal.visible && confirmModal.payload && (
-            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-              <div className="bg-white rounded-lg shadow-lg w-full max-w-lg max-h-full overflow-auto text-black p-6 sm:p-8">
-
-                {confirmModal.action === "delete" && (
-                  <>
-                    <h3 className="text-xl font-semibold mb-4 text-red-700">Confirm Delete</h3>
-                    <p className="mb-4">{confirmModal.message}</p>
-                    <div className="mb-4 space-y-2">
-                      <p><strong>Title:</strong> {confirmModal.payload.title}</p>
-                      <p><strong>Content:</strong></p>
-                      <div className="whitespace-pre-wrap border p-2 rounded bg-gray-50">{confirmModal.payload.content}</div>
-                      <p><strong>Visibility:</strong> {confirmModal.payload.is_public ? "Public" : "Private"}</p>
-                    </div>
-                    <div className="flex flex-col sm:flex-row justify-end gap-3">
-                      <button
-                        onClick={() => setConfirmModal({ visible: false, action: null })}
-                        className="bg-gray-300 hover:bg-gray-400 px-4 py-2 rounded w-full sm:w-auto"
-                        disabled={actionLoading}
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        onClick={() => confirmDelete(confirmModal.payload as Announcement)}
-                        className="bg-red-500 hover:bg-red-600 px-4 py-2 rounded text-white w-full sm:w-auto flex items-center justify-center gap-2"
-                        disabled={actionLoading}
-                      >
-                        {actionLoading ? (
-                          <>
-                            <LoadingSpinner size="sm" /> Deleting...
-                          </>
-                        ) : "Yes, Delete"}
-                      </button>
-                    </div>
-                  </>
-                )}
-
-                {confirmModal.action === "submit" && (
-                  <>
-                    <h3 className="text-xl font-semibold mb-4">{editingAnnouncement ? "Confirm Update" : "Confirm Creation"}</h3>
-                    <p className="mb-4">{confirmModal.message}</p>
-                    <div className="mb-4 space-y-2">
-                      <p><strong>Title:</strong> {confirmModal.payload.title}</p>
-                      <p><strong>Content:</strong></p>
-                      <div className="whitespace-pre-wrap border p-2 rounded bg-gray-50">{confirmModal.payload.content}</div>
-                      <p><strong>Visibility:</strong> {confirmModal.payload.is_public ? "Public" : "Private"}</p>
-                    </div>
-                    <div className="flex flex-col sm:flex-row justify-end gap-3">
-                      <button
-                        onClick={() => setConfirmModal({ visible: false, action: null })}
-                        className="bg-gray-300 hover:bg-gray-400 px-4 py-2 rounded w-full sm:w-auto"
-                        disabled={actionLoading}
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        onClick={confirmSubmit}
-                        className="bg-red-500 hover:bg-red-600 px-4 py-2 rounded text-white w-full sm:w-auto flex items-center justify-center gap-2"
-                        disabled={actionLoading}
-                      >
-                        {actionLoading ? (
-                          <>
-                            <LoadingSpinner size="sm" /> {editingAnnouncement ? "Updating..." : "Creating..."}
-                          </>
-                        ) : editingAnnouncement ? "Yes, Update" : "Yes, Create"}
-                      </button>
-                    </div>
-                  </>
-                )}
-
-              </div>
-            </div>
-          )}
-
-      {/* Error Modal */}
       {errorModal.visible && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-lg w-full max-w-sm max-h-full overflow-auto text-black p-6 sm:p-8">
