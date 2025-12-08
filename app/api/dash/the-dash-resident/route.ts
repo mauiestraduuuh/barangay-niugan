@@ -16,7 +16,19 @@ function getUserIdFromToken(req: NextRequest): number | null {
   }
 }
 
-// Helper: compute days until expiry
+// Extract expiration days from "[EXP_DAYS:10]"
+function extractExpirationDays(content: string | null): number {
+  if (!content) return 14;
+  const match = content.match(/\[EXP_DAYS:(\d+)\]$/);
+  return match ? parseInt(match[1]) : 14;
+}
+
+// Remove metadata tag before sending to frontend
+function cleanContent(content: string | null): string {
+  if (!content) return "";
+  return content.replace(/\[EXP_DAYS:\d+\]$/, "");
+}
+
 function daysUntil(date: Date) {
   const now = new Date();
   const diffMs = date.getTime() - now.getTime();
@@ -26,7 +38,7 @@ function daysUntil(date: Date) {
 export async function GET(req: NextRequest) {
   try {
     const userId = getUserIdFromToken(req);
-    if (!userId) 
+    if (!userId)
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
 
     // Resident info
@@ -42,32 +54,34 @@ export async function GET(req: NextRequest) {
         is_4ps_member: true,
         is_pwd: true,
         senior_mode: true,
-        is_renter: true
+        is_renter: true,
       },
     });
 
-    // Announcements (latest 5, only public)
+    // Fetch announcements
     const rawAnnouncements = await prisma.announcement.findMany({
       where: { is_public: true },
       orderBy: { posted_at: "desc" },
       take: 5,
     });
 
-    // Add expiry info: announcements expire after 14 days
+    // Normalize expiration logic to match admin
     const announcements = rawAnnouncements.map((ann) => {
+      const expirationDays = extractExpirationDays(ann.content);
       const postedAt = new Date(ann.posted_at);
-      const expiryDate = new Date(postedAt);
-      expiryDate.setDate(expiryDate.getDate() + 14); // 14-day expiry
-      const expiresInDays = daysUntil(expiryDate);
+
+      const expirationDate = new Date(postedAt);
+      expirationDate.setDate(expirationDate.getDate() + expirationDays);
 
       return {
         ...ann,
-        expiresInDays: expiresInDays > 0 ? expiresInDays : 0,
-        expired: expiresInDays <= 0,
+        content: cleanContent(ann.content),
+        expiration_days: expirationDays,
+        expiration_date: expirationDate.toISOString(),
       };
     });
 
-    // Dashboard summary stats
+    // Dashboard summary
     const totalCertificates = await prisma.certificateRequest.count({
       where: { resident_id: resident?.resident_id },
     });
@@ -91,6 +105,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ resident, announcements, summary });
   } catch (error) {
     console.error(error);
-    return NextResponse.json({ message: "Failed to fetch dashboard" }, { status: 500 });
+    return NextResponse.json(
+      { message: "Failed to fetch dashboard" },
+      { status: 500 }
+    );
   }
 }

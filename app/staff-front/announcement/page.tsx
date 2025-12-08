@@ -527,16 +527,16 @@ export default function ManageAnnouncements() {
                   onChange={handleFormChange}
                   className="w-full border border-gray-300 rounded px-3 py-2"
                 >
-                   <option value={7}>1 days</option>
-                  <option value={14}>3 days</option>
-                  <option value={30}>5 days</option>
-                  <option value={60}>7 days</option>
-                  <option value={90}>10 days</option>
-                  <option value={7}>12 days</option>
+                   <option value={1}>1 day</option>
+                  <option value={3}>3 days</option>
+                  <option value={5}>5 days</option>
+                  <option value={7}>7 days</option>
+                  <option value={10}>10 days</option>
+                  <option value={12}>12 days</option>
                   <option value={14}>14 days (Default)</option>
-                  <option value={30}>20 days</option>
-                  <option value={60}>25 days</option>
-                  <option value={90}>30 days</option>
+                  <option value={20}>20 days</option>
+                  <option value={25}>25 days</option>
+                  <option value={30}>30 days</option>
                 </select>
                 <p className="text-xs text-gray-500 mt-1">Choose how long this announcement will remain active</p>
               </div>

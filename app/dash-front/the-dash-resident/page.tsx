@@ -28,6 +28,9 @@ interface Announcement {
   title: string;
   content?: string;
   posted_at: string;
+  is_public: boolean;
+  expiration_date?: string;
+  expiration_days?: number;
 }
 
 // Loading Spinner Component
@@ -136,12 +139,22 @@ export default function Dashboard() {
     }
   };
 
-  // Calculate expiry
-  const getExpiry = (posted_at: string) => {
-    const postedDate = new Date(posted_at);
+  // Calculate expiry based on expiration_date or posted_at + expiration_days
+  const getExpiry = (posted_at: string, expiration_date?: string, expiration_days?: number) => {
     const now = new Date();
-    const diff = Math.floor((now.getTime() - postedDate.getTime()) / (1000 * 60 * 60 * 24));
-    const remaining = 14 - diff;
+    
+    // If expiration_date is provided, use it directly
+    if (expiration_date) {
+      const expiryDate = new Date(expiration_date);
+      const diff = Math.floor((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+      return diff > 0 ? diff : 0;
+    }
+    
+    // Otherwise calculate from posted_at + expiration_days
+    const postedDate = new Date(posted_at);
+    const daysPassed = Math.floor((now.getTime() - postedDate.getTime()) / (1000 * 60 * 60 * 24));
+    const expiryDays = expiration_days || 14;
+    const remaining = expiryDays - daysPassed;
     return remaining > 0 ? remaining : 0;
   };
 
@@ -260,31 +273,31 @@ export default function Dashboard() {
           )}
 
           {loading ? (
-            <>
-              {/* Loading Resident Info */}
+            <div className="flex flex-col items-center justify-center py-10 space-y-6">
+              <LoadingSpinner size="lg" />
+              <p className="text-gray-600 text-lg">Loading dashboard...</p>
+
+              {/* Skeleton Resident Info */}
               <div className="flex items-center gap-4 mb-6 animate-pulse">
                 <div className="w-16 h-16 rounded-full bg-gray-300"></div>
                 <div className="h-8 bg-gray-300 rounded w-64"></div>
               </div>
 
-              {/* Loading Summary Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+              {/* Skeleton Summary Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 w-full">
                 <SkeletonCard />
                 <SkeletonCard />
                 <SkeletonCard />
                 <SkeletonCard />
               </div>
 
-              {/* Loading Announcements */}
-              <section>
-                <div className="h-6 bg-gray-300 rounded w-48 mb-6"></div>
-                <div className="space-y-6">
-                  <SkeletonAnnouncement />
-                  <SkeletonAnnouncement />
-                  <SkeletonAnnouncement />
-                </div>
-              </section>
-            </>
+              {/* Skeleton Announcements */}
+              <div className="space-y-6 w-full">
+                <SkeletonAnnouncement />
+                <SkeletonAnnouncement />
+                <SkeletonAnnouncement />
+              </div>
+            </div>
           ) : (
             <>
               {/* Resident Info */}
@@ -325,7 +338,7 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              {/* Announcements */}
+              {/* Announcements - Enhanced Display (Admin Style) */}
               <section>
                 <header className="mb-6">
                   <h3 className="text-xl font-semibold">Announcements</h3>
@@ -335,19 +348,31 @@ export default function Dashboard() {
                     <p className="text-gray-500 text-lg">No announcements yet.</p>
                   </div>
                 ) : (
-                  <div className="space-y-6">
+                  <div className="space-y-4">
                     {announcements.map((ann) => {
-                      const daysLeft = getExpiry(ann.posted_at);
+                      const daysLeft = getExpiry(ann.posted_at, ann.expiration_date, ann.expiration_days);
                       return (
                         <div key={ann.announcement_id} className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition">
-                          <h3 className="text-xl font-semibold mb-2">{ann.title}</h3>
-                          <p className="text-black">{ann.content ?? "No content provided."}</p>
-                          <p className="text-sm text-gray-400 mt-2">
-                            Posted at: {new Date(ann.posted_at).toLocaleString()}
-                          </p>
-                          <p className={`text-sm font-medium mt-1 ${daysLeft <= 3 ? "text-red-600" : "text-green-600"}`}>
-                            Expires in {daysLeft} {daysLeft === 1 ? "day" : "days"}
-                          </p>
+                          <div className="flex flex-col sm:flex-row justify-between items-start mb-4 gap-2">
+                            <div>
+                              <h3 className="text-xl font-semibold mb-2">{ann.title}</h3>
+                              <p className="text-sm text-gray-600">
+                                Posted on {new Date(ann.posted_at).toLocaleDateString()} • {ann.is_public ? "Public" : "Private"}
+                                {ann.expiration_date && (
+                                  <span> • Expires: {new Date(ann.expiration_date).toLocaleDateString()}</span>
+                                )}
+                              </p>
+                            </div>
+                          </div>
+                          <p className="text-black mb-3">{ann.content ?? "No content provided."}</p>
+                          <div className="flex items-center justify-between text-sm">
+                            <p className="text-gray-400">
+                              Posted at: {new Date(ann.posted_at).toLocaleString()}
+                            </p>
+                            <p className={`font-medium ${daysLeft <= 3 ? "text-red-600" : "text-green-600"}`}>
+                              Expires in {daysLeft} {daysLeft === 1 ? "day" : "days"}
+                            </p>
+                          </div>
                         </div>
                       );
                     })}
