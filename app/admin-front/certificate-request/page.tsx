@@ -719,13 +719,13 @@ const handleModalSubmit = async () => {
               <>
                 <input
                   type="date"
-                  className="border p-2 rounded mb-2 w-full"
+                  className="border p-2 rounded mb-2 w-full text-black"
                   value={pickupDate}
                   onChange={(e) => setPickupDate(e.target.value)}
                 />
                 <input
                   type="time"
-                  className="border p-2 rounded mb-2 w-full"
+                  className="border p-2 rounded mb-2 w-full text-black"
                   value={pickupTime}
                   onChange={(e) => setPickupTime(e.target.value)}
                 />

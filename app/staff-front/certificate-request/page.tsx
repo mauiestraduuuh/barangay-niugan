@@ -8,12 +8,16 @@ import {
   HomeIcon,
   UserIcon,
   ClipboardDocumentIcon,
+  ChatBubbleLeftEllipsisIcon,
+  KeyIcon,
+  UsersIcon,
   MegaphoneIcon,
+  ChartBarIcon,
+  BellIcon,
   XMarkIcon,
   ArrowRightOnRectangleIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
-  KeyIcon,
   CheckIcon,
   XCircleIcon,
   PaperClipIcon,
@@ -67,13 +71,14 @@ const LoadingOverlay = ({ message = "Processing..." }: { message?: string }) => 
   );
 };
 
-export default function StaffCertificateRequestsPage() {
+export default function AdminCertificateRequestsPage() {
   const router = useRouter();
   const [requests, setRequests] = useState<CertificateRequest[]>([]);
   const [filteredRequests, setFilteredRequests] = useState<CertificateRequest[]>([]);
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState("");
+  const [activeItem, setActiveItem] = useState("certificate-request");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [message, setMessage] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
@@ -84,10 +89,11 @@ export default function StaffCertificateRequestsPage() {
   const [pickupDate, setPickupDate] = useState("");
   const [pickupTime, setPickupTime] = useState("");
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"PENDING" | "" | "APPROVED" | "REJECTED" | "CLAIMED">("PENDING");
   const [rejectConfirmOpen, setRejectConfirmOpen] = useState(false);
   const [requestToReject, setRequestToReject] = useState<CertificateRequest | null>(null);
-
+  const [statusFilter, setStatusFilter] = useState<"PENDING" | "" | "APPROVED" | "REJECTED" | "CLAIMED">("PENDING");
+  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+  
   // Pagination
   const [ITEMS_PER_PAGE, setITEMS_PER_PAGE] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
@@ -96,45 +102,7 @@ export default function StaffCertificateRequestsPage() {
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE
   );
-  const [confirmModalOpen, setConfirmModalOpen] = useState(false);
-  const [confirmMessage, setConfirmMessage] = useState("");
-  const [onConfirmAction, setOnConfirmAction] = useState<(() => void) | null>(null);
 
-  const [errorModalOpen, setErrorModalOpen] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
-
-  const showConfirmModal = (message: string, action: () => void) => {
-  setConfirmMessage(message);
-  setOnConfirmAction(() => action);
-  setConfirmModalOpen(true);
-};
-
-const showErrorModal = (message: string) => {
-  setErrorMessage(message);
-  setErrorModalOpen(true);
-};
-
-const [token, setToken] = useState<string | null>(null);
-
-useEffect(() => {
-  const storedToken = localStorage.getItem("token");
-  if (!storedToken) {
-    router.push("/auth-front/login");
-  } else {
-    setToken(storedToken);
-  }
-}, []);
-
-if (!token) {
-  return (
-    <div className="min-h-screen flex items-center justify-center">
-      <LoadingSpinner size="lg" />
-    </div>
-  );
-}
-
-
-  // Staff navigation - NO Feedback, Reports, Staff Accounts (Requirement E)
   const features = [
     { name: "the-dash-staff", label: "Home", icon: HomeIcon },
     { name: "staff-profile", label: "Manage Profile", icon: UserIcon },
@@ -144,7 +112,6 @@ if (!token) {
     { name: "announcement", label: "Announcements", icon: MegaphoneIcon },
   ];
 
-  // Auto-clear messages
   useEffect(() => {
     if (message) {
       const timer = setTimeout(() => setMessage(""), 3000);
@@ -160,15 +127,6 @@ if (!token) {
     filterRequests();
   }, [search, statusFilter, requests]);
 
-  // Reload entire page every 5 minutes
-  useEffect(() => {
-    const interval = setInterval(() => {
-      window.location.reload();
-    }, 300000); // 300000ms = 5 minutes
-    
-    return () => clearInterval(interval);
-  }, []);
-
   const handleLogout = () => {
     if (window.confirm("Are you sure you want to log out?")) {
       localStorage.removeItem("token");
@@ -176,6 +134,14 @@ if (!token) {
     }
   };
 
+  // Reload entire page every 5 minutes
+  useEffect(() => {
+    const interval = setInterval(() => {
+      window.location.reload();
+    }, 300000); // 300000ms = 5 minutes
+  
+  return () => clearInterval(interval);
+}, []);
   const fetchRequests = async () => {
     if (!token) return setMessage("Unauthorized: No token");
     setLoading(true);
@@ -199,43 +165,33 @@ if (!token) {
         (r) =>
           r.resident.first_name.toLowerCase().includes(query) ||
           r.resident.last_name.toLowerCase().includes(query) ||
-          // Convert to string first before calling toLowerCase()
-          String(r.resident.resident_id).toLowerCase().includes(query) ||
-          String(r.request_id).toLowerCase().includes(query)
+          r.resident.resident_id.toLowerCase().includes(query) ||
+          r.request_id.toLowerCase().includes(query)
       );
     }
     if (statusFilter !== "") filtered = filtered.filter((r) => r.status === statusFilter);
     setFilteredRequests(filtered);
-    setCurrentPage(1);
   };
 
-  // Approve request
-  const handleApprove = (requestId: string) => {
-  showConfirmModal("Are you sure you want to approve this request?", async () => {
-    if (!token) return showErrorModal("Unauthorized");
-
+  const handleApprove = async (requestId: string) => {
+    if (!token) return setMessage("Unauthorized");
     setActionLoading(true);
     setLoadingMessage("Approving request...");
-
     try {
       await axios.put(
         "/api/staff/certificate-request",
         { request_id: requestId, action: "APPROVE" },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      fetchRequests();
+      await fetchRequests();
       setMessage("Request approved successfully");
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
-      showErrorModal(err.response?.data?.error || "Failed to approve request");
-    } finally {
-      setActionLoading(false);
+      setMessage("Failed to approve request");
     }
-  });
-};
+    setActionLoading(false);
+  };
 
-
-  // Open modal for REJECT, ATTACH, SCHEDULE, Claim
   const openModal = (
     request: CertificateRequest,
     type: "ATTACH" | "REJECT" | "SCHEDULE" | "CLAIMED" | "VIEW"
@@ -269,74 +225,76 @@ if (!token) {
     setModalOpen(false);
   };
 
-      const handleModalSubmit = async () => {
-        if (!selectedRequest || !modalType || !token) return;
+const handleModalSubmit = async () => {
+  if (!selectedRequest || !modalType || !token) return;
 
-        setActionLoading(true);
+  setActionLoading(true);
 
-        try {
-          if (modalType === "REJECT") {
-            // Open confirm modal instead of executing API directly
-            setRequestToReject(selectedRequest);
-            setRejectConfirmOpen(true);
-            setModalOpen(false);
-            setActionLoading(false);
-            return;
-          } else if (modalType === "SCHEDULE") {
-            if (!pickupDate || !pickupTime) {
-              setMessage("Pickup date and time are required");
-              setActionLoading(false);
-              return;
-            }
-
-            setLoadingMessage("Scheduling pickup...");
-            await axios.put(
-              "/api/staff/certificate-request",
-              {
-                request_id: Number(selectedRequest.request_id),
-                action: "SCHEDULE_PICKUP",
-                pickup_date: pickupDate,
-                pickup_time: pickupTime,
-              },
-              { headers: { Authorization: `Bearer ${token}` } }
-            );
-            setMessage("Pickup scheduled successfully");
-          } else if (modalType === "ATTACH") {
-            setLoadingMessage("Uploading file...");
-            const formData = new FormData();
-            formData.append("request_id", selectedRequest.request_id);
-            if (file) formData.append("file", file);
-            if (remarks) formData.append("remarks", remarks);
-            await axios.post("/api/staff/certificate-request", formData, {
-              headers: { Authorization: `Bearer ${token}`, "Content-Type": "multipart/form-data" },
-            });
-            setMessage("File attached successfully");
-          } else if (modalType === "CLAIMED") {
-            setLoadingMessage("Marking as claimed...");
-            await axios.put(
-              "/api/staff/certificate-request",
-              { request_id: Number(selectedRequest.request_id), action: "CLAIMED" },
-              { headers: { Authorization: `Bearer ${token}` } }
-            );
-            setMessage("Certificate marked as claimed");
-          }
-
-          closeModal();
-          await fetchRequests();
-        } catch (err: any) {
-          console.error(err.response?.data || err);
-          setMessage(err.response?.data?.error || "Action failed");
-          setActionLoading(false);
-        }
-
+  try {
+    if (modalType === "REJECT") {
+      // Open confirm modal instead of executing API directly
+      setRequestToReject(selectedRequest);
+      setRejectConfirmOpen(true);
+      setModalOpen(false);
+      setActionLoading(false);
+      return;
+    } else if (modalType === "SCHEDULE") {
+      if (!pickupDate || !pickupTime) {
+        setMessage("Pickup date and time are required");
         setActionLoading(false);
-      };
+        return;
+      }
+
+      setLoadingMessage("Scheduling pickup...");
+      await axios.put(
+        "/api/staff/certificate-request",
+        {
+          request_id: Number(selectedRequest.request_id),
+          action: "SCHEDULE_PICKUP",
+          pickup_date: pickupDate,
+          pickup_time: pickupTime,
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setMessage("Pickup scheduled successfully");
+    } else if (modalType === "ATTACH") {
+      setLoadingMessage("Uploading file...");
+      const formData = new FormData();
+      formData.append("request_id", selectedRequest.request_id);
+      if (file) formData.append("file", file);
+      if (remarks) formData.append("remarks", remarks);
+      await axios.post("/api/staff/certificate-request", formData, {
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "multipart/form-data" },
+      });
+      setMessage("File attached successfully");
+    } else if (modalType === "CLAIMED") {
+      setLoadingMessage("Marking as claimed...");
+      await axios.put(
+        "/api/staff/certificate-request",
+        { request_id: Number(selectedRequest.request_id), action: "CLAIMED" },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setMessage("Certificate marked as claimed");
+    }
+
+    closeModal();
+    await fetchRequests();
+  } catch (err: any) {
+    console.error(err.response?.data || err);
+    setMessage(err.response?.data?.error || "Action failed");
+    setActionLoading(false);
+  }
+
+  setActionLoading(false);
+};
 
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
- 
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to-black p-4 flex gap-4">
+      {/* Loading Overlay for Actions */}
       {actionLoading && <LoadingOverlay message={loadingMessage} />}
+
       {/* Sidebar */}
       <div
         className={`${
@@ -344,7 +302,6 @@ if (!token) {
         } bg-gray-50 shadow-lg rounded-xl transition-all duration-300 ease-in-out flex flex-col 
         ${sidebarOpen ? "fixed inset-y-0 left-0 z-50 md:static md:translate-x-0" : "hidden md:flex"}`}
       >
-        {/* Logo + Close */}
         <div className="p-4 flex items-center justify-center">
           <img
             src="/niugan-logo.png"
@@ -361,52 +318,46 @@ if (!token) {
           </button>
         </div>
 
-        {/* Navigation */}
         <nav className="flex-1 mt-6">
           <ul>
-            {features.map(({ name, label, icon: Icon }) => {
-              const href = `/staff-front/${name}`;
-              const isActive = name === "certificate-request";
-              return (
-                <li key={name} className="mb-2">
-                  <Link href={href}>
+            {features.map(({ name, label, icon: Icon }) => (
+              <li key={name} className="mb-2">
+                <Link
+                  href={`/staff-front/${name}`}
+                  onClick={() => setActiveItem(name)}
+                  className={`relative flex items-center w-full px-4 py-2 text-left group transition-colors duration-200 ${
+                    activeItem === name
+                      ? "text-red-700 font-semibold"
+                      : "text-black hover:text-red-700"
+                  }`}
+                >
+                  {activeItem === name && (
+                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-700 rounded-r-full" />
+                  )}
+                  <Icon
+                    className={`w-6 h-6 mr-2 ${
+                      activeItem === name
+                        ? "text-red-700"
+                        : "text-gray-600 group-hover:text-red-700"
+                    }`}
+                  />
+                  {sidebarOpen && (
                     <span
-                      className={`relative flex items-center w-full px-4 py-2 text-left group transition-colors duration-200 ${
-                        isActive
-                          ? "text-red-700 font-semibold"
-                          : "text-black hover:text-red-700"
+                      className={`${
+                        activeItem === name
+                          ? "text-red-700"
+                          : "group-hover:text-red-700"
                       }`}
                     >
-                      {isActive && (
-                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-700 rounded-r-full" />
-                      )}
-                      <Icon
-                        className={`w-6 h-6 mr-2 ${
-                          isActive
-                            ? "text-red-700"
-                            : "text-gray-600 group-hover:text-red-700"
-                        }`}
-                      />
-                      {sidebarOpen && (
-                        <span
-                          className={`${
-                            isActive
-                              ? "text-red-700"
-                              : "group-hover:text-red-700"
-                          }`}
-                        >
-                          {label}
-                        </span>
-                      )}
+                      {label}
                     </span>
-                  </Link>
-                </li>
-              );
-            })}
+                  )}
+                </Link>
+              </li>
+            ))}
           </ul>
         </nav>
 
-        {/* Functional Logout Button */}
         <div className="p-4">
           <button
             onClick={handleLogout}
@@ -417,7 +368,6 @@ if (!token) {
           </button>
         </div>
 
-        {/* Sidebar Toggle (desktop only) */}
         <div className="p-4 flex justify-center hidden md:flex">
           <button
             onClick={toggleSidebar}
@@ -432,24 +382,27 @@ if (!token) {
         </div>
       </div>
 
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-white/80 z-40 md:hidden"
+          onClick={toggleSidebar}
+        ></div>
+      )}
+
       {/* Main Content */}
       <div className="flex-1 flex flex-col gap-4">
-        <header className="bg-gray-50 shadow-sm p-4 flex items-center justify-center relative rounded-xl text-black">
-            {/* Mobile sidebar toggle */}
-            <button
-              onClick={toggleSidebar}
-              className="block md:hidden absolute left-4 text-black hover:text-red-700 focus:outline-none"
-            >
-              <Bars3Icon className="w-6 h-6" />
-            </button>
+        <header className="bg-gray-50 shadow-sm p-4 flex justify-between items-center rounded-xl text-black">
+          <button
+            onClick={toggleSidebar}
+            className="block md:hidden text-black hover:text-red-700 focus:outline-none"
+          >
+            <Bars3Icon className="w-6 h-6" />
+          </button>
+          <h1 className="text-large font-bold">Certificate Request</h1>
+          <div className="flex items-center space-x-4"></div>
+        </header>
 
-            <h1 className="text-large font-bold text-center w-full">
-              Certificate Request
-            </h1>
-          </header>
-
-
-         <main className="bg-gray-50 p-4 sm:p-6 rounded-xl shadow-sm overflow-auto">
+        <main className="bg-gray-50 p-4 sm:p-6 rounded-xl shadow-sm overflow-auto">
           {message && (
             <p className="text-center text-white bg-gray-900 p-2 rounded mb-4">{message}</p>
           )}
@@ -482,429 +435,362 @@ if (!token) {
                   </svg>
                 </div>
               </div>
-
-                    {/* Chevron Icon */}
-                    <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-                      <svg
-                        className="w-4 h-4 text-gray-400"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M19 9l-7 7-7-7"
-                        />
-                      </svg>
-                    </div>
-                  </div>
-                  </div>
-        
-                  {loading ? (
-                  <div className="flex flex-col items-center justify-center py-20 gap-4">
-                    <LoadingSpinner size="lg" />
-                    <p className="text-gray-600">Loading requests...</p>
-                  </div>
-                ) : filteredRequests.length === 0 ? (
-                  <p className="text-center text-gray-700 py-10">
-                    {statusFilter === "PENDING"
-                      ? "No pending requests"
-                      : statusFilter === "APPROVED"
-                      ? "No approved requests"
-                      : statusFilter === "REJECTED"
-                      ? "No rejected requests"
-                      : "No registration requests found"}
-                  </p>
-                ) : (
-                  <div className="overflow-x-auto">
-                      <table className="min-w-full border-collapse bg-white shadow-sm rounded-xl overflow-hidden text-sm sm:text-base">
-                        <thead className="bg-gradient-to-br from-black via-red-800 to-black text-white">
-                          <tr>
-                            <th className="px-3 py-2 text-left">Resident Name</th>
-                            <th className="px-3 py-2 text-left hidden sm:table-cell">Request ID</th>
-                            <th className="px-3 py-2 text-left">Certificate Type</th>
-                            <th className="px-3 py-2 text-left hidden sm:table-cell">Requested At</th>
-                            <th className="px-3 py-2 text-left">Status</th>
-                            <th className="px-3 py-2 text-left">Actions</th>
-                          </tr>
-                        </thead>
-        
-                        <tbody>
-                          {paginatedRequests.map((req, index) => (
-                            <tr
-                              key={req.request_id}
-                              className={`border-b hover:bg-red-50 transition ${
-                                index % 2 === 0 ? "bg-white" : "bg-gray-50"
-                              }`}
-                            >
-                              <td className="px-3 py-2 font-medium text-black">
-                                {req.resident.first_name} {req.resident.last_name}
-                              </td>
-                              <td className="px-3 py-2 text-gray-700 hidden sm:table-cell">
-                                {req.request_id}
-                              </td>
-                              <td className="px-3 py-2 text-gray-700">{req.certificate_type}</td>
-                              <td className="px-3 py-2 text-gray-700 hidden sm:table-cell">
-                                {new Date(req.requested_at).toLocaleString()}
-                              </td>
-                              <td className="px-3 py-2">
-                                {req.status === "PENDING" && (
-                                  <span className="px-2 py-1 bg-yellow-200 text-yellow-800 rounded-full text-xs sm:text-sm font-semibold">
-                                    Pending
-                                  </span>
-                                )}
-                                {req.status === "APPROVED" && (
-                                  <span className="px-2 py-1 bg-green-200 text-green-800 rounded-full text-xs sm:text-sm font-semibold">
-                                    Approved
-                                  </span>
-                                )}
-                                {req.status === "REJECTED" && (
-                                  <span className="px-2 py-1 bg-red-200 text-red-800 rounded-full text-xs sm:text-sm font-semibold">
-                                    Rejected
-                                  </span>
-                                )}
-                                {req.status === "CLAIMED" && (
-                                  <span className="px-2 py-1 bg-purple-200 text-purple-800 rounded-full text-xs sm:text-sm font-semibold">
-                                    Claimed
-                                  </span>
-                                )}
-                              </td>
-                              <td className="px-3 py-2 flex flex-wrap gap-1">
-                                {req.status === "PENDING" && (
-                                  <>
-                                    <button
-                                      onClick={() => handleApprove(req.request_id)}
-                                      className="bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded flex items-center gap-1 text-xs sm:text-sm"
-                                    >
-                                      <CheckIcon className="w-4 h-4" /> Approve
-                                    </button>
-                                    <button
-                                      onClick={() => openModal(req, "REJECT")}
-                                      className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded flex items-center gap-1 text-xs sm:text-sm"
-                                    >
-                                      <XCircleIcon className="w-4 h-4" /> Reject
-                                    </button>
-                                  </>
-                                )}
-        
-                                {req.status === "APPROVED" && !req.pickup_date && (
-                                  <button
-                                    onClick={() => openModal(req, "SCHEDULE")}
-                                    className="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 rounded flex items-center gap-1 text-xs sm:text-sm"
-                                  >
-                                    Schedule Pickup
-                                  </button>
-                                )}
-                                {req.status === "APPROVED" && req.pickup_date && (
-                                  <button
-                                    onClick={() => openModal(req, "CLAIMED")}
-                                    className="bg-purple-500 hover:bg-purple-600 text-white px-2 py-1 rounded flex items-center gap-1 text-xs sm:text-sm"
-                                  >
-                                    Mark as Claimed
-                                  </button>
-                                )}
-        
-                                <button
-                                  onClick={() => openModal(req, "VIEW")}
-                                  className="bg-indigo-500 hover:bg-indigo-600 text-white px-2 py-1 rounded flex items-center gap-1 text-xs sm:text-sm"
-                                >
-                                  View
-                                </button>
-        
-                                <button
-                                  onClick={() => openModal(req, "ATTACH")}
-                                  className="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded flex items-center gap-1 text-xs sm:text-sm"
-                                >
-                                  <PaperClipIcon className="w-4 h-4" /> Attach
-                                </button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-        
-                      {/* Pagination */}
-                      <div className="w-full mt-5 flex justify-center">
-                        <div className="flex items-center gap-2 px-3 py-1.5">
-                          <button
-                            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                            disabled={currentPage === 1}
-                            className="px-2 py-1 text-3xl text-gray-500 hover:text-gray-700 disabled:opacity-30"
-                          >
-                            ‹
-                          </button>
-        
-                          {Array.from({ length: totalPages }).map((_, i) => {
-                            const page = i + 1;
-        
-                            if (
-                              page === 1 ||
-                              page === totalPages ||
-                              (page >= currentPage - 1 && page <= currentPage + 1)
-                            ) {
-                              return (
-                                <button
-                                  key={i}
-                                  onClick={() => setCurrentPage(page)}
-                                  className={`w-8 h-8 flex items-center justify-center rounded-full text-sm font-medium transition-all ${
-                                    currentPage === page
-                                      ? "bg-red-100 text-red-700"
-                                      : "text-gray-700 hover:bg-gray-100"
-                                  }`}
-                                >
-                                  {page}
-                                </button>
-                              );
-                            }
-        
-                            if (page === currentPage - 2 || page === currentPage + 2) {
-                              return (
-                                <div key={i} className="px-1 text-gray-400">
-                                  ...
-                                </div>
-                              );
-                            }
-        
-                            return null;
-                          })}
-        
-                          <button
-                            onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-                            disabled={currentPage === totalPages}
-                            className="px-2 py-1 text-3xl text-gray-500 hover:text-gray-700 disabled:opacity-30"
-                          >
-                            ›
-                          </button>
-        
-                          <select
-                            value={ITEMS_PER_PAGE}
-                            onChange={(e) => {
-                              setCurrentPage(1);
-                              setITEMS_PER_PAGE(Number(e.target.value));
-                            }}
-                            className="ml-3 bg-white border border-gray-300 text-sm rounded-xl px-3 py-1 focus:ring-0"
-                          >
-                            <option value={5}>5 / page</option>
-                            <option value={10}>10 / page</option>
-                            <option value={20}>20 / page</option>
-                            <option value={50}>50 / page</option>
-                          </select>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </main>
-              </div>
-        
-              {/* Modal */}
-              {rejectConfirmOpen && requestToReject && (
-                        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                          <div className="bg-white p-6 rounded-xl w-96 max-h-[90vh] flex flex-col gap-4 text-black">
-                            <h2 className="text-lg font-bold">Confirm Rejection</h2>
-
-                            <p>
-                              Are you sure you want to reject the certificate request for{" "}
-                              <span className="font-semibold">
-                                {requestToReject.resident.first_name} {requestToReject.resident.last_name}
-                              </span>?
-                            </p>
-
-                            <div className="flex justify-end gap-2 mt-4">
-                              <button
-                                onClick={() => setRejectConfirmOpen(false)}
-                                className="px-4 py-2 rounded bg-gray-300 hover:bg-gray-400"
-                                disabled={actionLoading}
-                              >
-                                Cancel
-                              </button>
-
-                              {/* Confirm → open real rejection modal with the textarea */}
-                              <button
-                                onClick={async () => {
-                                    setRejectConfirmOpen(false);
-                                    setActionLoading(true);
-                                    setLoadingMessage("Rejecting request...");
-
-                                    try {
-                                      await axios.put(
-                                        "/api/staff/certificate-request",
-                                        {
-                                          request_id: Number(requestToReject.request_id),
-                                          action: "REJECT",
-                                          rejection_reason: remarks,
-                                        },
-                                        { headers: { Authorization: `Bearer ${token}` } }
-                                      );
-
-                                      setMessage("Request rejected successfully");
-                                      await fetchRequests();
-                                    } catch (err: any) {
-                                      console.error(err);
-                                      setMessage("Failed to reject request");
-                                    }
-
-                                    setActionLoading(false);
-                                  }}
-                                className="px-4 py-2 rounded bg-red-500 hover:bg-red-600 text-white"
-                                disabled={actionLoading}
-                              >
-                                Yes, Reject
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                      
-              {modalOpen && selectedRequest && modalType && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 text-black">
-                  <div className="bg-white p-6 rounded-xl w-96 max-h-[90vh] overflow-y-auto">
-                    {modalType === "REJECT" && <h2 className="text-lg font-bold mb-4">Reject Request</h2>}
-                    {modalType === "SCHEDULE" && <h2 className="text-lg font-bold mb-4">Schedule Pickup</h2>}
-                    {modalType === "ATTACH" && <h2 className="text-lg font-bold mb-4">Attach File / Add Remarks</h2>}
-                    {modalType === "CLAIMED" && <h2 className="text-lg font-bold mb-4">Mark as Claimed</h2>}
-                    {modalType === "VIEW" && <h2 className="text-lg font-bold mb-4">Request Details</h2>}
-        
-                    {modalType === "CLAIMED" && (
-                      <>
-                        <p className="mb-2">Are you sure this certificate has been claimed?</p>
-                        <p className="font-semibold">
-                          {selectedRequest.resident.first_name} {selectedRequest.resident.last_name}
-                        </p>
-                      </>
-                    )}
-        
-                    {modalType === "REJECT" && (
-                      <textarea
-                        className="w-full border p-2 rounded mb-2"
-                        placeholder="Rejection Reason"
-                        value={remarks}
-                        onChange={(e) => setRemarks(e.target.value)}
-                      />
-                    )}
-        
-                    {modalType === "SCHEDULE" && (
-                      <>
-                        <input
-                          type="date"
-                          className="border p-2 rounded mb-2 w-full"
-                          value={pickupDate}
-                          onChange={(e) => setPickupDate(e.target.value)}
-                        />
-                        <input
-                          type="time"
-                          className="border p-2 rounded mb-2 w-full"
-                          value={pickupTime}
-                          onChange={(e) => setPickupTime(e.target.value)}
-                        />
-                      </>
-                    )}
-        
-                    {modalType === "VIEW" && (
-                      <div className="space-y-2">
-                        <p><strong>Resident Name:</strong> {selectedRequest.resident.first_name} {selectedRequest.resident.last_name}</p>
-                        <p><strong>Request ID:</strong> {selectedRequest.request_id}</p>
-                        <p><strong>Certificate Type:</strong> {selectedRequest.certificate_type}</p>
-                        <p><strong>Purpose:</strong> {selectedRequest.purpose || "N/A"}</p>
-                        <p><strong>Status:</strong> {selectedRequest.status}</p>
-                        {selectedRequest.rejection_reason && (
-                          <p><strong>Rejection Reason:</strong> {selectedRequest.rejection_reason}</p>
-                        )}
-                        <p><strong>Requested At:</strong> {new Date(selectedRequest.requested_at).toLocaleString()}</p>
-                        {selectedRequest.pickup_date && (
-                          <p><strong>Pickup Date:</strong> {selectedRequest.pickup_date} {selectedRequest.pickup_time}</p>
-                        )}
-                        {selectedRequest.approved_by && (
-                          <p><strong>Approved By:</strong> {selectedRequest.approved_by}</p>
-                        )}
-                      </div>
-                    )}
-        
-                    {modalType === "ATTACH" && (
-                      <>
-                        <textarea
-                          className="w-full border p-2 rounded mb-2"
-                          placeholder="Remarks"
-                          value={remarks}
-                          onChange={(e) => setRemarks(e.target.value)}
-                        />
-                        <input
-                          type="file"
-                          onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                          className="mb-4"
-                        />
-                      </>
-                    )}
-        
-                    <div className="flex justify-end gap-2 mt-4">
-                      <button
-                        onClick={closeModal}
-                        className="px-4 py-2 rounded bg-gray-300 hover:bg-gray-400"
-                        disabled={actionLoading}
-                      >
-                        Close
-                      </button>
-                      {modalType !== "VIEW" && (
-                        <button
-                          onClick={handleModalSubmit}
-                          disabled={actionLoading}
-                          className="px-4 py-2 rounded bg-blue-500 hover:bg-blue-600 text-white flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          {actionLoading ? (
-                            <>
-                              <LoadingSpinner size="sm" />
-                              Processing...
-                            </>
-                          ) : (
-                            "Submit"
-                          )}
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-              {/* Confirmation Modal */}
-                      {confirmModalOpen && (
-                        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 text-black">
-                          <div className="bg-white p-6 rounded-xl w-80 max-w-full text-center">
-                            <p className="mb-4 font-medium">{confirmMessage}</p>
-                            <div className="flex justify-center gap-4">
-                              <button
-                                onClick={() => setConfirmModalOpen(false)}
-                                className="px-4 py-2 rounded bg-gray-300 hover:bg-gray-400"
-                              >
-                                Cancel
-                              </button>
-                              <button
-                                onClick={() => {
-                                  if (onConfirmAction) onConfirmAction();
-                                  setConfirmModalOpen(false);
-                                }}
-                                className="px-4 py-2 rounded bg-green-500 hover:bg-green-600 text-white"
-                              >
-                                Confirm
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Error Modal */}
-                      {errorModalOpen && (
-                        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 text-black">
-                          <div className="bg-white p-6 rounded-xl w-80 max-w-full text-center">
-                            <p className="mb-4 font-medium text-red-600">{errorMessage}</p>
-                            <button
-                              onClick={() => setErrorModalOpen(false)}
-                              className="px-4 py-2 rounded bg-gray-300 hover:bg-gray-400"
-                            >
-                              Close
-                            </button>
-                          </div>
-                        </div>
-                      )}
             </div>
-          );
+          </div>
+          {loading ? (
+          <div className="flex flex-col items-center justify-center py-20 gap-4">
+            <LoadingSpinner size="lg" />
+            <p className="text-gray-600">Loading requests...</p>
+          </div>
+        ) : filteredRequests.length === 0 ? (
+          <p className="text-center text-gray-700 py-10">
+            {statusFilter === "PENDING"
+              ? "No pending requests"
+              : statusFilter === "APPROVED"
+              ? "No approved requests"
+              : statusFilter === "REJECTED"
+              ? "No rejected requests"
+              : "No registration requests found"}
+          </p>
+        ) : (
+          <div className="overflow-x-auto">
+              <table className="min-w-full border-collapse bg-white shadow-sm rounded-xl overflow-hidden text-sm sm:text-base">
+                <thead className="bg-gradient-to-br from-black via-red-800 to-black text-white">
+                  <tr>
+                    <th className="px-3 py-2 text-left">Resident Name</th>
+                    <th className="px-3 py-2 text-left hidden sm:table-cell">Request ID</th>
+                    <th className="px-3 py-2 text-left">Certificate Type</th>
+                    <th className="px-3 py-2 text-left hidden sm:table-cell">Requested At</th>
+                    <th className="px-3 py-2 text-left">Status</th>
+                    <th className="px-3 py-2 text-left">Actions</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {paginatedRequests.map((req, index) => (
+                    <tr
+                      key={req.request_id}
+                      className={`border-b hover:bg-red-50 transition ${
+                        index % 2 === 0 ? "bg-white" : "bg-gray-50"
+                      }`}
+                    >
+                      <td className="px-3 py-2 font-medium text-black">
+                        {req.resident.first_name} {req.resident.last_name}
+                      </td>
+                      <td className="px-3 py-2 text-gray-700 hidden sm:table-cell">
+                        {req.request_id}
+                      </td>
+                      <td className="px-3 py-2 text-gray-700">{req.certificate_type}</td>
+                      <td className="px-3 py-2 text-gray-700 hidden sm:table-cell">
+                        {new Date(req.requested_at).toLocaleString()}
+                      </td>
+                      <td className="px-3 py-2">
+                        {req.status === "PENDING" && (
+                          <span className="px-2 py-1 bg-yellow-200 text-yellow-800 rounded-full text-xs sm:text-sm font-semibold">
+                            Pending
+                          </span>
+                        )}
+                        {req.status === "APPROVED" && (
+                          <span className="px-2 py-1 bg-green-200 text-green-800 rounded-full text-xs sm:text-sm font-semibold">
+                            Approved
+                          </span>
+                        )}
+                        {req.status === "REJECTED" && (
+                          <span className="px-2 py-1 bg-red-200 text-red-800 rounded-full text-xs sm:text-sm font-semibold">
+                            Rejected
+                          </span>
+                        )}
+                        {req.status === "CLAIMED" && (
+                          <span className="px-2 py-1 bg-purple-200 text-purple-800 rounded-full text-xs sm:text-sm font-semibold">
+                            Claimed
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 flex flex-wrap gap-1">
+                        {req.status === "PENDING" && (
+                          <>
+                            <button
+                              onClick={() => handleApprove(req.request_id)}
+                              className="bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded flex items-center gap-1 text-xs sm:text-sm"
+                            >
+                              <CheckIcon className="w-4 h-4" /> Approve
+                            </button>
+                            <button
+                             onClick={() => openModal(req, "REJECT")}
+                              className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded flex items-center gap-1 text-xs sm:text-sm"
+                            >
+                              <XCircleIcon className="w-4 h-4" /> Reject
+                            </button>
+                          </>
+                        )}
+
+                        {req.status === "APPROVED" && !req.pickup_date && (
+                          <button
+                            onClick={() => openModal(req, "SCHEDULE")}
+                            className="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 rounded flex items-center gap-1 text-xs sm:text-sm"
+                          >
+                            Schedule Pickup
+                          </button>
+                        )}
+                        {req.status === "APPROVED" && req.pickup_date && (
+                          <button
+                            onClick={() => openModal(req, "CLAIMED")}
+                            className="bg-purple-500 hover:bg-purple-600 text-white px-2 py-1 rounded flex items-center gap-1 text-xs sm:text-sm"
+                          >
+                            Mark as Claimed
+                          </button>
+                        )}
+
+                        <button
+                          onClick={() => openModal(req, "VIEW")}
+                          className="bg-indigo-500 hover:bg-indigo-600 text-white px-2 py-1 rounded flex items-center gap-1 text-xs sm:text-sm"
+                        >
+                          View
+                        </button>
+
+                        <button
+                          onClick={() => openModal(req, "ATTACH")}
+                          className="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded flex items-center gap-1 text-xs sm:text-sm"
+                        >
+                          <PaperClipIcon className="w-4 h-4" /> Attach
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              {/* Pagination */}
+              <div className="w-full mt-5 flex justify-center">
+                <div className="flex items-center gap-2 px-3 py-1.5">
+                  <button
+                    onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                    disabled={currentPage === 1}
+                    className="px-2 py-1 text-3xl text-gray-500 hover:text-gray-700 disabled:opacity-30"
+                  >
+                    ‹
+                  </button>
+
+                  {Array.from({ length: totalPages }).map((_, i) => {
+                    const page = i + 1;
+
+                    if (
+                      page === 1 ||
+                      page === totalPages ||
+                      (page >= currentPage - 1 && page <= currentPage + 1)
+                    ) {
+                      return (
+                        <button
+                          key={i}
+                          onClick={() => setCurrentPage(page)}
+                          className={`w-8 h-8 flex items-center justify-center rounded-full text-sm font-medium transition-all ${
+                            currentPage === page
+                              ? "bg-red-100 text-red-700"
+                              : "text-gray-700 hover:bg-gray-100"
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      );
+                    }
+
+                    if (page === currentPage - 2 || page === currentPage + 2) {
+                      return (
+                        <div key={i} className="px-1 text-gray-400">
+                          ...
+                        </div>
+                      );
+                    }
+
+                    return null;
+                  })}
+
+                  <button
+                    onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                    disabled={currentPage === totalPages}
+                    className="px-2 py-1 text-3xl text-gray-500 hover:text-gray-700 disabled:opacity-30"
+                  >
+                    ›
+                  </button>
+
+                  <select
+                    value={ITEMS_PER_PAGE}
+                    onChange={(e) => {
+                      setCurrentPage(1);
+                      setITEMS_PER_PAGE(Number(e.target.value));
+                    }}
+                    className="ml-3 bg-white border border-gray-300 text-sm rounded-xl px-3 py-1 focus:ring-0"
+                  >
+                    <option value={5}>5 / page</option>
+                    <option value={10}>10 / page</option>
+                    <option value={20}>20 / page</option>
+                    <option value={50}>50 / page</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          )}
+        </main>
+      </div>
+
+      {/* Modal */}
+      {rejectConfirmOpen && requestToReject && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-xl w-96 max-h-[90vh] flex flex-col gap-4 text-black">
+            <h2 className="text-lg font-bold">Confirm Rejection</h2>
+
+            <p>
+              Are you sure you want to reject the certificate request for{" "}
+              <span className="font-semibold">
+                {requestToReject.resident.first_name} {requestToReject.resident.last_name}
+              </span>?
+            </p>
+
+            <div className="flex justify-end gap-2 mt-4">
+             <button
+              onClick={async () => {
+                    setRejectConfirmOpen(false);
+                    setActionLoading(true);
+                    setLoadingMessage("Rejecting request...");
+
+                    try {
+                      await axios.put(
+                        "/api/admin/certificate-request",
+                        {
+                          request_id: Number(requestToReject.request_id),
+                          action: "REJECT",
+                          rejection_reason: remarks,
+                        },
+                        { headers: { Authorization: `Bearer ${token}` } }
+                      );
+
+                      setMessage("Request rejected successfully");
+                      await fetchRequests();
+                    } catch (err: any) {
+                      console.error(err);
+                      setMessage("Failed to reject request");
+                    }
+
+                      setActionLoading(false);
+                    }}
+                className="px-4 py-2 rounded bg-red-500 hover:bg-red-600 text-white"
+                disabled={actionLoading}
+              >
+                Yes, Reject
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {modalOpen && selectedRequest && modalType && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 text-black">
+          <div className="bg-white p-6 rounded-xl w-96 max-h-[90vh] overflow-y-auto">
+            {modalType === "REJECT" && <h2 className="text-lg font-bold mb-4">Reject Request</h2>}
+            {modalType === "SCHEDULE" && <h2 className="text-lg font-bold mb-4">Schedule Pickup</h2>}
+            {modalType === "ATTACH" && <h2 className="text-lg font-bold mb-4">Attach File / Add Remarks</h2>}
+            {modalType === "CLAIMED" && <h2 className="text-lg font-bold mb-4">Mark as Claimed</h2>}
+            {modalType === "VIEW" && <h2 className="text-lg font-bold mb-4">Request Details</h2>}
+
+            {modalType === "CLAIMED" && (
+              <>
+                <p className="mb-2">Are you sure this certificate has been claimed?</p>
+                <p className="font-semibold">
+                  {selectedRequest.resident.first_name} {selectedRequest.resident.last_name}
+                </p>
+              </>
+            )}
+
+            {modalType === "REJECT" && (
+              <textarea
+                className="w-full border p-2 rounded mb-2"
+                placeholder="Rejection Reason"
+                value={remarks}
+                onChange={(e) => setRemarks(e.target.value)}
+              />
+            )}
+
+            {modalType === "SCHEDULE" && (
+              <>
+                <input
+                  type="date"
+                  className="border p-2 rounded mb-2 w-full text-black"
+                  value={pickupDate}
+                  onChange={(e) => setPickupDate(e.target.value)}
+                />
+                <input
+                  type="time"
+                  className="border p-2 rounded mb-2 w-full text-black"
+                  value={pickupTime}
+                  onChange={(e) => setPickupTime(e.target.value)}
+                />
+              </>
+            )}
+
+            {modalType === "VIEW" && (
+              <div className="space-y-2">
+                <p><strong>Resident Name:</strong> {selectedRequest.resident.first_name} {selectedRequest.resident.last_name}</p>
+                <p><strong>Request ID:</strong> {selectedRequest.request_id}</p>
+                <p><strong>Certificate Type:</strong> {selectedRequest.certificate_type}</p>
+                <p><strong>Purpose:</strong> {selectedRequest.purpose || "N/A"}</p>
+                <p><strong>Status:</strong> {selectedRequest.status}</p>
+                {selectedRequest.rejection_reason && (
+                  <p><strong>Rejection Reason:</strong> {selectedRequest.rejection_reason}</p>
+                )}
+                <p><strong>Requested At:</strong> {new Date(selectedRequest.requested_at).toLocaleString()}</p>
+                {selectedRequest.pickup_date && (
+                  <p><strong>Pickup Date:</strong> {selectedRequest.pickup_date} {selectedRequest.pickup_time}</p>
+                )}
+                {selectedRequest.approved_by && (
+                  <p><strong>Approved By:</strong> {selectedRequest.approved_by}</p>
+                )}
+              </div>
+            )}
+
+            {modalType === "ATTACH" && (
+              <>
+                <textarea
+                  className="w-full border p-2 rounded mb-2"
+                  placeholder="Remarks"
+                  value={remarks}
+                  onChange={(e) => setRemarks(e.target.value)}
+                />
+                <input
+                  type="file"
+                  onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                  className="mb-4"
+                />
+              </>
+            )}
+
+            <div className="flex justify-end gap-2 mt-4">
+              <button
+                onClick={closeModal}
+                className="px-4 py-2 rounded bg-gray-300 hover:bg-gray-400"
+                disabled={actionLoading}
+              >
+                Close
+              </button>
+              {modalType !== "VIEW" && (
+                <button
+                  onClick={handleModalSubmit}
+                  disabled={actionLoading}
+                  className="px-4 py-2 rounded bg-blue-500 hover:bg-blue-600 text-white flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {actionLoading ? (
+                    <>
+                      <LoadingSpinner size="sm" />
+                      Processing...
+                    </>
+                  ) : (
+                    "Submit"
+                  )}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
