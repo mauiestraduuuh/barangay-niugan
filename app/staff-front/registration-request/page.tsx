@@ -308,12 +308,17 @@ export default function StaffRegistrationRequestsPage() {
 
         <main className="bg-gray-50 p-4 sm:p-6 rounded-xl shadow-sm overflow-auto">
           {/* Filters */}
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between">
             <h1 className="text-medium font-bold text-gray-800 tracking-tight">Registration History</h1>
+            
             <div className="flex items-center gap-3">
               <label className="text-sm font-semibold text-gray-600">Filter Status:</label>
               <div className="relative">
-                <select className="appearance-none bg-white border border-gray-300 rounded-lg px-3 py-2 pr-8 text-sm font-medium text-gray-700 shadow-sm hover:border-red-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-200" value={statusFilter} onChange={e => setStatusFilter(e.target.value as any)}>
+                <select
+                  className="appearance-none bg-white border border-gray-300 rounded-lg px-3 py-2 pr-8 text-sm font-medium text-gray-700 shadow-sm hover:border-red-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-200"
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value as any)}
+                >
                   <option value="">All Statuses</option>
                   <option value="PENDING">Pending</option>
                   <option value="APPROVED">Approved</option>
