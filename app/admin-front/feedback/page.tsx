@@ -55,12 +55,10 @@ const LoadingSpinner = ({ size = "md" }: { size?: "sm" | "md" | "lg" }) => {
   const sizeClasses = {
     sm: "w-4 h-4 border-2",
     md: "w-8 h-8 border-3",
-    lg: "w-12 h-12 border-4"
+    lg: "w-12 h-12 border-4",
   };
 
-  return (
-    <div className={`${sizeClasses[size]} border-red-700 border-t-transparent rounded-full animate-spin`}></div>
-  );
+  return <div className={`${sizeClasses[size]} border-red-700 border-t-transparent rounded-full animate-spin`}></div>;
 };
 
 // Full Page Loading Overlay
@@ -90,7 +88,9 @@ export default function AdminFeedbackPage() {
   const [replyText, setReplyText] = useState("");
   const [replyFile, setReplyFile] = useState<File | null>(null);
   const [modalImage, setModalImage] = useState<string | null | undefined>(null);
-  const [categories, setCategories] = useState<{ category_id: string; english_name: string; tagalog_name: string; group?: string }[]>([]);
+  const [categories, setCategories] = useState<
+    { category_id: string; english_name: string; tagalog_name: string; group?: string }[]
+  >([]);
   const filteredFeedbacks = feedbacks.filter((f) => {
     return (
       (!statusFilter || f.status === statusFilter) &&
@@ -102,29 +102,36 @@ export default function AdminFeedbackPage() {
   const [ITEMS_PER_PAGE, setITEMS_PER_PAGE] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
   const totalPages = Math.ceil(filteredFeedbacks.length / ITEMS_PER_PAGE);
-  const paginatedFeedbacks = filteredFeedbacks.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
-  );
+  const paginatedFeedbacks = filteredFeedbacks.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
   const [actionLoading, setActionLoading] = useState(false);
+
+  // NEW: confirmation modal states
+  const [showConfirmReply, setShowConfirmReply] = useState(false);
+  const [showConfirmStatus, setShowConfirmStatus] = useState(false);
+  const [pendingStatusChange, setPendingStatusChange] = useState<{
+    feedbackId: string;
+    status: "PENDING" | "IN_PROGRESS" | "RESOLVED";
+    currentResponse?: string | undefined;
+  } | null>(null);
 
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
   const features = [
-      { name: "the-dash-admin", label: "Home", icon: HomeIcon },
-      { name: "admin-profile", label: "Manage Profile", icon: UserIcon },
-      { name: "registration-request", label: "Registration Requests", icon: ClipboardDocumentIcon },
-      { name: "registration-code", label: "Registration Code", icon: KeyIcon },
-      { name: "certificate-request", label: "Certificate Requests", icon: ClipboardDocumentIcon },
-      { name: "feedback", label: "Complaint", icon: ChatBubbleLeftEllipsisIcon },
-      { name: "staff-acc", label: "Staff Accounts", icon: UsersIcon },
-      { name: "announcement", label: "Announcements", icon: MegaphoneIcon },
-      { name: "reports", label: "Reports", icon: ChartBarIcon },
-    ];
+    { name: "the-dash-admin", label: "Home", icon: HomeIcon },
+    { name: "admin-profile", label: "Manage Profile", icon: UserIcon },
+    { name: "registration-request", label: "Registration Requests", icon: ClipboardDocumentIcon },
+    { name: "registration-code", label: "Registration Code", icon: KeyIcon },
+    { name: "certificate-request", label: "Certificate Requests", icon: ClipboardDocumentIcon },
+    { name: "feedback", label: "Complaint", icon: ChatBubbleLeftEllipsisIcon },
+    { name: "staff-acc", label: "Staff Accounts", icon: UsersIcon },
+    { name: "announcement", label: "Announcements", icon: MegaphoneIcon },
+    { name: "reports", label: "Reports", icon: ChartBarIcon },
+  ];
 
   useEffect(() => {
     fetchFeedbackAndCategories();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Reload entire page every 5 minutes
@@ -132,7 +139,7 @@ export default function AdminFeedbackPage() {
     const interval = setInterval(() => {
       window.location.reload();
     }, 300000); // 300000ms = 5 minutes
-    
+
     return () => clearInterval(interval);
   }, []);
 
@@ -161,66 +168,92 @@ export default function AdminFeedbackPage() {
     setLoading(false);
   };
 
-const replyFeedback = async () => {
-  if (!selectedFeedback || !token) return setMessage("Unauthorized");
+  const replyFeedback = async () => {
+    if (!selectedFeedback || !token) return setMessage("Unauthorized");
 
-  if (!replyFile) {
-    setMessage("Please attach a file/photo before replying.");
-    return;
-  }
+    if (!replyFile) {
+      setMessage("Please attach a file/photo before replying.");
+      return;
+    }
 
-  const formData = new FormData();
-  formData.append("feedbackId", selectedFeedback.feedback_id);
-  formData.append("response", replyText);
-  formData.append("status", "IN_PROGRESS");
-  formData.append("file", replyFile);
+    const formData = new FormData();
+    formData.append("feedbackId", selectedFeedback.feedback_id);
+    formData.append("response", replyText);
+    formData.append("status", "IN_PROGRESS");
+    formData.append("file", replyFile);
 
-  setActionLoading(true);
-  try {
-    await axios.patch("/api/admin/feedback", formData, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "multipart/form-data",
-      },
-    });
-    setSelectedFeedback(null);
-    setReplyText("");
-    setReplyFile(null);
-    fetchFeedbackAndCategories();
-    setMessage("Reply sent successfully with proof attached");
-  } catch (err) {
-    console.error(err);
-    setMessage("Failed to send reply");
-  } finally {
-    setActionLoading(false);
-  }
-};
+    setActionLoading(true);
+    try {
+      await axios.patch("/api/admin/feedback", formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
+        },
+      });
+      setSelectedFeedback(null);
+      setReplyText("");
+      setReplyFile(null);
+      fetchFeedbackAndCategories();
+      setMessage("Reply sent successfully with proof attached");
+    } catch (err) {
+      console.error(err);
+      setMessage("Failed to send reply");
+    } finally {
+      setActionLoading(false);
+      setShowConfirmReply(false);
+    }
+  };
 
   const updateStatus = async (feedbackId: string, status: string, currentResponse?: string) => {
-  if (!token) return setMessage("Unauthorized");
+    if (!token) return setMessage("Unauthorized");
 
-  if (status === "RESOLVED" && (!currentResponse || currentResponse.trim() === "")) {
-    setMessage("Cannot mark as RESOLVED without a response.");
-    return;
-  }
+    if (status === "RESOLVED" && (!currentResponse || currentResponse.trim() === "")) {
+      setMessage("Cannot mark as RESOLVED without a response.");
+      return;
+    }
 
-  setActionLoading(true);
-  try {
-    await axios.put(
-      "/api/admin/feedback",
-      { feedbackId, status },
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
-    fetchFeedbackAndCategories();
-    setMessage("Status updated successfully");
-  } catch (err) {
-    console.error(err);
-    setMessage("Failed to update status");
-  } finally {
-    setActionLoading(false);
-  }
-};
+    setActionLoading(true);
+    try {
+      await axios.put(
+        "/api/admin/feedback",
+        { feedbackId, status },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      fetchFeedbackAndCategories();
+      setMessage("Status updated successfully");
+    } catch (err) {
+      console.error(err);
+      setMessage("Failed to update status");
+    } finally {
+      setActionLoading(false);
+      setShowConfirmStatus(false);
+      setPendingStatusChange(null);
+    }
+  };
 
+  // Intercept status change to show confirmation modal first
+  const handleStatusSelectChange = (
+    feedbackId: string,
+    newStatus: "PENDING" | "IN_PROGRESS" | "RESOLVED",
+    currentResponse?: string
+  ) => {
+    // if nothing changed, do nothing
+    const fb = feedbacks.find((f) => f.feedback_id === feedbackId);
+    if (!fb || fb.status === newStatus) return;
+
+    setPendingStatusChange({ feedbackId, status: newStatus, currentResponse });
+    setShowConfirmStatus(true);
+  };
+
+  // When clicking send in reply modal, open confirm modal instead of directly sending
+  const handleSendClick = () => {
+    // Basic validation before showing confirm
+    if (!replyFile) {
+      setMessage("Please attach a file/photo before replying.");
+      return;
+    }
+    setShowConfirmReply(true);
+  };
 
   const groups = Array.from(new Set(categories.map((c) => c.group).filter(Boolean)));
 
@@ -248,113 +281,76 @@ const replyFeedback = async () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to-black p-4 flex gap-4 text-black">
       {/* Loading Overlay */}
-        {actionLoading && <LoadingOverlay message="Updating feedback..." />}
-     {/* Sidebar */}
-           <div
-             className={`${
-               sidebarOpen ? "w-64" : "w-16"
-             } bg-gray-50 shadow-lg rounded-xl transition-all duration-300 ease-in-out flex flex-col 
+      {actionLoading && <LoadingOverlay message="Updating feedback..." />}
+      {/* Sidebar */}
+      <div
+        className={`${
+          sidebarOpen ? "w-64" : "w-16"
+        } bg-gray-50 shadow-lg rounded-xl transition-all duration-300 ease-in-out flex flex-col 
              ${sidebarOpen ? "fixed inset-y-0 left-0 z-50 md:static md:translate-x-0" : "hidden md:flex"}`}
-           >
-             {/* Logo + Close */}
-             <div className="p-4 flex items-center justify-center">
-               <img
-                 src="/niugan-logo.png"
-                 alt="Company Logo"
-                 className={`rounded-full object-cover transition-all duration-300 ${
-                   sidebarOpen ? "w-30 h-30" : "w-8.5 h-8.5"
-                 }`}
-               />
-               <button
-                 onClick={toggleSidebar}
-                 className="absolute top-3 right-3 text-black hover:text-red-700 focus:outline-none md:hidden"
-               >
-                 <XMarkIcon className="w-6 h-6" />
-               </button>
-             </div>
-               
-     
-             {/* Navigation */}
-             <nav className="flex-1 mt-6">
-               <ul>
-                 {features.map(({ name, label, icon: Icon }) => (
-                   <li key={name} className="mb-2">
-                     <Link
-                       href={`/admin-front/${name}`}
-                       onClick={() => setActiveItem(name)}
-                       className={`relative flex items-center w-full px-4 py-2 text-left group transition-colors duration-200 ${
-                         activeItem === name
-                           ? "text-red-700 font-semibold"
-                           : "text-black hover:text-red-700"
-                       }`}
-                     >
-                       {activeItem === name && (
-                         <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-700 rounded-r-full" />
-                       )}
-                       <Icon
-                         className={`w-6 h-6 mr-2 ${
-                           activeItem === name
-                             ? "text-red-700"
-                             : "text-gray-600 group-hover:text-red-700"
-                         }`}
-                       />
-                       {sidebarOpen && (
-                         <span
-                           className={`${
-                             activeItem === name
-                               ? "text-red-700"
-                               : "group-hover:text-red-700"
-                           }`}
-                         >
-                           {label}
-                         </span>
-                       )}
-                     </Link>
-                   </li>
-                 ))}
-               </ul>
-             </nav>
-     
-           {/* Functional Logout Button */}
-         <div className="p-4">
-           <button
-             onClick={handleLogout}
-             className="flex items-center gap-3 text-black hover:text-red-700 transition w-full text-left"
-           >
-             <ArrowRightOnRectangleIcon className="w-6 h-6" />
-             {sidebarOpen && <span>Log Out</span>}
-           </button>
-         </div>
-     
-             {/* Sidebar Toggle (desktop only) */}
-             <div className="p-4 flex justify-center hidden md:flex">
-               <button
-                 onClick={toggleSidebar}
-                 className="w-10 h-10 bg-white hover:bg-red-50 rounded-full flex items-center justify-center focus:outline-none transition-colors duration-200 shadow-sm"
-               >
-                 {sidebarOpen ? (
-                   <ChevronLeftIcon className="w-5 h-5 text-black" />
-                 ) : (
-                   <ChevronRightIcon className="w-5 h-5 text-black" />
-                 )}
-               </button>
-             </div>
-           </div>
-     
-           {/* Mobile Overlay */}
-           {sidebarOpen && (
-             <div
-               className="fixed inset-0 bg-white/80 z-40 md:hidden"
-               onClick={toggleSidebar}
-             ></div>
-           )}
+      >
+        {/* Logo + Close */}
+        <div className="p-4 flex items-center justify-center">
+          <img
+            src="/niugan-logo.png"
+            alt="Company Logo"
+            className={`rounded-full object-cover transition-all duration-300 ${sidebarOpen ? "w-30 h-30" : "w-8.5 h-8.5"}`}
+          />
+          <button onClick={toggleSidebar} className="absolute top-3 right-3 text-black hover:text-red-700 focus:outline-none md:hidden">
+            <XMarkIcon className="w-6 h-6" />
+          </button>
+        </div>
+
+        {/* Navigation */}
+        <nav className="flex-1 mt-6">
+          <ul>
+            {features.map(({ name, label, icon: Icon }) => (
+              <li key={name} className="mb-2">
+                <Link
+                  href={`/admin-front/${name}`}
+                  onClick={() => setActiveItem(name)}
+                  className={`relative flex items-center w-full px-4 py-2 text-left group transition-colors duration-200 ${
+                    activeItem === name ? "text-red-700 font-semibold" : "text-black hover:text-red-700"
+                  }`}
+                >
+                  {activeItem === name && <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-700 rounded-r-full" />}
+                  <Icon
+                    className={`w-6 h-6 mr-2 ${activeItem === name ? "text-red-700" : "text-gray-600 group-hover:text-red-700"}`}
+                  />
+                  {sidebarOpen && (
+                    <span className={`${activeItem === name ? "text-red-700" : "group-hover:text-red-700"}`}>{label}</span>
+                  )}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
+
+        {/* Functional Logout Button */}
+        <div className="p-4">
+          <button onClick={handleLogout} className="flex items-center gap-3 text-black hover:text-red-700 transition w-full text-left">
+            <ArrowRightOnRectangleIcon className="w-6 h-6" />
+            {sidebarOpen && <span>Log Out</span>}
+          </button>
+        </div>
+
+        {/* Sidebar Toggle (desktop only) */}
+        <div className="p-4 flex justify-center hidden md:flex">
+          <button
+            onClick={toggleSidebar}
+            className="w-10 h-10 bg-white hover:bg-red-50 rounded-full flex items-center justify-center focus:outline-none transition-colors duration-200 shadow-sm"
+          >
+            {sidebarOpen ? <ChevronLeftIcon className="w-5 h-5 text-black" /> : <ChevronRightIcon className="w-5 h-5 text-black" />}
+          </button>
+        </div>
+      </div>
+
+      {/* Mobile Overlay */}
+      {sidebarOpen && <div className="fixed inset-0 bg-white/80 z-40 md:hidden" onClick={toggleSidebar}></div>}
 
       <div className="flex-1 flex flex-col gap-4">
         <header className="bg-gray-50 shadow-sm p-4 flex justify-between items-center rounded-xl text-black">
-          <button
-            onClick={toggleSidebar}
-            className="block md:hidden text-black hover:text-red-700 focus:outline-none"
-          >
+          <button onClick={toggleSidebar} className="block md:hidden text-black hover:text-red-700 focus:outline-none">
             <Bars3Icon className="w-6 h-6" />
           </button>
           <h1 className="text-large font-bold ">Complaints Management</h1>
@@ -385,7 +381,7 @@ const replyFeedback = async () => {
               </div>
 
               {/* Group filter */}
-             <label className="text-sm font-semibold text-gray-600">Group:</label>
+              <label className="text-sm font-semibold text-gray-600">Group:</label>
               <select
                 value={groupFilter}
                 onChange={(e) => {
@@ -405,7 +401,7 @@ const replyFeedback = async () => {
               {/* Category filter */}
               {groupFilter && (
                 <>
-                  <label className="text-sm font-medium ml-2">Category:</label>
+                  <label className="text-sm text-black font-medium ml-2">Category:</label>
                   <select
                     value={categoryFilter}
                     onChange={(e) => setCategoryFilter(e.target.value)}
@@ -425,9 +421,7 @@ const replyFeedback = async () => {
             </div>
           </div>
 
-          {message && (
-            <div className="bg-green-100 text-green-700 px-4 py-2 rounded-lg mb-4 text-center font-medium">{message}</div>
-          )}
+          {message && <div className="bg-green-100 text-green-700 px-4 py-2 rounded-lg mb-4 text-center font-medium">{message}</div>}
 
           {loading ? (
             <div className="flex flex-col items-center justify-center py-20 gap-4">
@@ -458,8 +452,10 @@ const replyFeedback = async () => {
                         <td className="px-4 py-3">
                           <select
                             value={f.status}
-                            onChange={(e) => updateStatus(f.feedback_id, e.target.value, f.response)}
-                            disabled={f.status === "RESOLVED"}
+                            onChange={(e) =>
+                              handleStatusSelectChange(f.feedback_id, e.target.value as any, f.response)
+                            }
+                            disabled={f.status === "RESOLVED" || actionLoading}
                             className={`border rounded-md px-2 py-1 text-xs font-medium focus:outline-none focus:ring-1 ${getStatusClass(
                               f.status
                             )}`}
@@ -509,15 +505,17 @@ const replyFeedback = async () => {
                 {paginatedFeedbacks.map((f) => (
                   <div key={f.feedback_id} className="bg-gray-50 p-4 rounded-lg shadow-sm border">
                     <div className="flex justify-between items-start mb-2">
-                      <h3 className="font-semibold text-black">{f.resident?.first_name} {f.resident?.last_name}</h3>
+                      <h3 className="font-semibold text-black">
+                        {f.resident?.first_name} {f.resident?.last_name}
+                      </h3>
                       <select
-                          value={f.status}
-                          onChange={(e) => updateStatus(f.feedback_id, e.target.value, f.response)}
-                          disabled={f.status === "RESOLVED"}
-                          className={`border rounded-md px-2 py-1 text-xs font-medium focus:outline-none focus:ring-1 ${getStatusClass(
-                            f.status
-                          )}`}
-                        >
+                        value={f.status}
+                        onChange={(e) => handleStatusSelectChange(f.feedback_id, e.target.value as any, f.response)}
+                        disabled={f.status === "RESOLVED" || actionLoading}
+                        className={`border rounded-md px-2 py-1 text-xs font-medium focus:outline-none focus:ring-1 ${getStatusClass(
+                          f.status
+                        )}`}
+                      >
                         <option value="PENDING">Pending</option>
                         <option value="IN_PROGRESS">In Progress</option>
                         <option value="RESOLVED">Resolved</option>
@@ -558,10 +556,9 @@ const replyFeedback = async () => {
                   </div>
                 ))}
               </div>
-                                          {/* PAGINATION CONTROLS */}
+              {/* PAGINATION CONTROLS */}
               <div className="w-full mt-5 flex justify-center">
                 <div className="flex items-center gap-2 px-3 py-1.5 ">
-
                   {/* Previous Button */}
                   <button
                     onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
@@ -576,19 +573,13 @@ const replyFeedback = async () => {
                     const page = i + 1;
 
                     // Show only near numbers + first + last + ellipsis
-                    if (
-                      page === 1 ||
-                      page === totalPages ||
-                      (page >= currentPage - 1 && page <= currentPage + 1)
-                    ) {
+                    if (page === 1 || page === totalPages || (page >= currentPage - 1 && page <= currentPage + 1)) {
                       return (
                         <button
                           key={i}
                           onClick={() => setCurrentPage(page)}
                           className={`w-8 h-8 flex items-center justify-center rounded-full text-sm font-medium transition-all ${
-                            currentPage === page
-                              ? "bg-red-100 text-red-700"
-                              : "text-gray-700 hover:bg-gray-100"
+                            currentPage === page ? "bg-red-100 text-red-700" : "text-gray-700 hover:bg-gray-100"
                           }`}
                         >
                           {page}
@@ -679,16 +670,16 @@ const replyFeedback = async () => {
             <input type="file" onChange={(e) => setReplyFile(e.target.files?.[0] || null)} className="border rounded-md p-2 mb-4 w-full" />
 
             <div className="flex justify-end gap-2">
-              <button 
-                onClick={() => setSelectedFeedback(null)} 
+              <button
+                onClick={() => setSelectedFeedback(null)}
                 disabled={actionLoading}
                 className="px-4 py-2 bg-gray-200 text-black rounded-lg hover:bg-gray-300 transition disabled:opacity-50"
               >
                 Cancel
               </button>
-              <button 
-                onClick={replyFeedback} 
-                disabled={actionLoading || !replyFile} // disable if no file
+              <button
+                onClick={handleSendClick}
+                disabled={actionLoading || !replyFile}
                 className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition disabled:opacity-50 flex items-center gap-2"
               >
                 {actionLoading ? (
@@ -696,8 +687,67 @@ const replyFeedback = async () => {
                     <LoadingSpinner size="sm" />
                     Sending...
                   </>
+                ) : selectedFeedback.response ? (
+                  "Update Reply"
                 ) : (
-                  selectedFeedback.response ? "Update Reply" : "Send Reply"
+                  "Send Reply"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirm Reply Modal (Option 1 style) */}
+      {showConfirmReply && selectedFeedback && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-60">
+          <div className="bg-white p-6 rounded-lg w-full max-w-md">
+            <div className="flex justify-between items-start mb-4">
+              <div>
+                <h3 className="font-semibold text-lg">Confirm Reply</h3>
+                <p className="text-sm text-gray-600 mt-1">Are you sure you want to send this reply with the attached file?</p>
+              </div>
+              <button
+                onClick={() => setShowConfirmReply(false)}
+                className="text-black hover:text-gray-700"
+                aria-label="close confirm"
+              >
+                <XMarkIcon className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="mb-4">
+              <p className="text-sm font-medium text-black">To:</p>
+              <p className="text-sm text-black">
+                {selectedFeedback.resident.first_name} {selectedFeedback.resident.last_name}
+              </p>
+              <p className="text-sm text-black mt-2">Response Preview:</p>
+              <div className="bg-gray-50 border border-gray-200 rounded p-3 mt-1 text-sm text-black max-h-32 overflow-auto">{replyText || "—"}</div>
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setShowConfirmReply(false)}
+                disabled={actionLoading}
+                className="px-4 py-2 bg-gray-200 text-black rounded-lg hover:bg-gray-300 transition disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  // call replyFeedback (will close the confirm when done)
+                  replyFeedback();
+                }}
+                disabled={actionLoading}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition disabled:opacity-50"
+              >
+                {actionLoading ? (
+                  <>
+                    <LoadingSpinner size="sm" />
+                    Sending...
+                  </>
+                ) : (
+                  "Yes, Send Reply"
                 )}
               </button>
             </div>
@@ -717,18 +767,14 @@ const replyFeedback = async () => {
                 <XMarkIcon className="w-5 h-5" />
               </button>
             </div>
-                {viewFeedback.proof_file ? (
-                  <div className="mb-4">
-                    <p className="text-sm font-medium mb-1 text-black">Attached Proof:</p>
-                    <img
-                      src={viewFeedback.proof_file}
-                      alt="Proof"
-                      className="w-full max-h-64 object-contain rounded-lg border"
-                    />
-                  </div>
-                ) : (
-                  <p className="text-sm text-black mb-4">No proof provided.</p>
-                )}
+            {viewFeedback.proof_file ? (
+              <div className="mb-4">
+                <p className="text-sm font-medium mb-1 text-black">Attached Proof:</p>
+                <img src={viewFeedback.proof_file} alt="Proof" className="w-full max-h-64 object-contain rounded-lg border" />
+              </div>
+            ) : (
+              <p className="text-sm text-black mb-4">No proof provided.</p>
+            )}
 
             <p className="text-xs text-black mb-4">
               Submitted:{" "}
@@ -763,26 +809,77 @@ const replyFeedback = async () => {
         </div>
       )}
       {modalImage && (
-  <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
-    <div className="bg-white p-4 rounded-lg max-w-lg w-full">
-      <div className="flex justify-between items-center mb-2">
-        <h3 className="text-lg font-semibold">Attached Proof</h3>
-        <button
-          onClick={() => setModalImage(null)}
-          className="text-black hover:text-gray-700"
-        >
-          <XMarkIcon className="w-5 h-5" />
-        </button>
-      </div>
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+          <div className="bg-white p-4 rounded-lg max-w-lg w-full">
+            <div className="flex justify-between items-center mb-2">
+              <h3 className="text-lg font-semibold">Attached Proof</h3>
+              <button onClick={() => setModalImage(null)} className="text-black hover:text-gray-700">
+                <XMarkIcon className="w-5 h-5" />
+              </button>
+            </div>
 
-      <img
-        src={modalImage}
-        alt="Proof"
-        className="w-full rounded-lg border"
-      />
-    </div>
-  </div>
-)}
+            <img src={modalImage} alt="Proof" className="w-full rounded-lg border" />
+          </div>
+        </div>
+      )}
+
+      {/* Confirm Status Update Modal (Option 1 style) */}
+      {showConfirmStatus && pendingStatusChange && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-60">
+          <div className="bg-white p-6 rounded-lg w-full max-w-md">
+            <div className="flex justify-between items-start mb-4">
+              <div>
+                <h3 className="font-semibold text-lg">Confirm Status Update</h3>
+                <p className="text-sm text-gray-600 mt-1">Are you sure you want to update the status of this complaint?</p>
+              </div>
+              <button
+                onClick={() => {
+                  setShowConfirmStatus(false);
+                  setPendingStatusChange(null);
+                }}
+                className="text-black hover:text-gray-700"
+                aria-label="close confirm status"
+              >
+                <XMarkIcon className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="mb-4">
+              <p className="text-sm text-black">New status: <strong>{pendingStatusChange.status}</strong></p>
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => {
+                  setShowConfirmStatus(false);
+                  setPendingStatusChange(null);
+                }}
+                disabled={actionLoading}
+                className="px-4 py-2 bg-gray-200 text-black rounded-lg hover:bg-gray-300 transition disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() =>
+                  pendingStatusChange &&
+                  updateStatus(pendingStatusChange.feedbackId, pendingStatusChange.status, pendingStatusChange.currentResponse)
+                }
+                disabled={actionLoading}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition disabled:opacity-50"
+              >
+                {actionLoading ? (
+                  <>
+                    <LoadingSpinner size="sm" />
+                    Updating...
+                  </>
+                ) : (
+                  "Yes, Update"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
