@@ -267,6 +267,18 @@ const filterRequests = () => {
   setFilteredFeedbacks(filtered);
 };
 
+const SpinnerOverlay = ({ message = "Loading..." }: { message?: string }) => {
+  return (
+    <div className="fixed inset-0 bg-black/50 flex flex-col items-center justify-center z-50">
+      <div className="flex flex-col items-center gap-4">
+        <div className="w-16 h-16 border-4 border-red-700 border-t-transparent rounded-full animate-spin"></div>
+        <p className="text-white font-semibold">{message}</p>
+      </div>
+    </div>
+  );
+};
+
+
   const groups = Array.from(new Set(categories.map(cat => cat.group))).filter(Boolean) as string[];
   const filteredCategories = selectedGroup ? categories.filter(cat => cat.group === selectedGroup) : [];
 
@@ -290,6 +302,8 @@ const filterRequests = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to-black p-4 flex gap-4">
+    {pageLoading && <SpinnerOverlay message="Loading profile..." />}
+
 {/* Sidebar */}
       <div
         className={`${
