@@ -171,21 +171,21 @@ export default function AdminCertificateRequestsPage() {
     setLoading(false);
   };
 
-  const filterRequests = () => {
-    let filtered = [...requests];
-    if (search.trim() !== "") {
-      const query = search.toLowerCase();
-      filtered = filtered.filter(
-        (r) =>
-          r.resident.first_name.toLowerCase().includes(query) ||
-          r.resident.last_name.toLowerCase().includes(query) ||
-          r.resident.resident_id.toLowerCase().includes(query) ||
-          r.request_id.toLowerCase().includes(query)
-      );
-    }
-    if (statusFilter !== "") filtered = filtered.filter((r) => r.status === statusFilter);
-    setFilteredRequests(filtered);
-  };
+const filterRequests = () => {
+  let filtered = [...requests];
+  if (search.trim() !== "") {
+    const query = search.toLowerCase();
+    filtered = filtered.filter(
+      (r) =>
+        r.resident.first_name.toLowerCase().includes(query) ||
+        r.resident.last_name.toLowerCase().includes(query) ||
+        String(r.resident.resident_id).toLowerCase().includes(query) ||
+        String(r.request_id).toLowerCase().includes(query)
+    );
+  }
+  if (statusFilter !== "") filtered = filtered.filter((r) => r.status === statusFilter);
+  setFilteredRequests(filtered);
+};
 
  const handleApprove = async (requestId: string) => {
   if (!token) return setMessage("Unauthorized");
