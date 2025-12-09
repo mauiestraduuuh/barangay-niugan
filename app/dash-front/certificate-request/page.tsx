@@ -95,6 +95,7 @@ export default function Dashboard() {
   const [filteredRequests, setFilteredRequests] = useState<CertificateRequest[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [showRejectionModal, setShowRejectionModal] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [currentRejectionReason, setCurrentRejectionReason] = useState("");
   const [certificateType, setCertificateType] = useState("");
   const [search, setSearch] = useState("");
@@ -199,6 +200,12 @@ export default function Dashboard() {
       return;
     }
 
+    // Show confirmation modal instead of submitting directly
+    setShowConfirmModal(true);
+  };
+
+  const handleConfirmSubmit = async () => {
+    setShowConfirmModal(false);
     setActionLoading(true);
     setLoadingMessage("Submitting certificate request...");
 
@@ -613,9 +620,9 @@ if (initialLoading) {
                     <th className="p-4">Purpose</th>
                     <th className="p-4">Requested At</th>
                     <th className="p-4">Status</th>
-                    <th className="p-4">Claim Code</th>
-                    <th className="p-4">Pickup Schedule</th>
-                    <th className="p-4 text-center">Actions</th>
+                    {(statusFilter === "APPROVED" || statusFilter === "CLAIMED" || statusFilter === "") && <th className="p-4">Claim Code</th>}
+                    {(statusFilter === "APPROVED" || statusFilter === "CLAIMED" || statusFilter === "") && <th className="p-4">Pickup Schedule</th>}
+                    {(statusFilter === "APPROVED" || statusFilter === "") && <th className="p-4 text-center">Actions</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -640,180 +647,212 @@ if (initialLoading) {
                     <th className="p-4">Purpose</th>
                     <th className="p-4">Requested At</th>
                     <th className="p-4">Status</th>
-                    <th className="p-4">Claim Code</th>
-                    <th className="p-4">Pickup Schedule</th>
-                    <th className="p-4 text-center">Actions</th>
+                    {(statusFilter === "APPROVED" || statusFilter === "CLAIMED" || statusFilter === "") && <th className="p-4">Claim Code</th>}
+                    {(statusFilter === "APPROVED" || statusFilter === "CLAIMED" || statusFilter === "") && <th className="p-4">Pickup Schedule</th>}
+                    {(statusFilter === "APPROVED" || statusFilter === "") && <th className="p-4 text-center">Actions</th>}
                   </tr>
                 </thead>
 
                 <tbody>
                   {filteredRequests.map((req) => (
-                    <tr
-                      key={req.request_id}
-                      className="hover:bg-gray-50 transition duration-200"
-                    >
-                      <td className="p-4">{req.request_id}</td>
-                      <td className="p-4">{req.certificate_type}</td>
-                      <td className="p-4">{req.purpose || "-"}</td>
-                      <td className="p-4">
-                        {new Date(req.requested_at).toLocaleDateString()}
-                      </td>
-
-                      <td className="p-4 font-semibold">
-                        {req.status === "REJECTED" ? (
-                          <button
-                            onClick={() => {
-                              setCurrentRejectionReason(
-                                req.rejection_reason || "No reason provided"
-                              );
-                              setShowRejectionModal(true);
-                            }}
-                            className="text-red-600 hover:underline"
-                          >
-                            {req.status}
-                          </button>
-                        ) : (
-                          <span
-                            className={`${
-                              req.status === "APPROVED"
-                                ? "text-green-600"
-                                : req.status === "PENDING"
-                                ? "text-yellow-600"
-                                : req.status === "CLAIMED"
-                                ? "text-purple-600"
-                                : "text-gray-600"
-                            }`}
-                          >
-                            {req.status}
-                          </span>
-                        )}
-                      </td>
-
-                      <td className="p-4">{req.claim_code || "-"}</td>
-
-                      <td className="p-4">
-                        {req.pickup_date && req.pickup_time
-                          ? `${new Date(req.pickup_date).toLocaleDateString()} ${req.pickup_time}`
-                          : "-"}
-                      </td>
-
-                      <td className="p-4 text-center">
-                        {req.status === "APPROVED" ? (
-                          <div className="flex justify-center gap-2">
-                            <button
-                              onClick={() => handlePrint(req)}
-                              disabled={actionLoading}
-                              className="bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
-                            >
-                              Print
-                            </button>
-                            <button
-                              onClick={() => handleDownloadPDF(req)}
-                              disabled={actionLoading}
-                              className="bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50"
-                            >
-                              PDF
-                            </button>
-                          </div>
-                        ) : (
-                          <span className="text-gray-400 italic">No actions</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-
-        {/* Request Modal */}
-        {showModal && (
-          <div className="fixed inset-0 bg-black text-black bg-opacity-40 flex items-center justify-center z-50">
-            <div className="bg-white rounded-xl w-full max-w-md p-6 relative text-black">
-              <button
-                onClick={() => {
-                  if (!actionLoading) {
-                    setShowModal(false);
-                    setCertificateType("");
-                    setPurpose("");
-                  }
-                }}
-                disabled={actionLoading}
-                className="absolute top-4 right-4 text-black hover:text-red-700 disabled:opacity-50"
-              >
-                <XMarkIcon className="w-6 h-6" />
-              </button>
-              <h2 className="text-xl font-semibold mb-4">New Certificate Request</h2>
-              <form onSubmit={handleRequestSubmit} className="flex flex-col gap-4">
-                <div>
-                  <label className="block text-gray-700 mb-1 font-medium">
-                    Certificate Type <span className="text-red-600">*</span>
-                  </label>
-                  <select
-                    value={certificateType}
-                    onChange={(e) => setCertificateType(e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-red-700 focus:outline-none"
-                    required
-                    disabled={actionLoading}
-                  >
-                    <option value="">Select a type</option>
-                    <option value="Barangay Clearance">Barangay Clearance</option>
-                    <option value="Indigency Certificate">Indigency Certificate</option>
-                    <option value="Barangay Business Clearance">Business Business Clearance</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-gray-700 mb-1 font-medium">Purpose (Optional)</label>
-                  <input
-                    type="text"
-                    value={purpose}
-                    onChange={(e) => setPurpose(e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-red-700 focus:outline-none"
-                    placeholder="Enter purpose"
-                    disabled={actionLoading}
-                  />
-                </div>
-                <button
-                  type="submit"
-                  disabled={actionLoading}
-                  className="bg-red-700 text-white px-4 py-2 rounded-lg hover:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    <tr key={req.request_id}
+                  className="hover:bg-gray-50 transition duration-200"
                 >
-                  {actionLoading ? (
-                    <>
-                      <LoadingSpinner size="sm" />
-                      <span>Submitting...</span>
-                    </>
-                  ) : (
-                    "Submit Request"
-                  )}
-                </button>
-              </form>
-            </div>
-          </div>
-        )}
+                  <td className="p-4">{req.request_id}</td>
+                  <td className="p-4">{req.certificate_type}</td>
+                  <td className="p-4">{req.purpose || "-"}</td>
+                  <td className="p-4">
+                    {new Date(req.requested_at).toLocaleDateString()}
+                  </td>
+                  <td className="p-4 font-semibold">
+                {req.status === "REJECTED" ? (
+                  <button
+                    onClick={() => {
+                      setCurrentRejectionReason(
+                        req.rejection_reason || "No reason provided"
+                      );
+                      setShowRejectionModal(true);
+                    }}
+                    className="text-red-600 underline"
+                  >
+                    {req.status}
+                  </button>
+                ) : (
+                  <span
+                    className={`${
+                      req.status === "APPROVED"
+                        ? "text-green-600"
+                        : req.status === "PENDING"
+                        ? "text-yellow-600"
+                        : req.status === "CLAIMED"
+                        ? "text-purple-600"
+                        : "text-gray-600"
+                    }`}
+                  >
+                    {req.status}
+                  </span>
+                )}
+              </td>
 
-        {showRejectionModal && (
-          <div className="fixed inset-0 z-[1000] bg-black bg-opacity-40 flex items-center justify-center">
-            <div className="bg-white rounded-xl w-full max-w-sm p-6 relative">
-              <button
-                onClick={() => setShowRejectionModal(false)}
-                className="absolute top-4 right-4 text-black hover:text-red-700"
-              >
-                <XMarkIcon className="w-6 h-6" />
-              </button>
-              <h2 className="text-xl font-semibold mb-4 text-red-600">Request Denied</h2>
-              <p className="text-gray-700">{currentRejectionReason}</p>
-              <button
-                onClick={() => setShowRejectionModal(false)}
-                className="mt-4 bg-red-700 text-white px-4 py-2 rounded-lg hover:bg-red-800"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        )}
+              {(statusFilter === "APPROVED" || statusFilter === "CLAIMED" || statusFilter === "") && (
+                <td className="p-4">{req.claim_code || "-"}</td>
+              )}
+
+              {(statusFilter === "APPROVED" || statusFilter === "CLAIMED" || statusFilter === "") && (
+                <td className="p-4">
+                  {req.pickup_date && req.pickup_time
+                    ? `${new Date(req.pickup_date).toLocaleDateString()} ${req.pickup_time}`
+                    : "-"}
+                </td>
+              )}
+
+              {(statusFilter === "APPROVED" || statusFilter === "") && (
+                <td className="p-4 text-center">
+                  {req.status === "APPROVED" ? (
+                    <div className="flex justify-center gap-2">
+                      <button
+                        onClick={() => handlePrint(req)}
+                        disabled={actionLoading}
+                        className="bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                      >
+                        Print
+                      </button>
+                      <button
+                        onClick={() => handleDownloadPDF(req)}
+                        disabled={actionLoading}
+                        className="bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50"
+                      >
+                        PDF
+                      </button>
+                    </div>
+                  ) : req.status === "PENDING" || req.status === "REJECTED" || req.status === "CLAIMED" ? null : (
+                    <span className="text-gray-400 italic">No actions</span>
+                  )}
+                </td>
+              )}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )}
+</div>
+
+{/* Request Modal */}
+{showModal && (
+  <div className="fixed inset-0 bg-black text-black bg-opacity-40 flex items-center justify-center z-50">
+    <div className="bg-white rounded-xl w-full max-w-md p-6 relative text-black">
+      <button
+        onClick={() => {
+          if (!actionLoading) {
+            setShowModal(false);
+            setCertificateType("");
+            setPurpose("");
+          }
+        }}
+        disabled={actionLoading}
+        className="absolute top-4 right-4 text-black hover:text-red-700 disabled:opacity-50"
+      >
+        <XMarkIcon className="w-6 h-6" />
+      </button>
+      <h2 className="text-xl font-semibold mb-4">New Certificate Request</h2>
+      <form onSubmit={handleRequestSubmit} className="flex flex-col gap-4">
+        <div>
+          <label className="block text-gray-700 mb-1 font-medium">
+            Certificate Type <span className="text-red-600">*</span>
+          </label>
+          <select
+            value={certificateType}
+            onChange={(e) => setCertificateType(e.target.value)}
+            className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-red-700 focus:outline-none"
+            required
+            disabled={actionLoading}
+          >
+            <option value="">Select a type</option>
+            <option value="Barangay Clearance">Barangay Clearance</option>
+            <option value="Indigency Certificate">Indigency Certificate</option>
+            <option value="Barangay Business Clearance">Business Business Clearance</option>
+          </select>
+        </div>
+        <div>
+          <label className="block text-gray-700 mb-1 font-medium">Purpose (Optional)</label>
+          <input
+            type="text"
+            value={purpose}
+            onChange={(e) => setPurpose(e.target.value)}
+            className="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-red-700 focus:outline-none"
+            placeholder="Enter purpose"
+            disabled={actionLoading}
+          />
+        </div>
+        <button
+          type="submit"
+          disabled={actionLoading}
+          className="bg-red-700 text-white px-4 py-2 rounded-lg hover:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        >
+          {actionLoading ? (
+            <>
+              <LoadingSpinner size="sm" />
+              <span>Submitting...</span>
+            </>
+          ) : (
+            "Submit Request"
+          )}
+        </button>
+      </form>
+    </div>
+  </div>
+)}
+
+{showRejectionModal && (
+  <div className="fixed inset-0 z-[1000] bg-black bg-opacity-40 flex items-center justify-center">
+    <div className="bg-white rounded-xl w-full max-w-sm p-6 relative">
+      <button
+        onClick={() => setShowRejectionModal(false)}
+        className="absolute top-4 right-4 text-black hover:text-red-700"
+      >
+        <XMarkIcon className="w-6 h-6" />
+      </button>
+      <h2 className="text-xl font-semibold mb-4 text-red-600">Request Denied</h2>
+      <p className="text-gray-700">{currentRejectionReason}</p>
+      <button
+        onClick={() => setShowRejectionModal(false)}
+        className="mt-4 bg-red-700 text-white px-4 py-2 rounded-lg hover:bg-red-800"
+      >
+        Close
+      </button>
+    </div>
+  </div>
+)}
+
+{/* Confirmation Modal */}
+{showConfirmModal && (
+  <div className="fixed inset-0 z-[1000] bg-black bg-opacity-40 flex items-center justify-center">
+    <div className="bg-white rounded-xl w-full max-w-md p-6 relative">
+      <h2 className="text-xl font-semibold mb-4 text-gray-800">Confirm Request</h2>
+      <p className="text-gray-700 mb-2">Are you sure you want to submit this certificate request?</p>
+      <div className="bg-gray-50 p-4 rounded-lg mb-4">
+        <p className="text-sm"><strong>Type:</strong> {certificateType}</p>
+        <p className="text-sm"><strong>Purpose:</strong> {purpose || "N/A"}</p>
+      </div>
+      <div className="flex gap-3 justify-end">
+        <button
+          onClick={() => setShowConfirmModal(false)}
+          className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={handleConfirmSubmit}
+          className="px-4 py-2 bg-red-700 text-white rounded-lg hover:bg-red-800"
+        >
+          Confirm
+        </button>
       </div>
     </div>
-  );
+  </div>
+)}
+</div>
+</div>
+);
 }
