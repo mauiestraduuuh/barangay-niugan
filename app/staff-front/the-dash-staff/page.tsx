@@ -230,7 +230,7 @@ export default function StaffDashboard() {
             <Bars3Icon className="w-6 h-6" />
           </button>
 
-          <h1 className="text-large font-bold text-center w-full">
+          <h1 className="text-large font-bold text-left w-full">
             Staff Dashboard
           </h1>
         </header>

@@ -301,7 +301,7 @@ export default function StaffRegistrationRequestsPage() {
               <Bars3Icon className="w-6 h-6" />
             </button>
 
-            <h1 className="text-large font-bold text-center w-full">
+            <h1 className="text-large font-bold text-left w-full">
               Registration Request
             </h1>
           </header>
