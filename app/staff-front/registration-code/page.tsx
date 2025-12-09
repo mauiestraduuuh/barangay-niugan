@@ -538,6 +538,30 @@ export default function StaffRegistrationCodePage() {
           )}
         </main>
       </div>
+      {showConfirm && (
+        <ConfirmationModal
+          title="Generate Code?"
+          message="Are you sure you want to generate a new registration code?"
+          onConfirm={confirmCallback}
+          onCancel={() => setShowConfirm(false)}
+        />
+      )}
+
+      {showError && (
+        <ErrorModal
+          message={errorMessage}
+          onClose={() => setShowError(false)}
+        />
+      )}
+
+      {showSuccess && (
+        <SuccessModal
+          message={successMessage}
+          onClose={() => setShowSuccess(false)}
+        />
+      )}
+
+      {actionLoading && <LoadingOverlay message="Processing..." />}
     </div>
   );
 }
