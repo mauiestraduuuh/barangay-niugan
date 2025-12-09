@@ -173,6 +173,15 @@ export default function DigitalID() {
   );
 };
 
+  // Reload entire page every 5 minutes
+  useEffect(() => {
+    const interval = setInterval(() => {
+      window.location.reload();
+    }, 300000); // 300000ms = 5 minutes
+    
+    return () => clearInterval(interval);
+  }, []);
+
 const handleDownload = async () => {
   if (!cardRef.current || !resident) return;
 

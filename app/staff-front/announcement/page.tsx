@@ -108,7 +108,7 @@ export default function ManageAnnouncements() {
     message: "",
   });
 
-  const features = [
+   const features = [
     { name: "the-dash-staff", label: "Home", icon: HomeIcon },
     { name: "staff-profile", label: "Manage Profile", icon: UserIcon },
     { name: "registration-request", label: "Registration Requests", icon: ClipboardDocumentIcon },
@@ -158,8 +158,7 @@ export default function ManageAnnouncements() {
   useEffect(() => {
     const interval = setInterval(() => {
       window.location.reload();
-    }, 300000); 
-    
+    }, 300000);
     return () => clearInterval(interval);
   }, []);
 
@@ -270,22 +269,19 @@ export default function ManageAnnouncements() {
   const totalPages = pagination.totalPages;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to-black p-4 flex gap-4">
-      {/* Sidebar */}
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to-slate-50 p-4 flex gap-4">
+      {actionLoading && <LoadingOverlay message={loadingMessage} />}
+
       <div
         className={`${
           sidebarOpen ? "w-64" : "w-16"
-        } bg-gray-50 shadow-lg rounded-xl transition-all duration-300 ease-in-out flex flex-col ${
-          sidebarOpen ? "block" : "hidden"
-        } md:block md:relative md:translate-x-0 ${
-          sidebarOpen ? "fixed inset-y-0 left-0 z-50 md:static md:translate-x-0" : ""
-        }`}
+        } bg-gray-50 shadow-lg rounded-xl transition-all duration-300 ease-in-out flex flex-col 
+        ${sidebarOpen ? "fixed inset-y-0 left-0 z-50 md:static md:translate-x-0" : "hidden md:flex"}`}
       >
-        {/* Logo + Close */}
         <div className="p-4 flex items-center justify-center">
           <img
             src="/niugan-logo.png"
-            alt="Logo"
+            alt="Company Logo"
             className={`rounded-full object-cover transition-all duration-300 ${
               sidebarOpen ? "w-30 h-30" : "w-8.5 h-8.5"
             }`}
@@ -298,42 +294,32 @@ export default function ManageAnnouncements() {
           </button>
         </div>
 
-        {/* Navigation */}
         <nav className="flex-1 mt-6">
           <ul>
-            {features.map(({ name, label, icon: Icon }) => {
-              const href = `/staff-front/${name}`;
-              const isActive = name === "announcement";
-              return (
-                <li key={name} className="mb-2">
-                  <Link href={href}>
-                    <span
-                      className={`relative flex items-center w-full px-4 py-2 text-left group transition-colors duration-200 ${
-                        isActive ? "text-red-700" : "text-black hover:text-red-700"
-                      }`}
-                    >
-                      {isActive && (
-                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-700 rounded-r-full" />
-                      )}
-                      <Icon
-                        className={`w-6 h-6 mr-2 ${
-                          isActive ? "text-red-700" : "text-gray-600 group-hover:text-red-700"
-                        }`}
-                      />
-                      {sidebarOpen && (
-                        <span className={`${isActive ? "text-red-700" : "group-hover:text-red-700"}`}>
-                          {label}
-                        </span>
-                      )}
-                    </span>
-                  </Link>
-                </li>
-              );
-            })}
+            {features.map(({ name, label, icon: Icon }) => (
+              <li key={name} className="mb-2">
+                <Link
+                  href={`/staff-front/${name}`}
+                  onClick={() => setActiveItem(name)}
+                  className={`relative flex items-center w-full px-4 py-2 text-left group transition-colors duration-200 ${
+                    activeItem === name ? "text-red-700 font-semibold" : "text-black hover:text-red-700"
+                  }`}
+                >
+                  {activeItem === name && (
+                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-700 rounded-r-full" />
+                  )}
+                  <Icon
+                    className={`w-6 h-6 mr-2 ${
+                      activeItem === name ? "text-red-700" : "text-gray-600 group-hover:text-red-700"
+                    }`}
+                  />
+                  {sidebarOpen && <span>{label}</span>}
+                </Link>
+              </li>
+            ))}
           </ul>
         </nav>
 
-        {/* Logout */}
         <div className="p-4">
           <button
             onClick={handleLogout}
@@ -344,23 +330,17 @@ export default function ManageAnnouncements() {
           </button>
         </div>
 
-        {/* Sidebar Toggle */}
         <div className="p-4 flex justify-center hidden md:flex">
           <button
             onClick={toggleSidebar}
             className="w-10 h-10 bg-white hover:bg-red-50 rounded-full flex items-center justify-center focus:outline-none transition-colors duration-200 shadow-sm"
           >
-            {sidebarOpen ? (
-              <ChevronLeftIcon className="w-5 h-5 text-black" />
-            ) : (
-              <ChevronRightIcon className="w-5 h-5 text-black" />
-            )}
+            {sidebarOpen ? <ChevronLeftIcon className="w-5 h-5 text-black" /> : <ChevronRightIcon className="w-5 h-5 text-black" />}
           </button>
         </div>
       </div>
 
-      {/* Overlay */}
-      {sidebarOpen && <div className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden" onClick={toggleSidebar}></div>}
+      {sidebarOpen && <div className="fixed inset-0 bg-white/80 z-40 md:hidden" onClick={toggleSidebar}></div>}
 
       <div className="flex-1 flex flex-col gap-4">
         <header className="bg-gray-50 shadow-sm p-4 flex justify-between items-center rounded-xl text-black">
@@ -547,7 +527,7 @@ export default function ManageAnnouncements() {
                   onChange={handleFormChange}
                   className="w-full border border-gray-300 rounded px-3 py-2"
                 >
-                   <option value={1}>1 day</option>
+                    <option value={1}>1 day</option>
                   <option value={3}>3 days</option>
                   <option value={5}>5 days</option>
                   <option value={7}>7 days</option>
@@ -563,7 +543,10 @@ export default function ManageAnnouncements() {
               <div className="flex flex-col sm:flex-row justify-end gap-2">
                 <button
                   type="button"
-                  onClick={() => setShowModal(false)}
+                  onClick={() => {
+                    setShowModal(false);
+                    fetchAnnouncements(filterType, currentPage); // Refresh after closing modal
+                  }}
                   className="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300 w-full sm:w-auto"
                 >
                   Cancel

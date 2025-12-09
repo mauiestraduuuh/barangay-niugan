@@ -123,6 +123,7 @@ export default function Dashboard() {
     { name: "feedback", label: "Complaint", icon: ChatBubbleLeftEllipsisIcon },
   ];
 
+  
   // Initial load
   useEffect(() => {
     const initializePage = async () => {
@@ -142,7 +143,7 @@ export default function Dashboard() {
       if (!document.hidden) {
         fetchRequests();
       }
-    }, 30000); // 30 seconds
+    }, 300000); 
 
     return () => clearInterval(interval);
   }, []);

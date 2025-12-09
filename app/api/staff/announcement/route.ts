@@ -15,23 +15,8 @@ interface AnnouncementBody {
   limit?: number;
 }
 
-// ================= AUTH HELPER =================
-async function verifyToken(req: NextRequest) {
-  const authHeader = req.headers.get("authorization");
-  if (!authHeader) return null;
+// ===================== HELPER FUNCTIONS =====================
 
-  const token = authHeader.split(" ")[1];
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET) as { userId: number; role: string };
-    const user = await prisma.user.findUnique({ where: { user_id: decoded.userId } });
-    if (!user) return null;
-    return { userId: user.user_id, role: user.role };
-  } catch {
-    return null;
-  }
-}
-
-// ================== CONTENT HELPERS ==================
 function extractExpirationDays(content: string | null): number {
   if (!content) return 14;
   const match = content.match(/\[EXP_DAYS:(\d+)\]$/);
@@ -48,26 +33,46 @@ function cleanContent(content: string | null): string {
   return content.replace(/\[EXP_DAYS:\d+\]$/, '');
 }
 
-// ================= DELETE OLD ANNOUNCEMENTS =================
 async function deleteOldAnnouncements() {
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
   try {
     const result = await prisma.announcement.deleteMany({
       where: { posted_at: { lt: thirtyDaysAgo } },
     });
     console.log(`Deleted ${result.count} old announcements`);
     return result.count;
-  } catch (error) {
-    console.error("Failed to delete old announcements:", error);
+  } catch (err) {
+    console.error("Failed to delete old announcements:", err);
     return 0;
   }
 }
 
-// ================= GET ANNOUNCEMENTS =================
+// ===================== AUTH HELPER =====================
+
+async function verifyToken(req: NextRequest) {
+  const authHeader = req.headers.get("authorization");
+  if (!authHeader) return null;
+
+  const token = authHeader.split(" ")[1];
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET) as { userId: number; role: string };
+    // Fetch user role from DB to be sure
+    const user = await prisma.user.findUnique({ where: { user_id: decoded.userId } });
+    if (!user) return null;
+    return { userId: user.user_id, role: user.role };
+  } catch {
+    return null;
+  }
+}
+
+// ===================== GET ANNOUNCEMENTS =====================
+
 export async function GET(req: NextRequest) {
   try {
+    // Optional auth for GET, only needed if you want private announcements
+    const decoded = await verifyToken(req);
+
     await deleteOldAnnouncements();
 
     const { searchParams } = new URL(req.url);
@@ -78,44 +83,58 @@ export async function GET(req: NextRequest) {
 
     if (type !== "active" && type !== "expired") type = "active";
 
-    const allAnnouncements = await prisma.announcement.findMany({ orderBy: { posted_at: "desc" } });
+    const allAnnouncements = await prisma.announcement.findMany({
+      orderBy: { posted_at: "desc" },
+    });
 
     const now = new Date();
-    const filtered = allAnnouncements.filter(a => {
+    const filteredAnnouncements = allAnnouncements.filter(a => {
       const expirationDays = extractExpirationDays(a.content);
       const expirationDate = new Date(a.posted_at);
       expirationDate.setDate(expirationDate.getDate() + expirationDays);
-      return type === "active" ? expirationDate > now : expirationDate <= now;
+
+      const isActive = expirationDate > now;
+      if (type === "active") return isActive;
+      return !isActive;
     });
 
-    const paginated = filtered.slice(skip, skip + limit);
+    const total = filteredAnnouncements.length;
+    const paginated = filteredAnnouncements.slice(skip, skip + limit);
 
     const announcementsWithExpiration = paginated.map(a => {
       const expirationDays = extractExpirationDays(a.content);
       const expirationDate = new Date(a.posted_at);
       expirationDate.setDate(expirationDate.getDate() + expirationDays);
-      return { ...a, content: cleanContent(a.content), expiration_days: expirationDays, expiration_date: expirationDate.toISOString() };
+
+      return {
+        ...a,
+        content: cleanContent(a.content),
+        expiration_days: expirationDays,
+        expiration_date: expirationDate.toISOString()
+      };
     });
 
     return NextResponse.json({
       announcements: announcementsWithExpiration,
-      pagination: { total: filtered.length, page, limit, totalPages: Math.ceil(filtered.length / limit) },
+      pagination: { total, page, limit, totalPages: Math.ceil(total / limit) },
     });
-  } catch (error) {
-    console.error("Fetch announcements failed:", error);
+  } catch (err) {
+    console.error("Fetch announcements failed:", err);
     return NextResponse.json({ message: "Failed to fetch announcements" }, { status: 500 });
   }
 }
 
-// ================= POST ANNOUNCEMENT =================
+// ===================== POST ANNOUNCEMENT =====================
+
 export async function POST(req: NextRequest) {
   try {
     const decoded = await verifyToken(req);
-    if (!decoded || decoded.role !== "ADMIN") {
+    if (!decoded || !["ADMIN", "STAFF"].includes(decoded.role)) {
       return NextResponse.json({ message: "Access denied" }, { status: 403 });
     }
 
     const { title, content, posted_by, is_public, expiration_days }: AnnouncementBody = await req.json();
+
     if (!title || !content || !posted_by) {
       return NextResponse.json({ message: "Missing required fields" }, { status: 400 });
     }
@@ -124,24 +143,33 @@ export async function POST(req: NextRequest) {
     const contentWithMetadata = addExpirationMetadata(content, days);
 
     const created = await prisma.announcement.create({
-      data: { title, content: contentWithMetadata, posted_by, is_public: is_public ?? true },
+      data: { 
+        title, 
+        content: contentWithMetadata, 
+        posted_by, 
+        is_public: is_public ?? true 
+      },
     });
 
     const expirationDate = new Date(created.posted_at);
     expirationDate.setDate(expirationDate.getDate() + days);
 
-    return NextResponse.json({ message: "Announcement created", created: { ...created, content: cleanContent(created.content), expiration_days: days, expiration_date: expirationDate.toISOString() } });
-  } catch (error) {
-    console.error("Create announcement failed:", error);
+    return NextResponse.json({
+      message: "Announcement created",
+      created: { ...created, content: cleanContent(created.content), expiration_days: days, expiration_date: expirationDate.toISOString() }
+    });
+  } catch (err) {
+    console.error("Create announcement failed:", err);
     return NextResponse.json({ message: "Failed to create announcement" }, { status: 500 });
   }
 }
 
-// ================= PUT ANNOUNCEMENT =================
+// ===================== PUT ANNOUNCEMENT =====================
+
 export async function PUT(req: NextRequest) {
   try {
     const decoded = await verifyToken(req);
-    if (!decoded || decoded.role !== "ADMIN") {
+    if (!decoded || !["ADMIN", "STAFF"].includes(decoded.role)) {
       return NextResponse.json({ message: "Access denied" }, { status: 403 });
     }
 
@@ -156,23 +184,30 @@ export async function PUT(req: NextRequest) {
     const days = expiration_days && expiration_days > 0 ? expiration_days : extractExpirationDays(existing.content);
     const contentWithMetadata = addExpirationMetadata(content, days);
 
-    const updated = await prisma.announcement.update({ where: { announcement_id: id }, data: { title, content: contentWithMetadata, is_public } });
+    const updated = await prisma.announcement.update({
+      where: { announcement_id: id },
+      data: { title, content: contentWithMetadata, is_public: is_public ?? true },
+    });
 
     const expirationDate = new Date(updated.posted_at);
     expirationDate.setDate(expirationDate.getDate() + days);
 
-    return NextResponse.json({ message: "Announcement updated", updated: { ...updated, content: cleanContent(updated.content), expiration_days: days, expiration_date: expirationDate.toISOString() } });
-  } catch (error) {
-    console.error("Update announcement failed:", error);
+    return NextResponse.json({
+      message: "Announcement updated",
+      updated: { ...updated, content: cleanContent(updated.content), expiration_days: days, expiration_date: expirationDate.toISOString() }
+    });
+  } catch (err) {
+    console.error("Update announcement failed:", err);
     return NextResponse.json({ message: "Failed to update announcement" }, { status: 500 });
   }
 }
 
-// ================= DELETE ANNOUNCEMENT =================
+// ===================== DELETE ANNOUNCEMENT =====================
+
 export async function DELETE(req: NextRequest) {
   try {
     const decoded = await verifyToken(req);
-    if (!decoded || decoded.role !== "ADMIN") {
+    if (!decoded || !["ADMIN", "STAFF"].includes(decoded.role)) {
       return NextResponse.json({ message: "Access denied" }, { status: 403 });
     }
 
@@ -182,8 +217,8 @@ export async function DELETE(req: NextRequest) {
     await prisma.announcement.delete({ where: { announcement_id: id } });
 
     return NextResponse.json({ message: "Announcement deleted" });
-  } catch (error) {
-    console.error("Delete announcement failed:", error);
+  } catch (err) {
+    console.error("Delete announcement failed:", err);
     return NextResponse.json({ message: "Failed to delete announcement" }, { status: 500 });
   }
 }
