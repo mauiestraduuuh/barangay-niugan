@@ -16,7 +16,7 @@ export default function RegisterPage() {
     birthdate: "",
     gender: "",
     address: "",
-    role: "RESIDENT",
+    role: "",
     is_head_of_family: false,
     is_4ps_member: false,
     is_pwd: false,
@@ -106,7 +106,7 @@ export default function RegisterPage() {
         birthdate: "",
         gender: "",
         address: "",
-        role: "RESIDENT",
+        role: "",
         is_head_of_family: false,
         is_4ps_member: false,
         is_pwd: false,
@@ -219,19 +219,27 @@ export default function RegisterPage() {
               name="gender"
               value={form.gender}
               onChange={handleChange}
-              className="col-span-1 px-3 py-2 rounded-md border border-gray-300 bg-white focus:ring-2 focus:ring-red-600 focus:outline-none"
+              className="col-span-1 px-3 py-2 rounded-md border border-gray-300 focus:ring-2 focus:ring-red-600 focus:outline-none"
+              required
             >
-              <option value="">Gender</option>
+              <option value="" disabled>
+                Select Gender
+              </option>
               <option value="MALE">Male</option>
               <option value="FEMALE">Female</option>
               <option value="OTHERS">Others</option>
             </select>
+
             <select
               name="role"
               value={form.role}
               onChange={handleChange}
-              className="col-span-1 px-3 py-2 rounded-md border border-gray-300 bg-white focus:ring-2 focus:ring-red-600 focus:outline-none"
+              className="col-span-1 px-3 py-2 rounded-md border border-gray-300 focus:ring-2 focus:ring-red-600 focus:outline-none"
+              required
             >
+              <option value="" disabled>
+                Select Role
+              </option>
               <option value="RESIDENT">Resident</option>
               <option value="STAFF">Staff</option>
             </select>
