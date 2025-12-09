@@ -32,7 +32,9 @@ interface ResidentProfile {
   contact_no?: string;
   email?: string;
   photo_url?: string;
+  household_number?: string; 
 }
+
 
 // Loading Spinner Component
 const LoadingSpinner = ({ size = "md" }: { size?: "sm" | "md" | "lg" }) => {
@@ -588,13 +590,11 @@ const updateProfile = async () => {
 
                   <div className="bg-white shadow-lg rounded-2xl p-8 border border-gray-100">
                     <h3 className="text-large font-semibold text-black mb-6">Personal Details</h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                       {[
                         { label: "User ID", value: profile.user_id },
-                        { 
-                          label: "Birthdate", 
-                          value: profile.birthdate ? profile.birthdate.split("T")[0] : "N/A" 
-                        },
+                        { label: "Household Number", value: profile.household_number || "N/A" }, // <-- added
+                        { label: "Birthdate", value: profile.birthdate ? profile.birthdate.split("T")[0] : "N/A" },
                         { label: "Email", value: profile.email || "N/A" },
                         { label: "Address", value: profile.address || "N/A" },
                         { label: "Contact Number", value: profile.contact_no || "N/A" },
