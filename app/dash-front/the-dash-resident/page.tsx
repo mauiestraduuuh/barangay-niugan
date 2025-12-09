@@ -42,7 +42,7 @@ const LoadingSpinner = ({ size = "md" }: { size?: "sm" | "md" | "lg" }) => {
   };
 
   return (
-    <div className={`${sizeClasses[size]} border-red-700 border-t-transparent rounded-full animate-spin`}></div>
+    <div className="w-16 h-16 border-4 border-red-700 border-t-transparent rounded-full animate-spin"></div>
   );
 };
 
@@ -272,35 +272,40 @@ export default function Dashboard() {
             </div>
           )}
 
-          {loading ? (
-            <div className="flex flex-col items-center justify-center py-10 space-y-6">
+          {loading && (
+            <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/50 backdrop-blur-sm">
               <LoadingSpinner size="lg" />
-              <p className="text-gray-600 text-lg">Loading dashboard...</p>
-
-              {/* Skeleton Resident Info */}
-              <div className="flex items-center gap-4 mb-6 animate-pulse">
-                <div className="w-16 h-16 rounded-full bg-gray-300"></div>
-                <div className="h-8 bg-gray-300 rounded w-64"></div>
-              </div>
-
-              {/* Skeleton Summary Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 w-full">
-                <SkeletonCard />
-                <SkeletonCard />
-                <SkeletonCard />
-                <SkeletonCard />
-              </div>
-
-              {/* Skeleton Announcements */}
-              <div className="space-y-6 w-full">
-                <SkeletonAnnouncement />
-                <SkeletonAnnouncement />
-                <SkeletonAnnouncement />
-              </div>
+              <p className="text-gray-200 text-lg mt-3">Loading dashboard...</p>
             </div>
-          ) : (
-            <>
-              {/* Resident Info */}
+          )}
+
+          <div className={`${loading ? "opacity-40 pointer-events-none" : ""}`}>
+            {loading ? (
+              <>
+                {/* Skeleton Resident Info */}
+                <div className="flex items-center gap-4 mb-6 animate-pulse">
+                  <div className="w-16 h-16 rounded-full bg-gray-300"></div>
+                  <div className="h-8 bg-gray-300 rounded w-64"></div>
+                </div>
+
+                {/* Skeleton Summary Cards */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 w-full">
+                  <SkeletonCard />
+                  <SkeletonCard />
+                  <SkeletonCard />
+                  <SkeletonCard />
+                </div>
+
+                {/* Skeleton Announcements */}
+                <div className="space-y-6 w-full">
+                  <SkeletonAnnouncement />
+                  <SkeletonAnnouncement />
+                  <SkeletonAnnouncement />
+                </div>
+              </>
+            ) : (
+              <>
+               {/* Resident Info */}
               {resident && (
                 <div className="flex items-center gap-4 mb-6">
                   <img
@@ -337,6 +342,9 @@ export default function Dashboard() {
                   <p className="text-3xl font-bold text-red-700">{summary.pendingFeedbacks}</p>
                 </div>
               </div>
+              </>
+            )}
+          </div>
 
               {/* Announcements - Enhanced Display (Admin Style) */}
               <section>
@@ -364,7 +372,9 @@ export default function Dashboard() {
                               </p>
                             </div>
                           </div>
+
                           <p className="text-black mb-3">{ann.content ?? "No content provided."}</p>
+
                           <div className="flex items-center justify-between text-sm">
                             <p className="text-gray-400">
                               Posted at: {new Date(ann.posted_at).toLocaleString()}
@@ -379,10 +389,8 @@ export default function Dashboard() {
                   </div>
                 )}
               </section>
-            </>
-          )}
         </main>
-      </div>
-    </div>
-  );
-}
+        </div> 
+        </div> 
+        ); 
+        }

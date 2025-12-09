@@ -42,15 +42,14 @@ const LoadingSpinner = ({ size = "md" }: { size?: "sm" | "md" | "lg" }) => {
   };
 
   return (
-    <div className={`${sizeClasses[size]} border-red-700 border-t-transparent rounded-full animate-spin`}></div>
+   <div className="w-16 h-16 border-4 border-red-700 border-t-transparent rounded-full animate-spin"></div>
   );
 };
 
-// Full Page Loading Overlay
 const LoadingOverlay = ({ message = "Processing..." }: { message?: string }) => {
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100]">
-      <div className="bg-white p-6 rounded-xl flex flex-col items-center gap-4 shadow-2xl">
+    <div className="fixed inset-0 flex items-center justify-center z-[100] backdrop-blur-sm">
+      <div className="flex flex-col items-center gap-4">
         <LoadingSpinner size="lg" />
         <p className="text-gray-700 font-medium">{message}</p>
       </div>
@@ -60,17 +59,34 @@ const LoadingOverlay = ({ message = "Processing..." }: { message?: string }) => 
 
 // Skeleton Table Row
 const SkeletonRow = () => (
-  <tr className="animate-pulse">
-    <td className="p-4"><div className="h-4 bg-gray-200 rounded w-12"></div></td>
-    <td className="p-4"><div className="h-4 bg-gray-200 rounded w-32"></div></td>
-    <td className="p-4"><div className="h-4 bg-gray-200 rounded w-24"></div></td>
-    <td className="p-4"><div className="h-4 bg-gray-200 rounded w-20"></div></td>
-    <td className="p-4"><div className="h-4 bg-gray-200 rounded w-16"></div></td>
-    <td className="p-4"><div className="h-4 bg-gray-200 rounded w-20"></div></td>
-    <td className="p-4"><div className="h-4 bg-gray-200 rounded w-28"></div></td>
-    <td className="p-4"><div className="h-4 bg-gray-200 rounded w-24 mx-auto"></div></td>
+  <tr className="animate-pulse bg-white border-b">
+    <td className="p-4">
+      <div className="h-4 bg-gray-200 rounded w-8"></div>
+    </td>
+    <td className="p-4">
+      <div className="h-4 bg-gray-200 rounded w-24"></div>
+    </td>
+    <td className="p-4">
+      <div className="h-4 bg-gray-200 rounded w-32"></div>
+    </td>
+    <td className="p-4">
+      <div className="h-4 bg-gray-200 rounded w-20"></div>
+    </td>
+    <td className="p-4">
+      <div className="h-4 bg-gray-200 rounded w-16"></div>
+    </td>
+    <td className="p-4">
+      <div className="h-4 bg-gray-200 rounded w-12"></div>
+    </td>
+    <td className="p-4">
+      <div className="h-4 bg-gray-200 rounded w-24"></div>
+    </td>
+    <td className="p-4">
+      <div className="h-4 bg-gray-200 rounded w-20 mx-auto"></div>
+    </td>
   </tr>
 );
+
 
 export default function Dashboard() {
   const router = useRouter();
@@ -315,22 +331,92 @@ export default function Dashboard() {
     }
   };
 
-  // Full Page Initial Loading
-  if (initialLoading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to-black flex items-center justify-center">
-        <div className="bg-white p-8 rounded-xl shadow-2xl flex flex-col items-center gap-6">
-          <img
-            src="/niugan-logo.png"
-            alt="Logo"
-            className="w-20 h-20 rounded-full object-cover"
-          />
-          <LoadingSpinner size="lg" />
-          <p className="text-gray-700 font-medium text-lg">Loading Certificate Requests...</p>
+// Full Page Initial Loading with subtle colors
+if (initialLoading) {
+  return (
+    <div className="relative min-h-screen flex">
+      {/* Sidebar Skeleton */}
+      <div className="w-20 md:w-20 bg-gray-100 animate-pulse flex flex-col p-4 gap-4">
+        <div className="h-10 w- md:h-28 md:w-28 bg-gray-200 rounded-full mx-auto" />
+        <div className="flex-1 flex flex-col gap-3 mt-4">
+          <div className="h-6 bg-gray-200 rounded w-3/4 mx-auto" />
+          <div className="h-6 bg-gray-200 rounded w-2/3 mx-auto" />
+          <div className="h-6 bg-gray-200 rounded w-1/2 mx-auto" />
+          <div className="h-6 bg-gray-200 rounded w-1/3 mx-auto" />
+        </div>
+        <div className="h-10 bg-gray-200 rounded w-full mt-auto" />
+      </div>
+
+      {/* Main Skeleton */}
+      <div className="flex-1 flex flex-col gap-4 p-4">
+        {/* Header Skeleton */}
+        <div className="flex justify-between items-center p-4 bg-gray-100 rounded-xl animate-pulse">
+          <div className="h-6 bg-gray-200 rounded w-40"></div>
+          <div className="h-6 bg-gray-200 rounded w-20"></div>
+          <div className="h-10 bg-gray-200 rounded w-36"></div>
+        </div>
+
+        {/* Table Skeleton */}
+        <div className="overflow-x-auto bg-white rounded-xl shadow-lg p-4 flex flex-col gap-4">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr>
+                <th className="p-4"><div className="h-4 bg-gray-200 rounded w-8"></div></th>
+                <th className="p-4"><div className="h-4 bg-gray-200 rounded w-20"></div></th>
+                <th className="p-4"><div className="h-4 bg-gray-200 rounded w-32"></div></th>
+                <th className="p-4"><div className="h-4 bg-gray-200 rounded w-20"></div></th>
+                <th className="p-4"><div className="h-4 bg-gray-200 rounded w-16"></div></th>
+                <th className="p-4"><div className="h-4 bg-gray-200 rounded w-12"></div></th>
+                <th className="p-4"><div className="h-4 bg-gray-200 rounded w-24"></div></th>
+                <th className="p-4"><div className="h-4 bg-gray-200 rounded w-20 mx-auto"></div></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr className="animate-pulse">
+                <td className="p-4"><div className="h-4 bg-gray-200 rounded w-8"></div></td>
+                <td className="p-4"><div className="h-4 bg-gray-200 rounded w-20"></div></td>
+                <td className="p-4"><div className="h-4 bg-gray-200 rounded w-32"></div></td>
+                <td className="p-4"><div className="h-4 bg-gray-200 rounded w-20"></div></td>
+                <td className="p-4"><div className="h-4 bg-gray-200 rounded w-16"></div></td>
+                <td className="p-4"><div className="h-4 bg-gray-200 rounded w-12"></div></td>
+                <td className="p-4"><div className="h-4 bg-gray-200 rounded w-24"></div></td>
+                <td className="p-4"><div className="h-4 bg-gray-200 rounded w-20 mx-auto"></div></td>
+              </tr>
+              <tr className="animate-pulse">
+                <td className="p-4"><div className="h-4 bg-gray-200 rounded w-8"></div></td>
+                <td className="p-4"><div className="h-4 bg-gray-200 rounded w-20"></div></td>
+                <td className="p-4"><div className="h-4 bg-gray-200 rounded w-32"></div></td>
+                <td className="p-4"><div className="h-4 bg-gray-200 rounded w-20"></div></td>
+                <td className="p-4"><div className="h-4 bg-gray-200 rounded w-16"></div></td>
+                <td className="p-4"><div className="h-4 bg-gray-200 rounded w-12"></div></td>
+                <td className="p-4"><div className="h-4 bg-gray-200 rounded w-24"></div></td>
+                <td className="p-4"><div className="h-4 bg-gray-200 rounded w-20 mx-auto"></div></td>
+              </tr>
+              <tr className="animate-pulse">
+                <td className="p-4"><div className="h-4 bg-gray-200 rounded w-8"></div></td>
+                <td className="p-4"><div className="h-4 bg-gray-200 rounded w-20"></div></td>
+                <td className="p-4"><div className="h-4 bg-gray-200 rounded w-32"></div></td>
+                <td className="p-4"><div className="h-4 bg-gray-200 rounded w-20"></div></td>
+                <td className="p-4"><div className="h-4 bg-gray-200 rounded w-16"></div></td>
+                <td className="p-4"><div className="h-4 bg-gray-200 rounded w-12"></div></td>
+                <td className="p-4"><div className="h-4 bg-gray-200 rounded w-24"></div></td>
+                <td className="p-4"><div className="h-4 bg-gray-200 rounded w-20 mx-auto"></div></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        {/* Centered Loading Spinner Overlay */}
+        <div className="absolute inset-0 flex items-center justify-center z-20 backdrop-blur-sm bg-white/30">
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-16 h-16 border-4 border-red-700 border-t-transparent rounded-full animate-spin"></div>
+            <p className="text-gray-200 text-lg mt-3">Loading Certificate Requests...</p>
+          </div>
         </div>
       </div>
-    );
-  }
+    </div>
+  );
+}
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to-black p-4 flex gap-4">

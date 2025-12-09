@@ -46,7 +46,7 @@ const LoadingSpinner = ({ size = "md" }: { size?: "sm" | "md" | "lg" }) => {
   };
 
   return (
-    <div className={`${sizeClasses[size]} border-red-700 border-t-transparent rounded-full animate-spin`}></div>
+    <div className="w-16 h-16 border-4 border-red-700 border-t-transparent rounded-full animate-spin"></div>
   );
 };
 
@@ -366,13 +366,19 @@ const handleDownload = async () => {
           )}
 
           {/* Loading State */}
-          {loadingResident && !errorResident && (
-            <div className="flex flex-col items-center gap-6">
+        {loadingResident && !errorResident && (
+          <div className="relative w-full max-w-[550px] flex flex-col items-center">
+            {/* Blur Overlay */}
+            <div className="absolute inset-0 bg-white/50 backdrop-blur-sm z-20 flex flex-col items-center justify-center">
               <LoadingSpinner size="lg" />
-              <p className="text-black text-lg">Loading digital ID...</p>
-              <SkeletonIDCard />
+              <p className="text-gray-200 text-lg mt-3">Loading digital ID...</p>
             </div>
-          )}
+
+            {/* Skeleton behind spinner */}
+            <SkeletonIDCard />
+          </div>
+        )}
+
 
           {/* Loaded ID Card */}
           {!loadingResident && !errorResident && resident && (

@@ -43,7 +43,7 @@ const LoadingSpinner = ({ size = "md" }: { size?: "sm" | "md" | "lg" }) => {
   };
 
   return (
-    <div className={`${sizeClasses[size]} border-red-700 border-t-transparent rounded-full animate-spin`}></div>
+    <div className="w-16 h-16 border-4 border-red-700 border-t-transparent rounded-full animate-spin"></div>
   );
 };
 
@@ -396,16 +396,16 @@ const updateProfile = async () => {
     }
   };
 
-  const SpinnerOverlay = ({ message = "Loading..." }: { message?: string }) => {
-  return (
-    <div className="fixed inset-0 bg-black/50 flex flex-col items-center justify-center z-50">
-      <div className="flex flex-col items-center gap-4">
-        <div className="w-16 h-16 border-4 border-red-700 border-t-transparent rounded-full animate-spin"></div>
-        <p className="text-white font-semibold">{message}</p>
-      </div>
-    </div>
-  );
-};
+      const SpinnerOverlay = ({ message = "Loading..." }: { message?: string }) => {
+        return (
+          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex flex-col items-center justify-center z-50">
+            <div className="flex flex-col items-center gap-4">
+              <div className="w-16 h-16 border-4 border-red-700 border-t-transparent rounded-full animate-spin"></div>
+               <p className="text-gray-200 text-lg mt-3">{message}</p>
+            </div>
+          </div>
+        );
+      };
 
 
   const features = [
