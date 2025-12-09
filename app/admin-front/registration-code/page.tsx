@@ -342,12 +342,19 @@ export default function RegistrationCodePage() {
             />
             {/* Generate button */}
               <button
-                onClick={() => setShowGenerateModal(true)}
-                disabled={actionLoading}
-                className="bg-black text-white px-4 py-2 rounded-xl hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-              >
-                {actionLoading ? <><LoadingSpinner size="sm" /> Generating...</> : "Generate"}
-              </button>
+                  onClick={generateCode}
+                  disabled={actionLoading}
+                  className="bg-black text-white px-4 py-2 rounded-xl hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {actionLoading ? (
+                    <>
+                      <LoadingSpinner size="sm" />
+                      <span className="leading-none">Generating...</span>
+                    </>
+                  ) : (
+                    <span className="leading-none">Generate</span>
+                  )}
+                </button>
 
             {/* Filter Toggle */}
             <div className="flex items-center gap-2 ml-auto">
