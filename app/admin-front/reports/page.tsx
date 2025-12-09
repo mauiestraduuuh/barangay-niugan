@@ -435,29 +435,223 @@ export default function ReportsSection() {
     }
   };
 
+// Add this helper function to generate chart interpretations
+const getChartInterpretation = (category: string, chartData: any[]) => {
+  if (chartData.length === 0) return "No data available for analysis.";
+
+  switch (category) {
+    case "certificates":
+      const totalCerts = chartData.reduce((sum, item) => sum + item.value, 0);
+      const pending = chartData.find(item => item.name === "pending")?.value || 0;
+      const approved = chartData.find(item => item.name === "approved")?.value || 0;
+      const claimed = chartData.find(item => item.name === "claimed")?.value || 0;
+      const rejected = chartData.find(item => item.name === "rejected")?.value || 0;
+      
+      return `Total Certificate Requests: ${totalCerts}
+- Pending: ${pending} (${((pending/totalCerts)*100).toFixed(1)}%)
+- Approved: ${approved} (${((approved/totalCerts)*100).toFixed(1)}%)
+- Claimed: ${claimed} (${((claimed/totalCerts)*100).toFixed(1)}%)
+- Rejected: ${rejected} (${((rejected/totalCerts)*100).toFixed(1)}%)
+
+Analysis: ${pending > approved ? "There is a backlog of pending requests that needs attention." : "Certificate processing is moving efficiently."} ${claimed > 0 ? `${claimed} certificates have been successfully claimed by residents.` : ""}`;
+
+    case "feedback":
+      const totalFeedback = chartData.reduce((sum, item) => sum + item.value, 0);
+      const pendingFeedback = chartData.find(item => item.name === "pending")?.value || 0;
+      const respondedFeedback = chartData.find(item => item.name === "responded")?.value || 0;
+      
+      return `Total Feedback/Complaints: ${totalFeedback}
+- Pending: ${pendingFeedback} (${((pendingFeedback/totalFeedback)*100).toFixed(1)}%)
+- Responded: ${respondedFeedback} (${((respondedFeedback/totalFeedback)*100).toFixed(1)}%)
+
+Analysis: Response rate is ${((respondedFeedback/totalFeedback)*100).toFixed(1)}%. ${pendingFeedback > 0 ? `${pendingFeedback} complaint(s) still require attention.` : "All complaints have been addressed."}`;
+
+    case "households":
+      const avgMembers = chartData.reduce((sum, item) => sum + item.members, 0) / chartData.length;
+      const maxHousehold = chartData.reduce((max, item) => item.members > max.members ? item : max, chartData[0]);
+      const minHousehold = chartData.reduce((min, item) => item.members < min.members ? item : min, chartData[0]);
+      
+      return `Household Distribution (Top 10):
+- Average members per household: ${avgMembers.toFixed(1)}
+- Largest household: ${maxHousehold.name} with ${maxHousehold.members} members
+- Smallest household: ${minHousehold.name} with ${minHousehold.members} members
+
+Analysis: The data shows variation in household sizes, which is useful for resource allocation and community planning.`;
+
+    case "residents":
+      const totalResidents = chartData.reduce((sum, item) => sum + item.value, 0);
+      const youth = chartData.find(item => item.name === "0-17")?.value || 0;
+      const youngAdults = chartData.find(item => item.name === "18-34")?.value || 0;
+      const middleAge = chartData.find(item => item.name === "35-59")?.value || 0;
+      const seniors = chartData.find(item => item.name === "60+")?.value || 0;
+      
+      return `Resident Age Distribution (Total: ${totalResidents}):
+- Youth (0-17): ${youth} (${((youth/totalResidents)*100).toFixed(1)}%)
+- Young Adults (18-34): ${youngAdults} (${((youngAdults/totalResidents)*100).toFixed(1)}%)
+- Middle Age (35-59): ${middleAge} (${((middleAge/totalResidents)*100).toFixed(1)}%)
+- Seniors (60+): ${seniors} (${((seniors/totalResidents)*100).toFixed(1)}%)
+
+Analysis: ${youth > totalResidents * 0.3 ? "High youth population suggests need for educational and recreational facilities." : ""} ${seniors > totalResidents * 0.2 ? "Significant senior population indicates need for healthcare and accessibility services." : ""}`;
+
+    case "staff":
+      const totalApprovals = chartData.reduce((sum, item) => sum + item.value, 0);
+      
+      return `Staff Performance Summary:
+${chartData.map(item => `- ${item.name}: ${item.value}`).join('\n')}
+- Total Activities: ${totalApprovals}
+
+Analysis: Staff members are actively processing requests and certificates, contributing to efficient barangay operations.`;
+
+    case "announcements":
+      const totalAnnouncements = chartData.reduce((sum, item) => sum + item.value, 0);
+      const active = chartData.find(item => item.name === "Active")?.value || 0;
+      const expired = chartData.find(item => item.name === "Expired")?.value || 0;
+      
+      return `Announcement Status (Total: ${totalAnnouncements}):
+- Active: ${active} (${((active/totalAnnouncements)*100).toFixed(1)}%)
+- Expired: ${expired} (${((expired/totalAnnouncements)*100).toFixed(1)}%)
+
+Analysis: ${active > 0 ? `${active} active announcement(s) are currently visible to residents.` : "No active announcements at this time."} ${expired > active * 2 ? "Consider archiving old announcements." : ""}`;
+
+    default:
+      return "No interpretation available.";
+  }
+};
+
+// Update the handleExportPDF function - replace the font setting lines
 const handleExportPDF = () => {
   const doc = new jsPDF();
-  doc.text("Barangay Report Summary", 14, 16);
+  let yPosition = 20;
+  
+  doc.setFontSize(18);
+  doc.text("Barangay Report Summary", 14, yPosition);
+  yPosition += 10;
+  
+  doc.setFontSize(11);
+  if (dateRange.from || dateRange.to) {
+    doc.text(`Period: ${dateRange.from || 'Start'} to ${dateRange.to || 'Today'}`, 14, yPosition);
+    yPosition += 7;
+  }
+  doc.text(`Generated: ${new Date().toLocaleString()}`, 14, yPosition);
+  yPosition += 12;
+  
+  // Statistics table
   autoTable(doc, {
-    startY: 25,
+    startY: yPosition,
     head: [["Category", "Count"]],
     body: Object.entries(stats)
       .filter(([_, value]) => typeof value === "number")
       .map(([key, value]) => [key.replace(/^total/i, ""), value]),
+    styles: { fontSize: 10 },
+    headStyles: { fillColor: [220, 38, 38] },
   });
+  
+  yPosition = (doc as any).lastAutoTable.finalY + 15;
+  
+  // Add interpretations for each category
+  doc.setFontSize(14);
+  doc.text("Data Analysis & Insights", 14, yPosition);
+  yPosition += 10;
+  
+  doc.setFontSize(9);
+  const categories: Array<'certificates' | 'feedback' | 'households' | 'residents' | 'staff' | 'announcements'> = 
+    ['certificates', 'feedback', 'households', 'residents', 'staff', 'announcements'];
+  
+  categories.forEach(category => {
+    const chartData = getChartData(category);
+    if (chartData.length > 0) {
+      // Check if we need a new page
+      if (yPosition > 250) {
+        doc.addPage();
+        yPosition = 20;
+      }
+      
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold'); // Fixed: specify font family
+      doc.text(`${category.charAt(0).toUpperCase() + category.slice(1)}:`, 14, yPosition);
+      yPosition += 7;
+      
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal'); // Fixed: specify font family
+      const interpretation = getChartInterpretation(category, chartData);
+      const lines = doc.splitTextToSize(interpretation, 180);
+      doc.text(lines, 14, yPosition);
+      yPosition += (lines.length * 5) + 8;
+    }
+  });
+  
   doc.save("barangay_report.pdf");
 };
 
+// Update handleExportDetailedPDF function - replace the font setting lines
 const handleExportDetailedPDF = () => {
   if (!activeCategory || details.length === 0) return;
+  
   const doc = new jsPDF();
-  doc.text(`${activeCategory} Details`, 14, 16);
+  let yPosition = 16;
+  
+  // Add title
+  doc.setFontSize(16);
+  doc.text(`${activeCategory.charAt(0).toUpperCase() + activeCategory.slice(1)} Detailed Report`, 14, yPosition);
+  yPosition += 8;
+  
+  // Add date range if applicable
+  doc.setFontSize(10);
+  if (dateRange.from || dateRange.to) {
+    doc.text(`Period: ${dateRange.from || 'Start'} to ${dateRange.to || 'Today'}`, 14, yPosition);
+    yPosition += 6;
+  }
+  doc.text(`Generated: ${new Date().toLocaleString()}`, 14, yPosition);
+  yPosition += 6;
+  doc.text(`Total Records: ${details.length}`, 14, yPosition);
+  yPosition += 10;
+  
+  // Add interpretation section
+  const chartData = getChartData(activeCategory);
+  if (chartData.length > 0) {
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold'); // Fixed: specify font family
+    doc.text("Data Analysis:", 14, yPosition);
+    yPosition += 7;
+    
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal'); // Fixed: specify font family
+    const interpretation = getChartInterpretation(activeCategory, chartData);
+    const lines = doc.splitTextToSize(interpretation, 180);
+    doc.text(lines, 14, yPosition);
+    yPosition += (lines.length * 5) + 10;
+  }
+  
+  // Add table
   autoTable(doc, {
-    startY: 25,
-    head: [Object.keys(details[0]).map((k) => k.replaceAll("_", " "))],
-    body: details.map((d) => Object.values(d).map((v) => String(v))),
+    startY: yPosition,
+    head: [Object.keys(details[0])
+      .filter(key => !key.startsWith('member_') && !key.startsWith('staff_member_'))
+      .map((k) => k.replaceAll("_", " ").toUpperCase())],
+    body: details.map((d) => 
+      Object.entries(d)
+        .filter(([key]) => !key.startsWith('member_') && !key.startsWith('staff_member_'))
+        .map(([key, v]) => {
+          // Format dates
+          if ([
+            "created_at",
+            "requested_at",
+            "approved_at",
+            "submitted_at",
+            "responded_at",
+            "posted_at",
+            "expiry_date",
+          ].includes(key) && v) {
+            return new Date(v as string).toLocaleDateString();
+          }
+          return String(v ?? '');
+        })
+    ),
+    styles: { fontSize: 8 },
+    headStyles: { fillColor: [220, 38, 38] },
   });
-  doc.save(`${activeCategory}_details.pdf`);
+  
+  doc.save(`${activeCategory}_detailed_report.pdf`);
 };
 
   const handleExportCSV = () => {
