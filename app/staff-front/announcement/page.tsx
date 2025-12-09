@@ -344,7 +344,10 @@ export default function ManageAnnouncements() {
 
       <div className="flex-1 flex flex-col gap-4">
         <header className="bg-gray-50 shadow-sm p-4 flex justify-between items-center rounded-xl text-black">
-          <button onClick={toggleSidebar} className="block md:hidden text-black hover:text-red-700 focus:outline-none">
+          <button
+            onClick={toggleSidebar}
+            className="block md:hidden text-black hover:text-red-700 focus:outline-none"
+          >
             <Bars3Icon className="w-6 h-6" />
           </button>
           <h1 className="text-large font-bold">Manage Announcement</h1>

@@ -466,19 +466,15 @@ export default function StaffProfilePage() {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col gap-4">
-        {/* Header */}
-        <header className="bg-gray-50 shadow-sm p-4 flex items-center justify-center relative rounded-xl text-black">
-          {/* Mobile sidebar toggle */}
+        <header className="bg-gray-50 shadow-sm p-4 flex justify-between items-center rounded-xl text-black">
           <button
             onClick={toggleSidebar}
-            className="block md:hidden absolute left-4 text-black hover:text-red-700 focus:outline-none"
+            className="block md:hidden text-black hover:text-red-700 focus:outline-none"
           >
             <Bars3Icon className="w-6 h-6" />
           </button>
-
-          <h1 className="text-large font-bold text-left w-full">
-            Manage Profile
-          </h1>
+          <h1 className="text-large font-bold">Manage Profile</h1>
+          <div className="flex items-center space-x-4"></div>
         </header>
 
         {/* Body */}
