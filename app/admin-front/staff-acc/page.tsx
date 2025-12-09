@@ -326,7 +326,7 @@ export default function StaffAccounts() {
           >
             <Bars3Icon className="w-6 h-6" />
           </button>
-          <h1 className="text-large font-bold ">Staff Management</h1>
+          <h1 className="text-large font-bold">Staff Management</h1>
           <div className="flex items-center space-x-4"></div>
         </header>
 

@@ -546,7 +546,10 @@ export default function ManageAnnouncements() {
               <div className="flex flex-col sm:flex-row justify-end gap-2">
                 <button
                   type="button"
-                  onClick={() => setShowModal(false)}
+                  onClick={() => {
+                    setShowModal(false);
+                    fetchAnnouncements(filterType, currentPage); // Refresh after closing modal
+                  }}
                   className="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300 w-full sm:w-auto"
                 >
                   Cancel

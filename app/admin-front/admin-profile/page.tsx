@@ -537,10 +537,13 @@ export default function AdminProfilePage() {
                 </div>
               )}
               <SuccessModal
-                  open={successModalOpen}
-                  message={successMessage}
-                  onClose={() => setSuccessModalOpen(false)}
-                />
+                open={successModalOpen}
+                message={successMessage}
+                onClose={() => {
+                  setSuccessModalOpen(false);
+                  fetchProfile(); // Refresh profile data when modal closes
+                }}
+              />
             </>
           )}
         </main>

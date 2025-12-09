@@ -303,7 +303,7 @@ export default function AdminDashboard() {
           >
             <Bars3Icon className="w-6 h-6" />
           </button>
-          <h1 className="text-sm sm:text-base md:text-lg font-bold text-black truncate">Admin Dashboard</h1>
+          <h1 className="text-large font-bold">Admin Dashboard</h1>
           <div className="w-6 md:w-auto"></div> {/* Spacer for centering */}
         </header>
 

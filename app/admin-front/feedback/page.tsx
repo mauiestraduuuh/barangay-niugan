@@ -404,7 +404,7 @@ export default function AdminFeedbackPage() {
           <button onClick={toggleSidebar} className="block md:hidden text-black hover:text-red-700 focus:outline-none">
             <Bars3Icon className="w-6 h-6" />
           </button>
-          <h1 className="text-large font-bold ">Complaints Management</h1>
+          <h1 className="text-large font-bold">Complaints Management</h1>
           <div className="flex items-center space-x-4"></div>
         </header>
 

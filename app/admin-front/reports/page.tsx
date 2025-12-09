@@ -769,7 +769,7 @@ const handleExportDetailedPDF = () => {
           >
             <Bars3Icon className="w-6 h-6" />
           </button>
-          <h1 className="text-base sm:text-lg font-bold truncate">Manage Reports</h1>
+          <h1 className="text-large font-bold">Manage Reports</h1>
           <div className="flex items-center space-x-2 sm:space-x-4"></div>
         </header>
 
