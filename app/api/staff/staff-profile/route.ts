@@ -83,15 +83,31 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ message: "Access denied" }, { status: 403 });
 
     const body = await req.json();
-    const { username, first_name, last_name, contact_no, gender, address, password } = body;
+    const { username, first_name, last_name, contact_no, gender, address, password, current_password } = body;
 
     // -------------------- PASSWORD CHANGE --------------------
     if (password) {
+      if (!current_password) {
+        return NextResponse.json({ message: "Current password is required" }, { status: 400 });
+      }
+
+      // Fetch user
+      const user = await prisma.user.findUnique({ where: { user_id: decoded.userId } });
+      if (!user) return NextResponse.json({ message: "User not found" }, { status: 404 });
+
+      // Verify current password
+      const isMatch = await bcrypt.compare(current_password, user.password);
+      if (!isMatch) {
+        return NextResponse.json({ message: "Current password is incorrect" }, { status: 401 });
+      }
+
+      // Update to new password
       const hashedPassword = await bcrypt.hash(password, 10);
       await prisma.user.update({
         where: { user_id: decoded.userId },
         data: { password: hashedPassword },
       });
+
       return NextResponse.json({ message: "Password updated successfully" }, { status: 200 });
     }
 
@@ -108,7 +124,7 @@ export async function PUT(req: NextRequest) {
       }
     }
 
-    // Update user and staff data
+    // Prepare staff update data
     const staffUpdateData: any = {};
     if (first_name) staffUpdateData.first_name = first_name;
     if (last_name) staffUpdateData.last_name = last_name;
@@ -116,6 +132,7 @@ export async function PUT(req: NextRequest) {
     if (gender) staffUpdateData.gender = gender;
     if (address) staffUpdateData.address = address;
 
+    // Update user and staff
     await prisma.user.update({
       where: { user_id: decoded.userId },
       data: {

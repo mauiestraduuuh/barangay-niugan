@@ -16,6 +16,8 @@ import {
   XMarkIcon,
   ArrowRightOnRectangleIcon,
   LockClosedIcon,
+  EyeIcon,
+  EyeSlashIcon,
 } from "@heroicons/react/24/outline";
 
 interface StaffProfile {
@@ -109,7 +111,19 @@ export default function StaffProfilePage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeSection, setActiveSection] = useState<"overview" | "edit" | "password">("overview");
   const [profile, setProfile] = useState<StaffProfile>({} as StaffProfile);
-  const [passwords, setPasswords] = useState({ current_password: "", new_password: "", confirm_password: "" });
+const [passwords, setPasswords] = useState<{
+  current_password: string;
+  new_password: string;
+  confirm_password: string;
+  current_password_show?: boolean;
+  new_password_show?: boolean;
+  confirm_password_show?: boolean;
+}>({
+  current_password: "",
+  new_password: "",
+  confirm_password: "",
+});
+
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
@@ -231,32 +245,77 @@ export default function StaffProfilePage() {
     }
   };
 
-  // Confirm Password Change
-  const confirmPasswordChange = () => {
-    if (passwords.new_password !== passwords.confirm_password) return setMessage("Passwords do not match");
-    setConfirmDetails({ "New Password": "********" });
-    setConfirmAction(() => changePassword);
-    setShowConfirmModal(true);
-  };
+const confirmPasswordChange = () => {
+  setMessage(""); // Clear previous messages
 
-  const changePassword = async () => {
-    setShowConfirmModal(false);
-    setActionLoading(true);
-    try {
-      await axios.put(
-        "/api/staff/staff-profile",
-        { password: passwords.new_password },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setMessage("Password updated successfully");
-      setPasswords({ current_password: "", new_password: "", confirm_password: "" });
-      setActiveSection("overview");
-    } catch {
-      setMessage("Failed to update password");
-    } finally {
-      setActionLoading(false);
-    }
-  };
+  // Validate all fields are filled
+  if (!passwords.current_password) {
+    setMessage("Please enter your current password");
+    return;
+  }
+  if (!passwords.new_password) {
+    setMessage("Please enter a new password");
+    return;
+  }
+  if (!passwords.confirm_password) {
+    setMessage("Please confirm your new password");
+    return;
+  }
+
+  // Validate password match
+  if (passwords.new_password !== passwords.confirm_password) {
+    setMessage("New passwords do not match");
+    return;
+  }
+
+  // Validate password length
+  if (passwords.new_password.length < 6) {
+    setMessage("New password must be at least 6 characters long");
+    return;
+  }
+
+  // Check if new password is different
+  if (passwords.current_password === passwords.new_password) {
+    setMessage("New password must be different from current password");
+    return;
+  }
+
+  setConfirmDetails({ "New Password": "********" });
+  setConfirmAction(() => changePassword);
+  setShowConfirmModal(true);
+};
+
+const changePassword = async () => {
+  setShowConfirmModal(false);
+  setActionLoading(true);
+  setMessage(""); 
+
+  try {
+    await axios.put(
+      "/api/staff/staff-profile",
+      { 
+        password: passwords.new_password,
+        current_password: passwords.current_password 
+      },
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    setMessage("Password updated successfully");
+    setPasswords({ 
+      current_password: "", 
+      new_password: "", 
+      confirm_password: "",
+      current_password_show: false,
+      new_password_show: false,
+      confirm_password_show: false
+    });
+    setActiveSection("overview");
+  } catch (err: any) {
+    const errorMsg = err.response?.data?.message || "Failed to update password";
+    setMessage(errorMsg);
+  } finally {
+    setActionLoading(false);
+  }
+};
 
  const handleLogout = () => {
     const confirmed = window.confirm("Are you sure you want to log out?");
@@ -402,14 +461,15 @@ export default function StaffProfilePage() {
                 />
               )}
               {activeSection === "password" && (
-                <PasswordSection
-                  passwords={passwords}
-                  handlePasswordChange={handlePasswordChange}
-                  actionLoading={actionLoading}
-                  setActiveSection={setActiveSection}
-                  confirmPasswordChange={confirmPasswordChange}
-                />
-              )}
+              <PasswordSection
+                passwords={passwords}
+                setPasswords={setPasswords} // ← add this
+                handlePasswordChange={handlePasswordChange}
+                actionLoading={actionLoading}
+                setActiveSection={setActiveSection}
+                confirmPasswordChange={confirmPasswordChange}
+              />
+            )}
             </>
           )}
         </main>
@@ -557,11 +617,19 @@ const EditProfileSection = ({
   </div>
 );
 
-const PasswordSection = ({ passwords, handlePasswordChange, actionLoading, setActiveSection, confirmPasswordChange }: any) => (
+const PasswordSection = ({
+  passwords,
+  setPasswords,
+  handlePasswordChange,
+  actionLoading,
+  setActiveSection,
+  confirmPasswordChange,
+}: any) => (
   <div className="bg-white shadow-lg rounded-2xl p-8 border border-gray-100">
     <h2 className="text-2xl font-semibold mb-6 text-gray-800">Change Password</h2>
 
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+    {/* Changed from grid to space-y for better layout */}
+    <div className="space-y-6">
       {[
         { label: "Current Password", name: "current_password" },
         { label: "New Password", name: "new_password" },
@@ -569,15 +637,33 @@ const PasswordSection = ({ passwords, handlePasswordChange, actionLoading, setAc
       ].map(({ label, name }) => (
         <div key={name}>
           <label className="block text-sm font-medium text-gray-700 mb-2">{label}</label>
-          <input
-            type="password"
-            name={name}
-            value={(passwords as any)[name]}
-            onChange={handlePasswordChange}
-            placeholder={label}
-            className="border border-gray-300 p-3 rounded-md focus:ring-2 focus:ring-red-500 w-full transition"
-            disabled={actionLoading}
-          />
+          <div className="relative">
+            <input
+              type={(passwords as any)[`${name}_show`] ? "text" : "password"}
+              name={name}
+              value={(passwords as any)[name]}
+              onChange={handlePasswordChange}
+              placeholder={label}
+              className="border border-gray-300 p-3 rounded-md focus:ring-2 focus:ring-red-500 w-full transition pr-12"
+              disabled={actionLoading}
+            />
+            <button
+              type="button"
+              onClick={() =>
+                setPasswords((prev: typeof passwords) => ({
+                  ...prev,
+                  [`${name}_show`]: !prev[`${name}_show` as keyof typeof prev],
+                }))
+              }
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
+            >
+              {(passwords as any)[`${name}_show`] ? (
+                <EyeSlashIcon className="w-5 h-5" />
+              ) : (
+                <EyeIcon className="w-5 h-5" />
+              )}
+            </button>
+          </div>
         </div>
       ))}
     </div>

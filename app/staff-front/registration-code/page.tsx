@@ -274,8 +274,8 @@ export default function StaffRegistrationCodePage() {
       {actionLoading && <LoadingOverlay message="Processing..." />}
       {showConfirm && (
         <ConfirmationModal
-          title="Are you sure?"
-          message="This action cannot be undone."
+          title="Confirm Delete"
+          message="Are you sure you want to delete this code? This action cannot be undone."
           onConfirm={confirmCallback}
           onCancel={() => setShowConfirm(false)}
         />
@@ -407,15 +407,15 @@ export default function StaffRegistrationCodePage() {
             <button
               onClick={generateCode}
               disabled={actionLoading}
-              className="bg-black text-white px-4 py-2 rounded-xl hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="bg-black text-white px-4 py-2 rounded-xl hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {actionLoading ? (
                 <>
                   <LoadingSpinner size="sm" />
-                  Processing...
+                  <span className="leading-none">Generating...</span>
                 </>
               ) : (
-                "Generate"
+                <span className="leading-none">Generate</span>
               )}
             </button>
 
