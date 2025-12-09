@@ -21,26 +21,14 @@ function getUserFromToken(req: NextRequest): { userId: number; role: string } | 
   }
 }
 
-// Verify user is staff
-async function verifyStaffUser(userId: number) {
-  const staff = await prisma.staff.findFirst({
-    where: { user_id: userId },
-  });
-  return staff !== null;
-}
-
 // -------------------------
-// GET — staff fetch all codes
+// GET — admin fetch all codes
 // -------------------------
 export async function GET(req: NextRequest) {
   try {
     const user = getUserFromToken(req);
     if (!user || user.role !== "ADMIN") {
       return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
-    }
-
-    if (!(await verifyStaffUser(user.userId))) {
-      return NextResponse.json({ success: false, message: "Access denied" }, { status: 403 });
     }
 
     const codes = await prisma.registrationCode.findMany({
@@ -67,7 +55,7 @@ export async function GET(req: NextRequest) {
 }
 
 // -------------------------
-// POST — staff create code
+// POST — admin create code
 // -------------------------
 export async function POST(req: NextRequest) {
   try {
@@ -76,9 +64,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
     }
 
-    if (!(await verifyStaffUser(user.userId))) {
-      return NextResponse.json({ success: false, message: "Access denied" }, { status: 403 });
-    }
+    // REMOVED: Staff verification check
+    // if (!(await verifyStaffUser(user.userId))) {
+    //   return NextResponse.json({ success: false, message: "Access denied" }, { status: 403 });
+    // }
 
     const { ownerName } = await req.json();
 
@@ -106,7 +95,7 @@ export async function POST(req: NextRequest) {
 }
 
 // -------------------------
-// PUT — staff mark code as used
+// PUT — admin mark code as used
 // -------------------------
 export async function PUT(req: NextRequest) {
   try {
@@ -115,9 +104,10 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
     }
 
-    if (!(await verifyStaffUser(user.userId))) {
-      return NextResponse.json({ success: false, message: "Access denied" }, { status: 403 });
-    }
+    // REMOVED: Staff verification check
+    // if (!(await verifyStaffUser(user.userId))) {
+    //   return NextResponse.json({ success: false, message: "Access denied" }, { status: 403 });
+    // }
 
     const { codeId, usedById } = await req.json();
 
@@ -147,7 +137,7 @@ export async function PUT(req: NextRequest) {
 }
 
 // -------------------------
-// DELETE — staff delete ONLY unused codes
+// DELETE — admin delete ONLY unused codes
 // -------------------------
 export async function DELETE(req: NextRequest) {
   try {
@@ -156,9 +146,10 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });
     }
 
-    if (!(await verifyStaffUser(user.userId))) {
-      return NextResponse.json({ success: false, message: "Access denied" }, { status: 403 });
-    }
+    // REMOVED: Staff verification check
+    // if (!(await verifyStaffUser(user.userId))) {
+    //   return NextResponse.json({ success: false, message: "Access denied" }, { status: 403 });
+    // }
 
     const { id } = await req.json();
 
@@ -182,7 +173,7 @@ export async function DELETE(req: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("STAFF DELETE /registration-code error:", error);
+    console.error("ADMIN DELETE /registration-code error:", error);
     return NextResponse.json(
       { success: false, message: "Failed to delete registration code." },
       { status: 500 }
