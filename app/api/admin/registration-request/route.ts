@@ -102,7 +102,8 @@ export async function POST(req: NextRequest) {
         });
         householdId = newHousehold.id;
         householdNumber = `HH-${householdId}`;
-        currentHeadId = user.user_id;
+        // ❌ DON'T set currentHeadId here - we need resident_id/staff_id first!
+        // currentHeadId = user.user_id; // WRONG!
       }
       // CASE 2: Member submitted head_id
       else if (request.head_id) {
@@ -147,7 +148,7 @@ export async function POST(req: NextRequest) {
           gender: request.gender ?? "",
           address: request.address ?? "",
           is_head_of_family: request.is_head_of_family ?? false,
-          head_id: currentHeadId,
+          head_id: currentHeadId, // ✅ Will be null for head of family, then updated below
           household_number: householdNumber,
           household_id: householdId ?? undefined,
           is_renter: request.is_renter ?? false,
@@ -160,14 +161,32 @@ export async function POST(req: NextRequest) {
         },
       });
 
+      // ✅ FIXED: Update head_id to resident_id for head of family
       if (request.is_head_of_family && householdId) {
-        await prisma.household.update({ where: { id: householdId }, data: { head_resident: resident.resident_id } });
+        await prisma.household.update({ 
+          where: { id: householdId }, 
+          data: { head_resident: resident.resident_id } 
+        });
+        
+        // Update the resident's own head_id to point to themselves
+        await prisma.resident.update({
+          where: { resident_id: resident.resident_id },
+          data: { head_id: resident.resident_id }
+        });
+        
+        currentHeadId = resident.resident_id; // For response
       }
 
       const qrData = JSON.stringify(resident, (_, value) => (typeof value === "bigint" ? value.toString() : value));
       const qrCode = await QRCode.toDataURL(qrData);
       await prisma.digitalID.create({
-        data: { resident_id: resident.resident_id, id_number: `ID-${user.user_id}`, qr_code: qrCode, issued_by: admin_id, issued_at: new Date() },
+        data: { 
+          resident_id: resident.resident_id, 
+          id_number: `ID-${resident.resident_id}`, // ✅ Use resident_id, not user_id
+          qr_code: qrCode, 
+          issued_by: admin_id, 
+          issued_at: new Date() 
+        },
       });
     }
 
@@ -185,7 +204,7 @@ export async function POST(req: NextRequest) {
           gender: request.gender ?? "",
           address: request.address ?? "",
           is_head_of_family: request.is_head_of_family ?? false,
-          head_id: currentHeadId,
+          head_id: currentHeadId, // ✅ Will be null for head of family, then updated below
           household_number: householdNumber,
           household_id: householdId ?? undefined,
           is_renter: request.is_renter ?? false,
@@ -198,14 +217,32 @@ export async function POST(req: NextRequest) {
         },
       });
 
+      // ✅ FIXED: Update head_id to staff_id for head of family
       if (request.is_head_of_family && householdId) {
-        await prisma.household.update({ where: { id: householdId }, data: { head_staff: staff.staff_id } });
+        await prisma.household.update({ 
+          where: { id: householdId }, 
+          data: { head_staff: staff.staff_id } 
+        });
+        
+        // Update the staff's own head_id to point to themselves
+        await prisma.staff.update({
+          where: { staff_id: staff.staff_id },
+          data: { head_id: staff.staff_id }
+        });
+        
+        currentHeadId = staff.staff_id; // For response
       }
 
       const qrData = JSON.stringify(staff, (_, value) => (typeof value === "bigint" ? value.toString() : value));
       const qrCode = await QRCode.toDataURL(qrData);
       await prisma.digitalID.create({
-        data: { staff_id: staff.staff_id, id_number: `ID-${user.user_id}`, qr_code: qrCode, issued_by: admin_id, issued_at: new Date() },
+        data: { 
+          staff_id: staff.staff_id, 
+          id_number: `ID-${staff.staff_id}`, // ✅ Use staff_id, not user_id
+          qr_code: qrCode, 
+          issued_by: admin_id, 
+          issued_at: new Date() 
+        },
       });
     }
 
