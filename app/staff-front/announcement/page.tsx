@@ -158,7 +158,7 @@ export default function ManageAnnouncements() {
   useEffect(() => {
     const interval = setInterval(() => {
       window.location.reload();
-    }, 30000); 
+    }, 300000); 
     
     return () => clearInterval(interval);
   }, []);

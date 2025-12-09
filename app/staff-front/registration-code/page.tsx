@@ -180,7 +180,7 @@ export default function StaffRegistrationCodePage() {
   useEffect(() => {
     const interval = setInterval(() => {
       window.location.reload();
-    }, 30000); // 5 min
+    }, 300000); // 5 min
     return () => clearInterval(interval);
   }, []);
 

@@ -1,5 +1,4 @@
 "use client";
-
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -264,7 +263,7 @@ export default function AdminProfilePage() {
   useEffect(() => {
     const interval = setInterval(() => {
       window.location.reload();
-    }, 30000); 
+    }, 300000); 
     
     return () => clearInterval(interval);
   }, []);

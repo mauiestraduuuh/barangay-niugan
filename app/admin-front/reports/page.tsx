@@ -223,7 +223,7 @@ export default function ReportsSection() {
   useEffect(() => {
     const interval = setInterval(() => {
       window.location.reload();
-    }, 30000); // 300000ms = 5 minutes
+    }, 300000); // 300000ms = 5 minutes
     
     return () => clearInterval(interval);
   }, []);

@@ -124,19 +124,31 @@ export default function StaffAccounts() {
 
 
 
-  const fetchStaff = async () => {
-    try {
-      setLoading(true);
-      const res = await fetch("/api/admin/staff");
-      if (!res.ok) throw new Error("Failed to fetch staff");
-      const data: Staff[] = await res.json();
-      setStaffList(data);
-    } catch (error) {
-      console.error("Fetch staff failed:", error);
-    } finally {
-      setLoading(false);
+const fetchStaff = async () => {
+  try {
+    setLoading(true);
+    const token = localStorage.getItem("token"); // Make sure token is saved on login
+    const res = await fetch("/api/admin/staff", {
+      headers: {
+        "Authorization": `Bearer ${token}`,
+      },
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err?.error || "Failed to fetch staff");
     }
-  };
+
+    const data: Staff[] = await res.json();
+    setStaffList(data);
+  } catch (error: any) {
+    console.error("Fetch staff failed:", error);
+    alert(error.message);
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   const handleDelete = async () => {
     if (!selectedStaff) return;
@@ -209,7 +221,7 @@ export default function StaffAccounts() {
   useEffect(() => {
     const interval = setInterval(() => {
       window.location.reload();
-    }, 30000); 
+    }, 300000); 
     
     return () => clearInterval(interval);
   }, []);

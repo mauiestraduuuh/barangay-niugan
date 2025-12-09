@@ -125,7 +125,7 @@ export default function RegistrationCodePage() {
   useEffect(() => {
     const interval = setInterval(() => {
       window.location.reload();
-    }, 30000); 
+    }, 120000); 
     
     return () => clearInterval(interval);
   }, []);

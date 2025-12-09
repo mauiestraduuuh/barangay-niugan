@@ -20,12 +20,14 @@ async function verifyToken(req: NextRequest) {
   }
 }
 
-// ================= GET STAFF =================
+/**
+ * GET: return all staff rows (including related user and performance metrics)
+ */
 export async function GET(req: NextRequest) {
   try {
     const decoded = await verifyToken(req);
     if (!decoded || !["ADMIN", "STAFF"].includes(decoded.role)) {
-      return NextResponse.json({ message: "Access denied" }, { status: 403 });
+      return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
 
     const staff = await prisma.staff.findMany({
@@ -57,7 +59,7 @@ export async function GET(req: NextRequest) {
         birthdate: s.birthdate?.toISOString(),
         created_at: s.created_at?.toISOString(),
         updated_at: s.updated_at?.toISOString(),
-        head_id: s.head_id != null ? String(s.head_id) : null,
+        head_id: s.head_id !== null && s.head_id !== undefined ? String(s.head_id) : null,
         performance: { certificatesProcessed, registrationResolved, performanceScore },
         user: { user_id: s.user?.user_id, role: s.user?.role },
       };
@@ -70,12 +72,14 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// ================= DELETE STAFF =================
+/**
+ * DELETE: delete staff by staffId (also deletes associated user)
+ */
 export async function DELETE(req: NextRequest) {
   try {
     const decoded = await verifyToken(req);
     if (!decoded || decoded.role !== "ADMIN") {
-      return NextResponse.json({ message: "Access denied" }, { status: 403 });
+      return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
 
     const body = await req.json();
@@ -94,7 +98,6 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: "Staff not found" }, { status: 404 });
     }
 
-    // Delete the user (cascade removes staff if your Prisma schema is set up that way)
     await prisma.user.delete({ where: { user_id: staff.user_id } });
 
     return NextResponse.json({ message: "Staff (and associated user) deleted successfully." });
