@@ -22,6 +22,37 @@ export async function GET(req: NextRequest) {
       return {};
     };
 
+    // Helper: Convert relative path to full URL
+    const getFullImageUrl = (path: string | null) => {
+      if (!path) return null;
+      if (path.startsWith('http://') || path.startsWith('https://')) {
+        return path; // Already a full URL
+      }
+      
+      // For Supabase storage paths, construct the full Supabase URL
+      const supabaseUrl = process.env.SUPABASE_URL;
+      const supabaseBucket = process.env.SUPABASE_PUBLIC_BUCKET || 'barangay-assets';
+      
+      if (supabaseUrl) {
+        // Remove leading slash if present
+        const cleanPath = path.startsWith('/') ? path.substring(1) : path;
+        const fullUrl = `${supabaseUrl}/storage/v1/object/public/${supabaseBucket}/${cleanPath}`;
+        console.log('Converting image path:', path, '→', fullUrl);
+        return fullUrl;
+      }
+      
+      console.warn('SUPABASE_URL not found in environment variables, using fallback');
+      
+      // Fallback: Get the base URL from the request
+      const protocol = req.headers.get('x-forwarded-proto') || 'http';
+      const host = req.headers.get('host') || 'localhost:3000';
+      const baseUrl = `${protocol}://${host}`;
+      
+      // Ensure path starts with /
+      const fullPath = path.startsWith('/') ? path : `/${path}`;
+      return `${baseUrl}${fullPath}`;
+    };
+
     // If fetching specific household members
     if (category === "households" && householdId) {
       const household = await prisma.household.findUnique({
@@ -162,7 +193,7 @@ export async function GET(req: NextRequest) {
           break;
 
         case "feedback":
-          details = await prisma.feedback.findMany({
+          const feedbackData = await prisma.feedback.findMany({
             where: buildDateFilter("submitted_at"), // Apply date filter
             select: {
               feedback_id: true,
@@ -198,6 +229,13 @@ export async function GET(req: NextRequest) {
             orderBy: { submitted_at: "desc" },
             take: 5000,
           });
+
+          // Convert image paths to full URLs
+          details = feedbackData.map(feedback => ({
+            ...feedback,
+            proof_file: getFullImageUrl(feedback.proof_file),
+            response_proof_file: getFullImageUrl(feedback.response_proof_file),
+          }));
           break;
 
         case "households":

@@ -442,31 +442,40 @@ const getChartInterpretation = (category: string, chartData: any[]) => {
   switch (category) {
     case "certificates":
       const totalCerts = chartData.reduce((sum, item) => sum + item.value, 0);
-      const pending = chartData.find(item => item.name === "pending")?.value || 0;
-      const approved = chartData.find(item => item.name === "approved")?.value || 0;
-      const claimed = chartData.find(item => item.name === "claimed")?.value || 0;
-      const rejected = chartData.find(item => item.name === "rejected")?.value || 0;
+      const pending = chartData.find(item => item.name.toLowerCase() === "pending")?.value || 0;
+      const approved = chartData.find(item => item.name.toLowerCase() === "approved")?.value || 0;
+      const claimed = chartData.find(item => item.name.toLowerCase() === "claimed")?.value || 0;
+      const rejected = chartData.find(item => item.name.toLowerCase() === "rejected")?.value || 0;
       
       return `Total Certificate Requests: ${totalCerts}
-- Pending: ${pending} (${((pending/totalCerts)*100).toFixed(1)}%)
-- Approved: ${approved} (${((approved/totalCerts)*100).toFixed(1)}%)
-- Claimed: ${claimed} (${((claimed/totalCerts)*100).toFixed(1)}%)
-- Rejected: ${rejected} (${((rejected/totalCerts)*100).toFixed(1)}%)
+- Pending: ${pending} (${totalCerts > 0 ? ((pending/totalCerts)*100).toFixed(1) : '0.0'}%)
+- Approved: ${approved} (${totalCerts > 0 ? ((approved/totalCerts)*100).toFixed(1) : '0.0'}%)
+- Claimed: ${claimed} (${totalCerts > 0 ? ((claimed/totalCerts)*100).toFixed(1) : '0.0'}%)
+- Rejected: ${rejected} (${totalCerts > 0 ? ((rejected/totalCerts)*100).toFixed(1) : '0.0'}%)
 
 Analysis: ${pending > approved ? "There is a backlog of pending requests that needs attention." : "Certificate processing is moving efficiently."} ${claimed > 0 ? `${claimed} certificates have been successfully claimed by residents.` : ""}`;
 
     case "feedback":
       const totalFeedback = chartData.reduce((sum, item) => sum + item.value, 0);
-      const pendingFeedback = chartData.find(item => item.name === "pending")?.value || 0;
-      const respondedFeedback = chartData.find(item => item.name === "responded")?.value || 0;
+      const pendingFeedback = chartData.find(item => 
+        item.name.toUpperCase() === "PENDING"
+      )?.value || 0;
+      const inProgressFeedback = chartData.find(item => 
+        item.name.toUpperCase() === "IN_PROGRESS" || item.name.toUpperCase() === "IN PROGRESS"
+      )?.value || 0;
+      const resolvedFeedback = chartData.find(item => 
+        item.name.toUpperCase() === "RESOLVED"
+      )?.value || 0;
       
-      return `Total Feedback/Complaints: ${totalFeedback}
-- Pending: ${pendingFeedback} (${((pendingFeedback/totalFeedback)*100).toFixed(1)}%)
-- Responded: ${respondedFeedback} (${((respondedFeedback/totalFeedback)*100).toFixed(1)}%)
+      return `Total Complaints: ${totalFeedback}
+- Pending: ${pendingFeedback} (${totalFeedback > 0 ? ((pendingFeedback/totalFeedback)*100).toFixed(1) : '0.0'}%)
+- In Progress: ${inProgressFeedback} (${totalFeedback > 0 ? ((inProgressFeedback/totalFeedback)*100).toFixed(1) : '0.0'}%)
+- Resolved: ${resolvedFeedback} (${totalFeedback > 0 ? ((resolvedFeedback/totalFeedback)*100).toFixed(1) : '0.0'}%)
 
-Analysis: Response rate is ${((respondedFeedback/totalFeedback)*100).toFixed(1)}%. ${pendingFeedback > 0 ? `${pendingFeedback} complaint(s) still require attention.` : "All complaints have been addressed."}`;
+Analysis: ${resolvedFeedback > 0 ? `Resolution rate is ${((resolvedFeedback/totalFeedback)*100).toFixed(1)}%.` : 'No complaints have been resolved yet.'} ${pendingFeedback > 0 ? `${pendingFeedback} complaint(s) still require attention.` : "All complaints have been addressed."}`;
 
     case "households":
+      if (chartData.length === 0) return "No household data available.";
       const avgMembers = chartData.reduce((sum, item) => sum + item.members, 0) / chartData.length;
       const maxHousehold = chartData.reduce((max, item) => item.members > max.members ? item : max, chartData[0]);
       const minHousehold = chartData.reduce((min, item) => item.members < min.members ? item : min, chartData[0]);
@@ -486,12 +495,12 @@ Analysis: The data shows variation in household sizes, which is useful for resou
       const seniors = chartData.find(item => item.name === "60+")?.value || 0;
       
       return `Resident Age Distribution (Total: ${totalResidents}):
-- Youth (0-17): ${youth} (${((youth/totalResidents)*100).toFixed(1)}%)
-- Young Adults (18-34): ${youngAdults} (${((youngAdults/totalResidents)*100).toFixed(1)}%)
-- Middle Age (35-59): ${middleAge} (${((middleAge/totalResidents)*100).toFixed(1)}%)
-- Seniors (60+): ${seniors} (${((seniors/totalResidents)*100).toFixed(1)}%)
+- Youth (0-17): ${youth} (${totalResidents > 0 ? ((youth/totalResidents)*100).toFixed(1) : '0.0'}%)
+- Young Adults (18-34): ${youngAdults} (${totalResidents > 0 ? ((youngAdults/totalResidents)*100).toFixed(1) : '0.0'}%)
+- Middle Age (35-59): ${middleAge} (${totalResidents > 0 ? ((middleAge/totalResidents)*100).toFixed(1) : '0.0'}%)
+- Seniors (60+): ${seniors} (${totalResidents > 0 ? ((seniors/totalResidents)*100).toFixed(1) : '0.0'}%)
 
-Analysis: ${youth > totalResidents * 0.3 ? "High youth population suggests need for educational and recreational facilities." : ""} ${seniors > totalResidents * 0.2 ? "Significant senior population indicates need for healthcare and accessibility services." : ""}`;
+Analysis: ${youth > totalResidents * 0.3 ? "High youth population suggests need for educational and recreational facilities. " : ""}${seniors > totalResidents * 0.2 ? "Significant senior population indicates need for healthcare and accessibility services." : ""}`.trim();
 
     case "staff":
       const totalApprovals = chartData.reduce((sum, item) => sum + item.value, 0);
@@ -508,8 +517,8 @@ Analysis: Staff members are actively processing requests and certificates, contr
       const expired = chartData.find(item => item.name === "Expired")?.value || 0;
       
       return `Announcement Status (Total: ${totalAnnouncements}):
-- Active: ${active} (${((active/totalAnnouncements)*100).toFixed(1)}%)
-- Expired: ${expired} (${((expired/totalAnnouncements)*100).toFixed(1)}%)
+- Active: ${active} (${totalAnnouncements > 0 ? ((active/totalAnnouncements)*100).toFixed(1) : '0.0'}%)
+- Expired: ${expired} (${totalAnnouncements > 0 ? ((expired/totalAnnouncements)*100).toFixed(1) : '0.0'}%)
 
 Analysis: ${active > 0 ? `${active} active announcement(s) are currently visible to residents.` : "No active announcements at this time."} ${expired > active * 2 ? "Consider archiving old announcements." : ""}`;
 
@@ -610,12 +619,12 @@ const handleExportDetailedPDF = () => {
   const chartData = getChartData(activeCategory);
   if (chartData.length > 0) {
     doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold'); // Fixed: specify font family
+    doc.setFont('helvetica', 'bold');
     doc.text("Data Analysis:", 14, yPosition);
     yPosition += 7;
     
     doc.setFontSize(9);
-    doc.setFont('helvetica', 'normal'); // Fixed: specify font family
+    doc.setFont('helvetica', 'normal');
     const interpretation = getChartInterpretation(activeCategory, chartData);
     const lines = doc.splitTextToSize(interpretation, 180);
     doc.text(lines, 14, yPosition);
@@ -643,6 +652,10 @@ const handleExportDetailedPDF = () => {
             "expiry_date",
           ].includes(key) && v) {
             return new Date(v as string).toLocaleDateString();
+          }
+          // For image URLs in feedback, show "[Image Available]" instead of the URL
+          if ((key === "proof_file" || key === "response_proof_file") && v) {
+            return "[Image Available]";
           }
           return String(v ?? '');
         })
@@ -876,7 +889,7 @@ const handleExportDetailedPDF = () => {
                 {/* Feedback Chart */}
                 {allCategoryDetails.feedback && allCategoryDetails.feedback.length > 0 && (
                   <div className="bg-white shadow-md rounded-lg p-4 sm:p-6">
-                    <h3 className="text-sm sm:text-base md:text-lg font-semibold text-gray-800 mb-3 sm:mb-4">Feedback Status</h3>
+                    <h3 className="text-sm sm:text-base md:text-lg font-semibold text-gray-800 mb-3 sm:mb-4">Complaint Status</h3>
                     <ResponsiveContainer width="100%" height={250}>
                       <PieChart>
                         <Pie
@@ -1052,10 +1065,23 @@ const handleExportDetailedPDF = () => {
                                       >
                                         {String(val)} {item.head_staff_last_name}
                                       </button>
-                                    ) : (key === "proof_file" || key === "response_proof_file") && activeCategory === "feedback" && val ? (
+                                  ) : (key === "proof_file" || key === "response_proof_file") && activeCategory === "feedback" && val ? (
                                       <button
                                         onClick={() => {
-                                          setSelectedImage(String(val));
+                                          const imagePath = String(val);
+                                          console.log('Image path from API:', imagePath);
+                                          
+                                          // Convert to full Supabase URL if it's a relative path
+                                          let fullImageUrl = imagePath;
+                                          if (!imagePath.startsWith('http')) {
+                                            const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://lqbzmhjyzfqtjbzlbdgw.supabase.co';
+                                            const bucket = 'barangay-assets';
+                                            const cleanPath = imagePath.startsWith('/') ? imagePath.substring(1) : imagePath;
+                                            fullImageUrl = `${supabaseUrl}/storage/v1/object/public/${bucket}/${cleanPath}`;
+                                          }
+                                          
+                                          console.log('Full image URL:', fullImageUrl);
+                                          setSelectedImage(fullImageUrl);
                                           setImageTitle(key === "proof_file" ? "Proof File" : "Response Proof File");
                                           setShowImageModal(true);
                                         }}
@@ -1063,7 +1089,7 @@ const handleExportDetailedPDF = () => {
                                       >
                                         View Image
                                       </button>
-                                    ) : key === "member_count" || key === "staff_member_count" ? (
+                                    ): key === "member_count" || key === "staff_member_count" ? (
                                       <span className="font-semibold text-red-700">{String(val)}</span>
                                     ) : [
                                         "created_at",
