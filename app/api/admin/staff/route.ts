@@ -2,11 +2,32 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/../lib/prisma";
 import jwt from "jsonwebtoken";
 
-/**
- * GET: return all staff rows (including related user and performance metrics)
- */
-export async function GET() {
+const JWT_SECRET = process.env.JWT_SECRET || "supersecret";
+
+// ================= AUTH HELPER =================
+async function verifyToken(req: NextRequest) {
+  const authHeader = req.headers.get("authorization");
+  if (!authHeader) return null;
+
+  const token = authHeader.split(" ")[1];
   try {
+    const decoded = jwt.verify(token, JWT_SECRET) as { userId: number; role: string };
+    const user = await prisma.user.findUnique({ where: { user_id: decoded.userId } });
+    if (!user) return null;
+    return { userId: user.user_id, role: user.role };
+  } catch {
+    return null;
+  }
+}
+
+// ================= GET STAFF =================
+export async function GET(req: NextRequest) {
+  try {
+    const decoded = await verifyToken(req);
+    if (!decoded || !["ADMIN", "STAFF"].includes(decoded.role)) {
+      return NextResponse.json({ message: "Access denied" }, { status: 403 });
+    }
+
     const staff = await prisma.staff.findMany({
       include: {
         user: {
@@ -24,38 +45,21 @@ export async function GET() {
       orderBy: { staff_id: "asc" },
     });
 
-    // Convert BigInt / Date objects to serializable values and calculate performance
     const result = staff.map((s) => {
-      // Certificates processed = approvals + claimed
       const certificatesProcessed = 
         (s.user?._count?.certificateApprovals || 0) + 
         (s.user?._count?.claimedCertificates || 0);
-      
-      // Registration resolved = approved requests (no rejected count available in schema)
       const registrationResolved = s.user?._count?.approvedRequests || 0;
-      
-      // Total performance score
       const performanceScore = certificatesProcessed + registrationResolved;
 
       return {
         ...s,
-        // Ensure dates are serializable strings
         birthdate: s.birthdate?.toISOString(),
         created_at: s.created_at?.toISOString(),
         updated_at: s.updated_at?.toISOString(),
-        // BigInt fields -> string (if any)
-        head_id: s.head_id !== null && s.head_id !== undefined ? String(s.head_id) : null,
-        // Add performance metrics
-        performance: {
-          certificatesProcessed,
-          registrationResolved,
-          performanceScore,
-        },
-        // Clean up the user object to remove _count
-        user: {
-          user_id: s.user?.user_id,
-          role: s.user?.role,
-        },
+        head_id: s.head_id != null ? String(s.head_id) : null,
+        performance: { certificatesProcessed, registrationResolved, performanceScore },
+        user: { user_id: s.user?.user_id, role: s.user?.role },
       };
     });
 
@@ -66,12 +70,14 @@ export async function GET() {
   }
 }
 
-/**
- * DELETE: delete staff by staffId (also deletes associated user so no orphan rows)
- * Expects body: { staffId: number }
- */
+// ================= DELETE STAFF =================
 export async function DELETE(req: NextRequest) {
   try {
+    const decoded = await verifyToken(req);
+    if (!decoded || decoded.role !== "ADMIN") {
+      return NextResponse.json({ message: "Access denied" }, { status: 403 });
+    }
+
     const body = await req.json();
     const staffId = Number(body.staffId);
 
@@ -88,11 +94,8 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: "Staff not found" }, { status: 404 });
     }
 
-    // Delete the user — your Prisma model uses onDelete: Cascade on the relation,
-    // so deleting the user will also remove the Staff row if that's desired.
-    await prisma.user.delete({
-      where: { user_id: staff.user_id },
-    });
+    // Delete the user (cascade removes staff if your Prisma schema is set up that way)
+    await prisma.user.delete({ where: { user_id: staff.user_id } });
 
     return NextResponse.json({ message: "Staff (and associated user) deleted successfully." });
   } catch (error: any) {

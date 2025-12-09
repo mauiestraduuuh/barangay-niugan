@@ -370,7 +370,7 @@ export default function AdminDashboard() {
                   {[
                     { label: "Total Residents", value: overview.totalResidents, icon: UsersIcon },
                     { label: "Certificates", value: overview.totalCertificates, icon: ClipboardDocumentIcon },
-                    { label: "Feedback", value: overview.totalFeedback, icon: ChatBubbleLeftEllipsisIcon },
+                    { label: "Complaints", value: overview.totalFeedback, icon: ChatBubbleLeftEllipsisIcon },
                     { label: "Staff", value: overview.totalStaff, icon: UserIcon },
                   ].map((item) => (
                     <div

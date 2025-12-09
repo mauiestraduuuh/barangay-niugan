@@ -2,18 +2,37 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/../lib/prisma";
 import jwt from "jsonwebtoken";
 
-// GET – fetch all registration codes
-export async function GET() {
+const JWT_SECRET = process.env.JWT_SECRET || "supersecret";
+
+// ================= AUTH HELPER =================
+async function verifyToken(req: NextRequest) {
+  const authHeader = req.headers.get("authorization");
+  if (!authHeader) return null;
+
+  const token = authHeader.split(" ")[1];
   try {
+    const decoded = jwt.verify(token, JWT_SECRET) as { userId: number; role: string };
+    const user = await prisma.user.findUnique({ where: { user_id: decoded.userId } });
+    if (!user) return null;
+    return { userId: user.user_id, role: user.role };
+  } catch {
+    return null;
+  }
+}
+
+// ================= GET REGISTRATION CODES =================
+export async function GET(req: NextRequest) {
+  try {
+    const decoded = await verifyToken(req);
+    if (!decoded || !["ADMIN", "STAFF"].includes(decoded.role)) {
+      return NextResponse.json({ success: false, message: "Access denied" }, { status: 403 });
+    }
+
     const codes = await prisma.registrationCode.findMany({
       orderBy: { createdAt: "desc" },
       include: {
         usedBy: {
-          select: {
-            resident_id: true,
-            first_name: true,
-            last_name: true,
-          },
+          select: { resident_id: true, first_name: true, last_name: true },
         },
       },
     });
@@ -28,11 +47,15 @@ export async function GET() {
   }
 }
 
-// POST – create new registration code
+// ================= CREATE NEW REGISTRATION CODE =================
 export async function POST(req: NextRequest) {
   try {
-    const { ownerName } = await req.json();
+    const decoded = await verifyToken(req);
+    if (!decoded || !["ADMIN", "STAFF"].includes(decoded.role)) {
+      return NextResponse.json({ success: false, message: "Access denied" }, { status: 403 });
+    }
 
+    const { ownerName } = await req.json();
     if (!ownerName) {
       return NextResponse.json(
         { success: false, message: "Owner name is required." },
@@ -40,12 +63,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Generate a unique 6-digit code (you can adjust format)
     const code = `RC-${Math.floor(100000 + Math.random() * 900000)}`;
-
-    const newCode = await prisma.registrationCode.create({
-      data: { code, ownerName },
-    });
+    const newCode = await prisma.registrationCode.create({ data: { code, ownerName } });
 
     return NextResponse.json({ success: true, code: newCode });
   } catch (error) {
@@ -57,11 +76,15 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// PUT – mark registration code as used by a resident
+// ================= MARK CODE AS USED =================
 export async function PUT(req: NextRequest) {
   try {
-    const { codeId, usedById } = await req.json();
+    const decoded = await verifyToken(req);
+    if (!decoded || !["ADMIN", "STAFF"].includes(decoded.role)) {
+      return NextResponse.json({ success: false, message: "Access denied" }, { status: 403 });
+    }
 
+    const { codeId, usedById } = await req.json();
     if (!codeId || !usedById) {
       return NextResponse.json(
         { success: false, message: "codeId and usedById are required." },
@@ -71,10 +94,7 @@ export async function PUT(req: NextRequest) {
 
     const updated = await prisma.registrationCode.update({
       where: { id: codeId },
-      data: {
-        usedById,
-        isUsed: true,
-      },
+      data: { usedById, isUsed: true },
     });
 
     return NextResponse.json({ success: true, updated });
@@ -87,11 +107,15 @@ export async function PUT(req: NextRequest) {
   }
 }
 
-// DELETE – remove a registration code if it has NOT been used
+// ================= DELETE UNUSED CODE =================
 export async function DELETE(req: NextRequest) {
   try {
-    const { id } = await req.json();
+    const decoded = await verifyToken(req);
+    if (!decoded || decoded.role !== "ADMIN") {
+      return NextResponse.json({ success: false, message: "Access denied" }, { status: 403 });
+    }
 
+    const { id } = await req.json();
     if (!id) {
       return NextResponse.json(
         { success: false, message: "Code ID is required." },
@@ -99,7 +123,6 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
-    // Prevent deletion if code has already been used
     const deleted = await prisma.registrationCode.deleteMany({
       where: { id, isUsed: false },
     });
