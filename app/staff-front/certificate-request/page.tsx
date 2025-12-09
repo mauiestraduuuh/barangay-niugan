@@ -292,20 +292,21 @@ const handleModalSubmit = async () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to-black p-4 flex gap-4">
-      {/* Loading Overlay for Actions */}
-      {actionLoading && <LoadingOverlay message={loadingMessage} />}
-
       {/* Sidebar */}
       <div
         className={`${
           sidebarOpen ? "w-64" : "w-16"
-        } bg-gray-50 shadow-lg rounded-xl transition-all duration-300 ease-in-out flex flex-col 
-        ${sidebarOpen ? "fixed inset-y-0 left-0 z-50 md:static md:translate-x-0" : "hidden md:flex"}`}
+        } bg-gray-50 shadow-lg rounded-xl transition-all duration-300 ease-in-out flex flex-col ${
+          sidebarOpen ? "block" : "hidden"
+        } md:block md:relative md:translate-x-0 ${
+          sidebarOpen ? "fixed inset-y-0 left-0 z-50 md:static md:translate-x-0" : ""
+        }`}
       >
+        {/* Logo + Close */}
         <div className="p-4 flex items-center justify-center">
           <img
             src="/niugan-logo.png"
-            alt="Company Logo"
+            alt="Logo"
             className={`rounded-full object-cover transition-all duration-300 ${
               sidebarOpen ? "w-30 h-30" : "w-8.5 h-8.5"
             }`}
@@ -318,46 +319,42 @@ const handleModalSubmit = async () => {
           </button>
         </div>
 
+        {/* Navigation */}
         <nav className="flex-1 mt-6">
           <ul>
-            {features.map(({ name, label, icon: Icon }) => (
-              <li key={name} className="mb-2">
-                <Link
-                  href={`/staff-front/${name}`}
-                  onClick={() => setActiveItem(name)}
-                  className={`relative flex items-center w-full px-4 py-2 text-left group transition-colors duration-200 ${
-                    activeItem === name
-                      ? "text-red-700 font-semibold"
-                      : "text-black hover:text-red-700"
-                  }`}
-                >
-                  {activeItem === name && (
-                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-700 rounded-r-full" />
-                  )}
-                  <Icon
-                    className={`w-6 h-6 mr-2 ${
-                      activeItem === name
-                        ? "text-red-700"
-                        : "text-gray-600 group-hover:text-red-700"
-                    }`}
-                  />
-                  {sidebarOpen && (
+            {features.map(({ name, label, icon: Icon }) => {
+              const href = `/staff-front/${name}`;
+              const isActive = name === "the-dash-staff";
+              return (
+                <li key={name} className="mb-2">
+                  <Link href={href}>
                     <span
-                      className={`${
-                        activeItem === name
-                          ? "text-red-700"
-                          : "group-hover:text-red-700"
+                      className={`relative flex items-center w-full px-4 py-2 text-left group transition-colors duration-200 ${
+                        isActive ? "text-red-700" : "text-black hover:text-red-700"
                       }`}
                     >
-                      {label}
+                      {isActive && (
+                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-700 rounded-r-full" />
+                      )}
+                      <Icon
+                        className={`w-6 h-6 mr-2 ${
+                          isActive ? "text-red-700" : "text-gray-600 group-hover:text-red-700"
+                        }`}
+                      />
+                      {sidebarOpen && (
+                        <span className={`${isActive ? "text-red-700" : "group-hover:text-red-700"}`}>
+                          {label}
+                        </span>
+                      )}
                     </span>
-                  )}
-                </Link>
-              </li>
-            ))}
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
         </nav>
 
+        {/* Logout */}
         <div className="p-4">
           <button
             onClick={handleLogout}
@@ -368,6 +365,7 @@ const handleModalSubmit = async () => {
           </button>
         </div>
 
+        {/* Sidebar Toggle */}
         <div className="p-4 flex justify-center hidden md:flex">
           <button
             onClick={toggleSidebar}
@@ -382,12 +380,8 @@ const handleModalSubmit = async () => {
         </div>
       </div>
 
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-white/80 z-40 md:hidden"
-          onClick={toggleSidebar}
-        ></div>
-      )}
+      {/* Overlay */}
+      {sidebarOpen && <div className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden" onClick={toggleSidebar}></div>}
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col gap-4">

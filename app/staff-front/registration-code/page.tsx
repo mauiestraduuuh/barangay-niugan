@@ -271,30 +271,21 @@ export default function StaffRegistrationCodePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to-black p-4 flex gap-4">
-      {actionLoading && <LoadingOverlay message="Processing..." />}
-      {showConfirm && (
-        <ConfirmationModal
-          title="Confirm Delete"
-          message="Are you sure you want to delete this code? This action cannot be undone."
-          onConfirm={confirmCallback}
-          onCancel={() => setShowConfirm(false)}
-        />
-      )}
-      {showError && <ErrorModal message={errorMessage} onClose={() => setShowError(false)} />}
-      {showSuccess && <SuccessModal message={successMessage} onClose={() => setShowSuccess(false)} />}
-
       {/* Sidebar */}
       <div
         className={`${
           sidebarOpen ? "w-64" : "w-16"
-        } bg-gray-50 shadow-lg rounded-xl transition-all duration-300 ease-in-out flex flex-col 
-        ${sidebarOpen ? "fixed inset-y-0 left-0 z-50 md:static md:translate-x-0" : "hidden md:flex"}`}
+        } bg-gray-50 shadow-lg rounded-xl transition-all duration-300 ease-in-out flex flex-col ${
+          sidebarOpen ? "block" : "hidden"
+        } md:block md:relative md:translate-x-0 ${
+          sidebarOpen ? "fixed inset-y-0 left-0 z-50 md:static md:translate-x-0" : ""
+        }`}
       >
         {/* Logo + Close */}
-        <div className="p-4 flex items-center justify-center relative">
+        <div className="p-4 flex items-center justify-center">
           <img
             src="/niugan-logo.png"
-            alt="Company Logo"
+            alt="Logo"
             className={`rounded-full object-cover transition-all duration-300 ${
               sidebarOpen ? "w-30 h-30" : "w-8.5 h-8.5"
             }`}
@@ -312,15 +303,13 @@ export default function StaffRegistrationCodePage() {
           <ul>
             {features.map(({ name, label, icon: Icon }) => {
               const href = `/staff-front/${name}`;
-              const isActive = name === "registration-code";
+              const isActive = name === "the-dash-staff";
               return (
                 <li key={name} className="mb-2">
                   <Link href={href}>
                     <span
                       className={`relative flex items-center w-full px-4 py-2 text-left group transition-colors duration-200 ${
-                        isActive
-                          ? "text-red-700 font-semibold"
-                          : "text-black hover:text-red-700"
+                        isActive ? "text-red-700" : "text-black hover:text-red-700"
                       }`}
                     >
                       {isActive && (
@@ -328,9 +317,7 @@ export default function StaffRegistrationCodePage() {
                       )}
                       <Icon
                         className={`w-6 h-6 mr-2 ${
-                          isActive
-                            ? "text-red-700"
-                            : "text-gray-600 group-hover:text-red-700"
+                          isActive ? "text-red-700" : "text-gray-600 group-hover:text-red-700"
                         }`}
                       />
                       {sidebarOpen && (
@@ -372,10 +359,8 @@ export default function StaffRegistrationCodePage() {
         </div>
       </div>
 
-      {/* Mobile Overlay */}
-      {sidebarOpen && (
-        <div className="fixed inset-0 bg-white/80 z-40 md:hidden" onClick={toggleSidebar}></div>
-      )}
+      {/* Overlay */}
+      {sidebarOpen && <div className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden" onClick={toggleSidebar}></div>}
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col gap-4">
