@@ -35,6 +35,7 @@ interface Feedback {
   status: "PENDING" | "IN_PROGRESS" | "RESOLVED";
   response?: string;
   proof_file?: string | null;
+  response_proof_file?: string | null;
   submitted_at?: string;
   resident: {
     first_name: string;
@@ -79,6 +80,7 @@ export default function AdminFeedbackPage() {
   const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const [messageType, setMessageType] = useState<"success" | "error">("success");
   const [statusFilter, setStatusFilter] = useState<"PENDING" | "" | "IN_PROGRESS" | "RESOLVED">("PENDING");
   const [groupFilter, setGroupFilter] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
@@ -91,6 +93,7 @@ export default function AdminFeedbackPage() {
   const [categories, setCategories] = useState<
     { category_id: string; english_name: string; tagalog_name: string; group?: string }[]
   >([]);
+  
   const filteredFeedbacks = feedbacks.filter((f) => {
     return (
       (!statusFilter || f.status === statusFilter) &&
@@ -106,7 +109,7 @@ export default function AdminFeedbackPage() {
 
   const [actionLoading, setActionLoading] = useState(false);
 
-  // NEW: confirmation modal states
+  // Confirmation modal states
   const [showConfirmReply, setShowConfirmReply] = useState(false);
   const [showConfirmStatus, setShowConfirmStatus] = useState(false);
   const [pendingStatusChange, setPendingStatusChange] = useState<{
@@ -143,8 +146,26 @@ export default function AdminFeedbackPage() {
     return () => clearInterval(interval);
   }, []);
 
+  // Auto-clear message after 5 seconds
+  useEffect(() => {
+    if (message) {
+      const timer = setTimeout(() => {
+        setMessage("");
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [message]);
+
+  const showMessage = (msg: string, type: "success" | "error" = "success") => {
+    setMessage(msg);
+    setMessageType(type);
+  };
+
   const fetchFeedbackAndCategories = async () => {
-    if (!token) return setMessage("Unauthorized: No token");
+    if (!token) {
+      showMessage("Unauthorized: No token", "error");
+      return;
+    }
     setLoading(true);
     try {
       const res = await axios.get("/api/admin/feedback", {
@@ -159,75 +180,99 @@ export default function AdminFeedbackPage() {
 
       setFeedbacks(mappedFeedbacks);
       setCategories(fetchedCategories || []);
-    } catch (err) {
+      setLoading(false);
+    } catch (err: any) {
       console.error(err);
-      setMessage("Failed to fetch feedbacks");
+      showMessage(err.response?.data?.message || "Failed to fetch feedbacks", "error");
       setFeedbacks([]);
       setCategories([]);
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const replyFeedback = async () => {
-    if (!selectedFeedback || !token) return setMessage("Unauthorized");
+    if (!selectedFeedback || !token) {
+      showMessage("Unauthorized", "error");
+      return;
+    }
 
     if (!replyFile) {
-      setMessage("Please attach a file/photo before replying.");
+      showMessage("Please attach a file/photo before replying.", "error");
+      return;
+    }
+
+    if (!replyText.trim()) {
+      showMessage("Please enter a response message.", "error");
       return;
     }
 
     const formData = new FormData();
     formData.append("feedbackId", selectedFeedback.feedback_id);
-    formData.append("response", replyText);
+    formData.append("response", replyText.trim());
     formData.append("status", "IN_PROGRESS");
     formData.append("file", replyFile);
 
     setActionLoading(true);
     try {
-      await axios.patch("/api/admin/feedback", formData, {
+      const res = await axios.patch("/api/admin/feedback", formData, {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "multipart/form-data",
         },
       });
+      
+      // Close modals and reset form
       setSelectedFeedback(null);
       setReplyText("");
       setReplyFile(null);
-      fetchFeedbackAndCategories();
-      setMessage("Reply sent successfully with proof attached");
-    } catch (err) {
+      setShowConfirmReply(false);
+      
+      // Refresh data
+      await fetchFeedbackAndCategories();
+      
+      showMessage(res.data.message || "Reply sent successfully with proof attached", "success");
+    } catch (err: any) {
       console.error(err);
-      setMessage("Failed to send reply");
+      showMessage(err.response?.data?.message || "Failed to send reply", "error");
     } finally {
       setActionLoading(false);
-      setShowConfirmReply(false);
     }
   };
 
   const updateStatus = async (feedbackId: string, status: string, currentResponse?: string) => {
-    if (!token) return setMessage("Unauthorized");
+    if (!token) {
+      showMessage("Unauthorized", "error");
+      return;
+    }
 
     if (status === "RESOLVED" && (!currentResponse || currentResponse.trim() === "")) {
-      setMessage("Cannot mark as RESOLVED without a response.");
+      showMessage("Cannot mark as RESOLVED without a response.", "error");
+      setPendingStatusChange(null);
+      setShowConfirmStatus(false);
       return;
     }
 
     setActionLoading(true);
     try {
-      await axios.put(
+      const res = await axios.put(
         "/api/admin/feedback",
         { feedbackId, status },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      fetchFeedbackAndCategories();
-      setMessage("Status updated successfully");
-    } catch (err) {
-      console.error(err);
-      setMessage("Failed to update status");
-    } finally {
-      setActionLoading(false);
+      
+      // Reset modal states
       setShowConfirmStatus(false);
       setPendingStatusChange(null);
+      
+      // Refresh data
+      await fetchFeedbackAndCategories();
+      
+      showMessage(res.data.message || "Status updated successfully", "success");
+    } catch (err: any) {
+      console.error(err);
+      showMessage(err.response?.data?.message || "Failed to update status", "error");
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -249,7 +294,11 @@ export default function AdminFeedbackPage() {
   const handleSendClick = () => {
     // Basic validation before showing confirm
     if (!replyFile) {
-      setMessage("Please attach a file/photo before replying.");
+      showMessage("Please attach a file/photo before replying.", "error");
+      return;
+    }
+    if (!replyText.trim()) {
+      showMessage("Please enter a response message.", "error");
       return;
     }
     setShowConfirmReply(true);
@@ -263,6 +312,7 @@ export default function AdminFeedbackPage() {
       router.push("/auth-front/login");
     }
   };
+  
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
   const getStatusClass = (status: string) => {
@@ -282,6 +332,7 @@ export default function AdminFeedbackPage() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to-black p-4 flex gap-4 text-black">
       {/* Loading Overlay */}
       {actionLoading && <LoadingOverlay message="Updating feedback..." />}
+      
       {/* Sidebar */}
       <div
         className={`${
@@ -421,7 +472,17 @@ export default function AdminFeedbackPage() {
             </div>
           </div>
 
-          {message && <div className="bg-green-100 text-green-700 px-4 py-2 rounded-lg mb-4 text-center font-medium">{message}</div>}
+          {message && (
+            <div 
+              className={`px-4 py-2 rounded-lg mb-4 text-center font-medium ${
+                messageType === "success" 
+                  ? "bg-green-100 text-green-700" 
+                  : "bg-red-100 text-red-700"
+              }`}
+            >
+              {message}
+            </div>
+          )}
 
           {loading ? (
             <div className="flex flex-col items-center justify-center py-20 gap-4">
@@ -489,6 +550,7 @@ export default function AdminFeedbackPage() {
                               onClick={() => {
                                 setSelectedFeedback(f);
                                 setReplyText(f.response || "");
+                                setReplyFile(null);
                               }}
                             >
                               Reply
@@ -500,6 +562,7 @@ export default function AdminFeedbackPage() {
                   </tbody>
                 </table>
               </div>
+              
               {/* Mobile Cards */}
               <div className="md:hidden space-y-4">
                 {paginatedFeedbacks.map((f) => (
@@ -547,6 +610,7 @@ export default function AdminFeedbackPage() {
                           onClick={() => {
                             setSelectedFeedback(f);
                             setReplyText(f.response || "");
+                            setReplyFile(null);
                           }}
                         >
                           Reply
@@ -556,6 +620,7 @@ export default function AdminFeedbackPage() {
                   </div>
                 ))}
               </div>
+              
               {/* PAGINATION CONTROLS */}
               <div className="w-full mt-5 flex justify-center">
                 <div className="flex items-center gap-2 px-3 py-1.5 ">
@@ -632,12 +697,19 @@ export default function AdminFeedbackPage() {
       {/* Reply Modal */}
       {selectedFeedback && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg w-full max-w-md">
+          <div className="bg-white p-6 rounded-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h3 className="font-semibold text-lg">
                 Reply to {selectedFeedback.resident.first_name} {selectedFeedback.resident.last_name}
               </h3>
-              <button onClick={() => setSelectedFeedback(null)} className="text-black hover:text-gray-700">
+              <button 
+                onClick={() => {
+                  setSelectedFeedback(null);
+                  setReplyText("");
+                  setReplyFile(null);
+                }} 
+                className="text-black hover:text-gray-700"
+              >
                 <XMarkIcon className="w-5 h-5" />
               </button>
             </div>
@@ -660,18 +732,48 @@ export default function AdminFeedbackPage() {
               </div>
             )}
 
+            {selectedFeedback.response_proof_file && (
+              <div className="mb-4">
+                <p className="text-sm font-medium mb-1 text-black">Current Proof File:</p>
+                <img 
+                  src={selectedFeedback.response_proof_file} 
+                  alt="Current proof" 
+                  className="w-full max-h-48 object-contain rounded-lg border cursor-pointer hover:opacity-80"
+                  onClick={() => setModalImage(selectedFeedback.response_proof_file)}
+                />
+              </div>
+            )}
+
             <textarea
               value={replyText}
               onChange={(e) => setReplyText(e.target.value)}
-              placeholder="Type your response..."
+              placeholder="Type your response... *"
               className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 resize-none mb-2"
               rows={4}
             />
-            <input type="file" onChange={(e) => setReplyFile(e.target.files?.[0] || null)} className="border rounded-md p-2 mb-4 w-full" />
+            
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-black mb-1">
+                Attach Proof File (Required) *
+              </label>
+              <input 
+                type="file" 
+                accept="image/*"
+                onChange={(e) => setReplyFile(e.target.files?.[0] || null)} 
+                className="border rounded-md p-2 w-full text-sm"
+              />
+              {replyFile && (
+                <p className="text-xs text-green-600 mt-1">✓ File selected: {replyFile.name}</p>
+              )}
+            </div>
 
             <div className="flex justify-end gap-2">
               <button
-                onClick={() => setSelectedFeedback(null)}
+                onClick={() => {
+                  setSelectedFeedback(null);
+                  setReplyText("");
+                  setReplyFile(null);
+                }}
                 disabled={actionLoading}
                 className="px-4 py-2 bg-gray-200 text-black rounded-lg hover:bg-gray-300 transition disabled:opacity-50"
               >
@@ -679,28 +781,19 @@ export default function AdminFeedbackPage() {
               </button>
               <button
                 onClick={handleSendClick}
-                disabled={actionLoading || !replyFile}
+                disabled={actionLoading || !replyFile || !replyText.trim()}
                 className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition disabled:opacity-50 flex items-center gap-2"
               >
-                {actionLoading ? (
-                  <>
-                    <LoadingSpinner size="sm" />
-                    Sending...
-                  </>
-                ) : selectedFeedback.response ? (
-                  "Update Reply"
-                ) : (
-                  "Send Reply"
-                )}
+                {selectedFeedback.response ? "Update Reply" : "Send Reply"}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Confirm Reply Modal (Option 1 style) */}
+      {/* Confirm Reply Modal */}
       {showConfirmReply && selectedFeedback && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-60">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-60">
           <div className="bg-white p-6 rounded-lg w-full max-w-md">
             <div className="flex justify-between items-start mb-4">
               <div>
@@ -709,6 +802,7 @@ export default function AdminFeedbackPage() {
               </div>
               <button
                 onClick={() => setShowConfirmReply(false)}
+                disabled={actionLoading}
                 className="text-black hover:text-gray-700"
                 aria-label="close confirm"
               >
@@ -722,7 +816,11 @@ export default function AdminFeedbackPage() {
                 {selectedFeedback.resident.first_name} {selectedFeedback.resident.last_name}
               </p>
               <p className="text-sm text-black mt-2">Response Preview:</p>
-              <div className="bg-gray-50 border border-gray-200 rounded p-3 mt-1 text-sm text-black max-h-32 overflow-auto">{replyText || "—"}</div>
+              <div className="bg-gray-50 border border-gray-200 rounded p-3 mt-1 text-sm text-black max-h-32 overflow-auto">
+                {replyText || "—"}
+              </div>
+              <p className="text-sm text-black mt-2">Attached File:</p>
+              <p className="text-sm text-gray-600">{replyFile?.name || "—"}</p>
             </div>
 
             <div className="flex justify-end gap-2">
@@ -734,21 +832,11 @@ export default function AdminFeedbackPage() {
                 Cancel
               </button>
               <button
-                onClick={() => {
-                  // call replyFeedback (will close the confirm when done)
-                  replyFeedback();
-                }}
+                onClick={replyFeedback}
                 disabled={actionLoading}
                 className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition disabled:opacity-50"
               >
-                {actionLoading ? (
-                  <>
-                    <LoadingSpinner size="sm" />
-                    Sending...
-                  </>
-                ) : (
-                  "Yes, Send Reply"
-                )}
+                {actionLoading ? "Sending..." : "Yes, Send Reply"}
               </button>
             </div>
           </div>
@@ -758,7 +846,7 @@ export default function AdminFeedbackPage() {
       {/* View Modal */}
       {viewFeedback && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg w-full max-w-md">
+          <div className="bg-white p-6 rounded-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h3 className="font-semibold text-lg">
                 Complaint from {viewFeedback.resident.first_name} {viewFeedback.resident.last_name}
@@ -767,13 +855,19 @@ export default function AdminFeedbackPage() {
                 <XMarkIcon className="w-5 h-5" />
               </button>
             </div>
+
             {viewFeedback.proof_file ? (
               <div className="mb-4">
-                <p className="text-sm font-medium mb-1 text-black">Attached Proof:</p>
-                <img src={viewFeedback.proof_file} alt="Proof" className="w-full max-h-64 object-contain rounded-lg border" />
+                <p className="text-sm font-medium mb-1 text-black">Resident's Proof:</p>
+                <img 
+                  src={viewFeedback.proof_file} 
+                  alt="Proof" 
+                  className="w-full max-h-64 object-contain rounded-lg border cursor-pointer hover:opacity-80" 
+                  onClick={() => setModalImage(viewFeedback.proof_file)}
+                />
               </div>
             ) : (
-              <p className="text-sm text-black mb-4">No proof provided.</p>
+              <p className="text-sm text-black mb-4">No proof provided by resident.</p>
             )}
 
             <p className="text-xs text-black mb-4">
@@ -795,8 +889,20 @@ export default function AdminFeedbackPage() {
 
             {viewFeedback.response && (
               <div className="bg-gray-50 border border-gray-300 rounded-lg p-3 mb-4">
-                <p className="text-sm text-black font-medium">Response:</p>
+                <p className="text-sm text-black font-medium">Admin Response:</p>
                 <p className="text-sm text-black">{viewFeedback.response}</p>
+              </div>
+            )}
+
+            {viewFeedback.response_proof_file && (
+              <div className="mb-4">
+                <p className="text-sm font-medium mb-1 text-black">Admin Response Proof:</p>
+                <img 
+                  src={viewFeedback.response_proof_file} 
+                  alt="Response proof" 
+                  className="w-full max-h-64 object-contain rounded-lg border cursor-pointer hover:opacity-80"
+                  onClick={() => setModalImage(viewFeedback.response_proof_file)}
+                />
               </div>
             )}
 
@@ -808,22 +914,23 @@ export default function AdminFeedbackPage() {
           </div>
         </div>
       )}
+
+      {/* Image Modal */}
       {modalImage && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
-          <div className="bg-white p-4 rounded-lg max-w-lg w-full">
+        <div className="fixed inset-0 bg-black bg-opacity-75 z-[70] flex items-center justify-center p-4" onClick={() => setModalImage(null)}>
+          <div className="bg-white p-4 rounded-lg max-w-4xl w-full max-h-[90vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
             <div className="flex justify-between items-center mb-2">
-              <h3 className="text-lg font-semibold">Attached Proof</h3>
+              <h3 className="text-lg font-semibold">Proof Image</h3>
               <button onClick={() => setModalImage(null)} className="text-black hover:text-gray-700">
                 <XMarkIcon className="w-5 h-5" />
               </button>
             </div>
-
             <img src={modalImage} alt="Proof" className="w-full rounded-lg border" />
           </div>
         </div>
       )}
 
-      {/* Confirm Status Update Modal (Option 1 style) */}
+      {/* Confirm Status Update Modal */}
       {showConfirmStatus && pendingStatusChange && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-60">
           <div className="bg-white p-6 rounded-lg w-full max-w-md">
@@ -837,6 +944,7 @@ export default function AdminFeedbackPage() {
                   setShowConfirmStatus(false);
                   setPendingStatusChange(null);
                 }}
+                disabled={actionLoading}
                 className="text-black hover:text-gray-700"
                 aria-label="close confirm status"
               >
@@ -845,7 +953,13 @@ export default function AdminFeedbackPage() {
             </div>
 
             <div className="mb-4">
-              <p className="text-sm text-black">New status: <strong>{pendingStatusChange.status}</strong></p>
+              <p className="text-sm text-black">
+                New status: <strong className={`px-2 py-1 rounded ${
+                  pendingStatusChange.status === "PENDING" ? "bg-yellow-100" :
+                  pendingStatusChange.status === "IN_PROGRESS" ? "bg-blue-100" :
+                  "bg-green-100"
+                }`}>{pendingStatusChange.status}</strong>
+              </p>
             </div>
 
             <div className="flex justify-end gap-2">
@@ -867,14 +981,7 @@ export default function AdminFeedbackPage() {
                 disabled={actionLoading}
                 className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition disabled:opacity-50"
               >
-                {actionLoading ? (
-                  <>
-                    <LoadingSpinner size="sm" />
-                    Updating...
-                  </>
-                ) : (
-                  "Yes, Update"
-                )}
+                {actionLoading ? "Updating..." : "Yes, Update"}
               </button>
             </div>
           </div>
