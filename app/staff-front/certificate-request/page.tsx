@@ -146,13 +146,14 @@ export default function AdminCertificateRequestsPage() {
   };
 
   // Reload entire page every 5 minutes
-  useEffect(() => {
+   useEffect(() => {
     const interval = setInterval(() => {
       window.location.reload();
     }, 300000); // 300000ms = 5 minutes
-  
-  return () => clearInterval(interval);
-}, []);
+    
+    return () => clearInterval(interval);
+  }, []);
+
   const fetchRequests = async () => {
     if (!token) return setMessage("Unauthorized: No token");
     setLoading(true);
@@ -355,7 +356,7 @@ const handleModalSubmit = async () => {
           <ul>
             {features.map(({ name, label, icon: Icon }) => {
               const href = `/staff-front/${name}`;
-              const isActive = name === "the-dash-staff";
+              const isActive = name === "certificate-request";
               return (
                 <li key={name} className="mb-2">
                   <Link href={href}>

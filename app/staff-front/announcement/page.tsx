@@ -158,7 +158,8 @@ export default function ManageAnnouncements() {
   useEffect(() => {
     const interval = setInterval(() => {
       window.location.reload();
-    }, 300000);
+    }, 30000); 
+    
     return () => clearInterval(interval);
   }, []);
 
@@ -302,7 +303,7 @@ export default function ManageAnnouncements() {
           <ul>
             {features.map(({ name, label, icon: Icon }) => {
               const href = `/staff-front/${name}`;
-              const isActive = name === "the-dash-staff";
+              const isActive = name === "announcement";
               return (
                 <li key={name} className="mb-2">
                   <Link href={href}>

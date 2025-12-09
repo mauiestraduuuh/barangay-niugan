@@ -151,9 +151,11 @@ export default function StaffRegistrationRequestsPage() {
     filterRequests();
   }, [statusFilter, requests, searchQuery]);
 
-  // Reload every 5 minutes
   useEffect(() => {
-    const interval = setInterval(() => window.location.reload(), 300000);
+    const interval = setInterval(() => {
+      window.location.reload();
+    }, 300000); // 300000ms = 5 minutes
+    
     return () => clearInterval(interval);
   }, []);
 
@@ -282,7 +284,7 @@ export default function StaffRegistrationRequestsPage() {
           <ul>
             {features.map(({ name, label, icon: Icon }) => {
               const href = `/staff-front/${name}`;
-              const isActive = name === "the-dash-staff";
+              const isActive = name === "registration-request";
               return (
                 <li key={name} className="mb-2">
                   <Link href={href}>

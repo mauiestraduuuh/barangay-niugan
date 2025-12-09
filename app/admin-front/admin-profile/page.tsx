@@ -261,6 +261,14 @@ export default function AdminProfilePage() {
   }
 };
 
+  useEffect(() => {
+    const interval = setInterval(() => {
+      window.location.reload();
+    }, 30000); 
+    
+    return () => clearInterval(interval);
+  }, []);
+
 
   const handleLogout = () => {
     if (window.confirm("Are you sure you want to log out?")) {

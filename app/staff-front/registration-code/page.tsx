@@ -180,7 +180,7 @@ export default function StaffRegistrationCodePage() {
   useEffect(() => {
     const interval = setInterval(() => {
       window.location.reload();
-    }, 300000); // 5 min
+    }, 30000); // 5 min
     return () => clearInterval(interval);
   }, []);
 
@@ -303,7 +303,7 @@ export default function StaffRegistrationCodePage() {
           <ul>
             {features.map(({ name, label, icon: Icon }) => {
               const href = `/staff-front/${name}`;
-              const isActive = name === "the-dash-staff";
+              const isActive = name === "registration-code";
               return (
                 <li key={name} className="mb-2">
                   <Link href={href}>

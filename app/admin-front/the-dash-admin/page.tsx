@@ -108,11 +108,10 @@ export default function AdminDashboard() {
     fetchDashboardData();
   }, []);
 
-  // Reload entire page every 5 minutes
-  useEffect(() => {
+   useEffect(() => {
     const interval = setInterval(() => {
       window.location.reload();
-    }, 300000);
+    }, 30000); 
     
     return () => clearInterval(interval);
   }, []);

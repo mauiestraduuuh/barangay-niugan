@@ -317,6 +317,14 @@ const changePassword = async () => {
   }
 };
 
+  useEffect(() => {
+    const interval = setInterval(() => {
+      window.location.reload();
+    }, 300000); // 300000ms = 5 minutes
+    
+    return () => clearInterval(interval);
+  }, []);
+
  const handleLogout = () => {
     const confirmed = window.confirm("Are you sure you want to log out?");
     if (confirmed) {
@@ -370,7 +378,7 @@ const changePassword = async () => {
           <ul>
             {features.map(({ name, label, icon: Icon }) => {
               const href = `/staff-front/${name}`;
-              const isActive = name === "the-dash-staff";
+              const isActive = name === "staff-profile";
               return (
                 <li key={name} className="mb-2">
                   <Link href={href}>

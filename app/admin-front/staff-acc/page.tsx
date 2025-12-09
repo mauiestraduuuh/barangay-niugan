@@ -206,11 +206,10 @@ export default function StaffAccounts() {
     setCurrentPage(1);
   }, [searchQuery]);
 
-  // Reload entire page every 5 minutes
   useEffect(() => {
     const interval = setInterval(() => {
       window.location.reload();
-    }, 300000); // 300000ms = 5 minutes
+    }, 30000); 
     
     return () => clearInterval(interval);
   }, []);

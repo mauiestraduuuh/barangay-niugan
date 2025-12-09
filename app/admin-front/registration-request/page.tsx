@@ -160,7 +160,7 @@ export default function AdminRegistrationRequestsPage() {
   useEffect(() => {
     const interval = setInterval(() => {
       window.location.reload();
-    }, 300000); // 5 minutes
+    }, 30000); // 5 minutes
     return () => clearInterval(interval);
   }, []);
 

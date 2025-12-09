@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/../lib/prisma"; // adjust if your prisma path differs
+import jwt from "jsonwebtoken";
 
 // ===============================
 // GET - Fetch all public announcements

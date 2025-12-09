@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/../lib/prisma";
+import jwt from "jsonwebtoken";
 
 // GET – fetch all registration codes
 export async function GET() {

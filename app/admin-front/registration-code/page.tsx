@@ -122,9 +122,11 @@ export default function RegistrationCodePage() {
     fetchCodes();
   }, []);
 
-  // Reload page every 5 min
   useEffect(() => {
-    const interval = setInterval(() => window.location.reload(), 300000);
+    const interval = setInterval(() => {
+      window.location.reload();
+    }, 30000); 
+    
     return () => clearInterval(interval);
   }, []);
 
