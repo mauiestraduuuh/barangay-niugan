@@ -34,6 +34,7 @@ interface Resident {
   qr_code?: string | null;
   memberships?: string[];
   is_renter?: boolean;
+  household_id?: number; // Added to track household
   landlord_name?: string | null;
 }
 
@@ -125,13 +126,14 @@ export default function DigitalID() {
           address: resident.address,
           photo_url: resident.photo_url,
           birthdate: resident.birthdate,
+          household_id: resident.household_id, // Store household_id
           id_number: digitalID.id_number,
           issued_at: digitalID.issued_at?.split("T")[0] || "N/A",
           issued_by: digitalID.issued_by?.toString() || "N/A",
           qr_code: digitalID.qr_code || null,
           memberships: resident.memberships || [],
           is_renter: resident.is_renter || false,
-          landlord_name: household_head || "N/A",
+          landlord_name: household_head || "N/A", // This should now come from household table lookup
         });
       } catch (err: any) {
         const status = err?.response?.status;

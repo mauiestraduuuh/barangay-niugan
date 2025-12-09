@@ -78,7 +78,7 @@ export async function GET(req: NextRequest) {
         last_name: true,
         birthdate: true,
         address: true,
-        head_id: true,
+        household_id: true,
         household_number: true,
         is_renter: true,
         is_4ps_member: true,
@@ -107,37 +107,52 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Determine household head with validation
+    // Determine household head using household table
     let householdHeadName = "N/A";
-    if (resident.head_id) {
-      const headIdNumber = isValidResidentId(resident.head_id);
-      
-      if (headIdNumber) {
-        try {
-          const headResident = await prisma.resident.findUnique({
-            where: { resident_id: headIdNumber },
-            select: { first_name: true, last_name: true },
-          });
+    if (resident.household_id) {
+      try {
+        // Fetch household to get head_resident or head_staff
+        const household = await prisma.household.findUnique({
+          where: { id: resident.household_id },
+          select: { 
+            head_resident: true, 
+            head_staff: true 
+          },
+        });
+
+        if (household) {
+          // Priority: head_resident > head_staff
+          const headId = household.head_resident || household.head_staff;
           
-          if (headResident) {
-            householdHeadName = `${headResident.first_name} ${headResident.last_name}`;
-          } else {
-            // Try staff table as fallback
-            const headStaff = await prisma.staff.findUnique({
-              where: { staff_id: headIdNumber },
-              select: { first_name: true, last_name: true },
-            });
+          if (headId) {
+            const headIdNumber = isValidResidentId(headId);
             
-            if (headStaff) {
-              householdHeadName = `${headStaff.first_name} ${headStaff.last_name}`;
+            if (headIdNumber) {
+              // Try to find in resident table first
+              const headResident = await prisma.resident.findUnique({
+                where: { resident_id: headIdNumber },
+                select: { first_name: true, last_name: true },
+              });
+              
+              if (headResident) {
+                householdHeadName = `${headResident.first_name} ${headResident.last_name}`;
+              } else {
+                // Fallback to staff table
+                const headStaff = await prisma.staff.findUnique({
+                  where: { staff_id: headIdNumber },
+                  select: { first_name: true, last_name: true },
+                });
+                
+                if (headStaff) {
+                  householdHeadName = `${headStaff.first_name} ${headStaff.last_name}`;
+                }
+              }
             }
           }
-        } catch (error) {
-          console.error("Error fetching household head:", error);
-          // Continue with "N/A" as default
         }
-      } else {
-        console.warn(`Invalid head_id for resident ${resident.resident_id}: ${resident.head_id}`);
+      } catch (error) {
+        console.error("Error fetching household head from household table:", error);
+        // Continue with "N/A" as default
       }
     }
 
@@ -229,6 +244,7 @@ export async function GET(req: NextRequest) {
     };
 
     console.log("Sending photo_url to frontend:", responseData.resident.photo_url ? "Present" : "Missing");
+    console.log("Household head determined from household table:", householdHeadName);
 
     return NextResponse.json(responseData);
   } catch (err) {
