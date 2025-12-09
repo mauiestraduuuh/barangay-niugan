@@ -760,7 +760,7 @@ if (initialLoading) {
                     <option value="">Select a type</option>
                     <option value="Barangay Clearance">Barangay Clearance</option>
                     <option value="Indigency Certificate">Indigency Certificate</option>
-                    <option value="Barangay Business Clearance">Business Permit</option>
+                    <option value="Barangay Business Clearance">Business Business Clearance</option>
                   </select>
                 </div>
                 <div>

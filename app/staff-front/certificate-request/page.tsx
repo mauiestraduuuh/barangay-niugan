@@ -93,6 +93,10 @@ export default function AdminCertificateRequestsPage() {
   const [requestToReject, setRequestToReject] = useState<CertificateRequest | null>(null);
   const [statusFilter, setStatusFilter] = useState<"PENDING" | "" | "APPROVED" | "REJECTED" | "CLAIMED">("PENDING");
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [requestToConfirm, setRequestToConfirm] = useState<CertificateRequest | null>(null);
+  const [confirmAction, setConfirmAction] = useState<"APPROVE" | "REJECT" | null>(null);
+
   
   // Pagination
   const [ITEMS_PER_PAGE, setITEMS_PER_PAGE] = useState(10);
@@ -103,7 +107,7 @@ export default function AdminCertificateRequestsPage() {
     currentPage * ITEMS_PER_PAGE
   );
 
-  const features = [
+   const features = [
     { name: "the-dash-staff", label: "Home", icon: HomeIcon },
     { name: "staff-profile", label: "Manage Profile", icon: UserIcon },
     { name: "registration-request", label: "Registration Requests", icon: ClipboardDocumentIcon },
@@ -111,6 +115,13 @@ export default function AdminCertificateRequestsPage() {
     { name: "certificate-request", label: "Certificate Requests", icon: ClipboardDocumentIcon },
     { name: "announcement", label: "Announcements", icon: MegaphoneIcon },
   ];
+
+      const openConfirmModal = (request: CertificateRequest, action: "APPROVE" | "REJECT") => {
+        setRequestToConfirm(request);
+        setConfirmAction(action); 
+        setConfirmOpen(true);
+      };
+
 
   useEffect(() => {
     if (message) {
@@ -173,24 +184,44 @@ export default function AdminCertificateRequestsPage() {
     setFilteredRequests(filtered);
   };
 
-  const handleApprove = async (requestId: string) => {
-    if (!token) return setMessage("Unauthorized");
-    setActionLoading(true);
-    setLoadingMessage("Approving request...");
-    try {
-      await axios.put(
-        "/api/staff/certificate-request",
-        { request_id: requestId, action: "APPROVE" },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      await fetchRequests();
-      setMessage("Request approved successfully");
-    } catch (err) {
-      console.error(err);
-      setMessage("Failed to approve request");
-    }
-    setActionLoading(false);
-  };
+ const handleApprove = async (requestId: string) => {
+  if (!token) return setMessage("Unauthorized");
+  setActionLoading(true);
+  setLoadingMessage("Approving request...");
+  try {
+    await axios.put(
+      "/api/staff/certificate-request",
+      { request_id: requestId, action: "APPROVE" },
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    await fetchRequests();
+    setMessage("Request approved successfully");
+  } catch (err) {
+    console.error(err);
+    setMessage("Failed to approve request");
+  }
+  setActionLoading(false);
+};
+
+const handleReject = async (request: CertificateRequest) => {
+  if (!token) return setMessage("Unauthorized");
+  setActionLoading(true);
+  setLoadingMessage("Rejecting request...");
+  try {
+    await axios.put(
+      "/api/staff/certificate-request",
+      { request_id: request.request_id, action: "REJECT", rejection_reason: remarks },
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    await fetchRequests();
+    setMessage("Request rejected successfully");
+  } catch (err) {
+    console.error(err);
+    setMessage("Failed to reject request");
+  }
+  setActionLoading(false);
+};
+
 
   const openModal = (
     request: CertificateRequest,
@@ -291,7 +322,7 @@ const handleModalSubmit = async () => {
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to-black p-4 flex gap-4">
+   <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to-black p-4 flex gap-4">
       {/* Sidebar */}
       <div
         className={`${
@@ -382,7 +413,7 @@ const handleModalSubmit = async () => {
 
       {/* Overlay */}
       {sidebarOpen && <div className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden" onClick={toggleSidebar}></div>}
-
+  
       {/* Main Content */}
       <div className="flex-1 flex flex-col gap-4">
         <header className="bg-gray-50 shadow-sm p-4 flex justify-between items-center rounded-xl text-black">
@@ -475,8 +506,8 @@ const handleModalSubmit = async () => {
                         {req.request_id}
                       </td>
                       <td className="px-3 py-2 text-gray-700">{req.certificate_type}</td>
-                      <td className="px-3 py-2 text-gray-700 hidden sm:table-cell">
-                        {new Date(req.requested_at).toLocaleString()}
+                      <td className="px-3 py-2 text-gray-700">
+                        {new Date(req.requested_at).toLocaleDateString()} {new Date(req.requested_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </td>
                       <td className="px-3 py-2">
                         {req.status === "PENDING" && (
@@ -504,17 +535,19 @@ const handleModalSubmit = async () => {
                         {req.status === "PENDING" && (
                           <>
                             <button
-                              onClick={() => handleApprove(req.request_id)}
-                              className="bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded flex items-center gap-1 text-xs sm:text-sm"
-                            >
-                              <CheckIcon className="w-4 h-4" /> Approve
-                            </button>
+                            onClick={() => openConfirmModal(req, "APPROVE")}
+                            className="bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded flex items-center gap-1 text-xs sm:text-sm"
+                          >
+                            <CheckIcon className="w-4 h-4" /> Approve
+                          </button>
+
                             <button
-                             onClick={() => openModal(req, "REJECT")}
-                              className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded flex items-center gap-1 text-xs sm:text-sm"
-                            >
-                              <XCircleIcon className="w-4 h-4" /> Reject
-                            </button>
+                            onClick={() => openConfirmModal(req, "REJECT")}
+                            className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded flex items-center gap-1 text-xs sm:text-sm"
+                          >
+                            <XCircleIcon className="w-4 h-4" /> Reject
+                          </button>
+
                           </>
                         )}
 
@@ -628,6 +661,66 @@ const handleModalSubmit = async () => {
       </div>
 
       {/* Modal */}
+
+      {/* Confirm Modal */}
+      {confirmOpen && requestToConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-xl w-96 max-h-[90vh] flex flex-col gap-4 text-black">
+            <h2 className="text-lg font-bold">
+              {confirmAction === "APPROVE" ? "Confirm Approval" : "Confirm Rejection"}
+            </h2>
+            <p>
+              Are you sure you want to{" "}
+              {confirmAction === "APPROVE" ? "approve" : "reject"} the certificate request for{" "}
+              <span className="font-semibold">
+                {requestToConfirm.resident.first_name} {requestToConfirm.resident.last_name}
+              </span>
+              ?
+            </p>
+
+            {confirmAction === "REJECT" && (
+              <textarea
+                className="w-full border p-2 rounded mb-2"
+                placeholder="Rejection Reason"
+                value={remarks}
+                onChange={(e) => setRemarks(e.target.value)}
+              />
+            )}
+
+            <div className="flex justify-end gap-2 mt-4">
+              <button
+                onClick={() => setConfirmOpen(false)}
+                className="px-4 py-2 rounded bg-gray-300 hover:bg-gray-400"
+              >
+                No
+              </button>
+
+              <button
+                onClick={() => {
+                  if (confirmAction === "REJECT" && !remarks.trim()) {
+                    setMessage("Please input a rejection reason");
+                    return;
+                  }
+
+                  if (confirmAction === "APPROVE") handleApprove(requestToConfirm!.request_id);
+                  else if (confirmAction === "REJECT") handleReject(requestToConfirm!);
+
+                  setConfirmOpen(false);
+                }}
+                disabled={confirmAction === "REJECT" && !remarks.trim()} // disables button if empty
+                className={`px-4 py-2 rounded text-white ${
+                  confirmAction === "REJECT" && !remarks.trim()
+                    ? "bg-red-300 cursor-not-allowed"
+                    : "bg-red-500 hover:bg-red-600"
+                }`}
+              >
+                Yes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {rejectConfirmOpen && requestToReject && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-xl w-96 max-h-[90vh] flex flex-col gap-4 text-black">
@@ -649,7 +742,7 @@ const handleModalSubmit = async () => {
 
                     try {
                       await axios.put(
-                        "/api/admin/certificate-request",
+                        "/api/staff/certificate-request",
                         {
                           request_id: Number(requestToReject.request_id),
                           action: "REJECT",
@@ -707,17 +800,18 @@ const handleModalSubmit = async () => {
             {modalType === "SCHEDULE" && (
               <>
                 <input
-                  type="date"
-                  className="border p-2 rounded mb-2 w-full text-black"
-                  value={pickupDate}
-                  onChange={(e) => setPickupDate(e.target.value)}
-                />
-                <input
-                  type="time"
-                  className="border p-2 rounded mb-2 w-full text-black"
-                  value={pickupTime}
-                  onChange={(e) => setPickupTime(e.target.value)}
-                />
+                type="date"
+                className="border p-2 rounded mb-2 w-full text-black bg-white placeholder-gray-400"
+                value={pickupDate}
+                onChange={(e) => setPickupDate(e.target.value)}
+              />
+
+              <input
+                type="time"
+                className="border p-2 rounded mb-2 w-full text-black bg-white placeholder-gray-400"
+                value={pickupTime}
+                onChange={(e) => setPickupTime(e.target.value)}
+              />
               </>
             )}
 
