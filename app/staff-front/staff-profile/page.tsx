@@ -111,18 +111,14 @@ export default function StaffProfilePage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeSection, setActiveSection] = useState<"overview" | "edit" | "password">("overview");
   const [profile, setProfile] = useState<StaffProfile>({} as StaffProfile);
-const [passwords, setPasswords] = useState<{
-  current_password: string;
-  new_password: string;
-  confirm_password: string;
-  current_password_show?: boolean;
-  new_password_show?: boolean;
-  confirm_password_show?: boolean;
-}>({
-  current_password: "",
-  new_password: "",
-  confirm_password: "",
-});
+  const [passwords, setPasswords] = useState({
+    current_password: "",
+    new_password: "",
+    confirm_password: "",
+    current_password_show: false,
+    new_password_show: false,
+    confirm_password_show: false,
+  });
 
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
@@ -194,30 +190,29 @@ const [passwords, setPasswords] = useState<{
 
   // Confirm Profile Update
   const confirmProfileUpdate = () => {
-  const changes: Record<string, string> = {};
-  
-  Object.keys(profile).forEach((key) => {
-    const newVal = (profile as any)[key];
-    const oldVal = (originalProfile as any)[key];
+    const changes: Record<string, string> = {};
+    
+    Object.keys(profile).forEach((key) => {
+      const newVal = (profile as any)[key];
+      const oldVal = (originalProfile as any)[key];
 
-    // Only include changed fields (ignore undefined/null if unchanged)
-    if (newVal !== oldVal && !["photo_url", "senior_mode", "is_head_of_family"].includes(key)) {
-      changes[
-        key.replace("_", " ").replace(/\b\w/g, (l) => l.toUpperCase())
-      ] = newVal ?? "N/A";
+      // Only include changed fields (ignore undefined/null if unchanged)
+      if (newVal !== oldVal && !["photo_url", "senior_mode", "is_head_of_family"].includes(key)) {
+        changes[
+          key.replace("_", " ").replace(/\b\w/g, (l) => l.toUpperCase())
+        ] = newVal ?? "N/A";
+      }
+    });
+
+    if (Object.keys(changes).length === 0) {
+      setMessage("No changes detected.");
+      return;
     }
-  });
 
-  if (Object.keys(changes).length === 0) {
-    setMessage("No changes detected.");
-    return;
-  }
-
-  setConfirmDetails(changes);
-  setConfirmAction(() => updateProfile);
-  setShowConfirmModal(true);
-};
-
+    setConfirmDetails(changes);
+    setConfirmAction(() => updateProfile);
+    setShowConfirmModal(true);
+  };
 
   const updateProfile = async () => {
     setShowConfirmModal(false);
@@ -245,77 +240,99 @@ const [passwords, setPasswords] = useState<{
     }
   };
 
-const confirmPasswordChange = () => {
-  setMessage(""); // Clear previous messages
+  const confirmPasswordChange = () => {
+    setMessage(""); // Clear previous messages
 
-  // Validate all fields are filled
-  if (!passwords.current_password) {
-    setMessage("Please enter your current password");
-    return;
-  }
-  if (!passwords.new_password) {
-    setMessage("Please enter a new password");
-    return;
-  }
-  if (!passwords.confirm_password) {
-    setMessage("Please confirm your new password");
-    return;
-  }
+    // Validate all fields are filled
+    if (!passwords.current_password.trim()) {
+      setMessage("Please enter your current password");
+      return;
+    }
+    if (!passwords.new_password.trim()) {
+      setMessage("Please enter a new password");
+      return;
+    }
+    if (!passwords.confirm_password.trim()) {
+      setMessage("Please confirm your new password");
+      return;
+    }
 
-  // Validate password match
-  if (passwords.new_password !== passwords.confirm_password) {
-    setMessage("New passwords do not match");
-    return;
-  }
+    // Validate password match
+    if (passwords.new_password !== passwords.confirm_password) {
+      setMessage("New passwords do not match");
+      return;
+    }
 
-  // Validate password length
-  if (passwords.new_password.length < 6) {
-    setMessage("New password must be at least 6 characters long");
-    return;
-  }
+    // Validate password length
+    if (passwords.new_password.length < 6) {
+      setMessage("New password must be at least 6 characters long");
+      return;
+    }
 
-  // Check if new password is different
-  if (passwords.current_password === passwords.new_password) {
-    setMessage("New password must be different from current password");
-    return;
-  }
+    // Check if new password is different
+    if (passwords.current_password === passwords.new_password) {
+      setMessage("New password must be different from current password");
+      return;
+    }
 
-  setConfirmDetails({ "New Password": "********" });
-  setConfirmAction(() => changePassword);
-  setShowConfirmModal(true);
-};
-
-const changePassword = async () => {
-  setShowConfirmModal(false);
-  setActionLoading(true);
-  setMessage(""); 
-
-  try {
-    await axios.put(
-      "/api/staff/staff-profile",
-      { 
-        password: passwords.new_password,
-        current_password: passwords.current_password 
-      },
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
-    setMessage("Password updated successfully");
-    setPasswords({ 
-      current_password: "", 
-      new_password: "", 
-      confirm_password: "",
-      current_password_show: false,
-      new_password_show: false,
-      confirm_password_show: false
+    setConfirmDetails({ 
+      "Current Password": "********",
+      "New Password": "********" 
     });
-    setActiveSection("overview");
-  } catch (err: any) {
-    const errorMsg = err.response?.data?.message || "Failed to update password";
-    setMessage(errorMsg);
-  } finally {
-    setActionLoading(false);
-  }
-};
+    setConfirmAction(() => changePassword);
+    setShowConfirmModal(true);
+  };
+
+  const changePassword = async () => {
+    setShowConfirmModal(false);
+    setActionLoading(true);
+    setMessage(""); 
+
+    try {
+      const response = await axios.put(
+        "/api/staff/staff-profile",
+        { 
+          password: passwords.new_password,
+          current_password: passwords.current_password 
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      // Success - clear form and show message
+      setMessage("Password updated successfully");
+      setPasswords({ 
+        current_password: "", 
+        new_password: "", 
+        confirm_password: "",
+        current_password_show: false,
+        new_password_show: false,
+        confirm_password_show: false
+      });
+      
+      // Wait a moment before switching to overview
+      setTimeout(() => {
+        setActiveSection("overview");
+        setMessage("");
+      }, 2000);
+      
+    } catch (err: any) {
+      // Enhanced error handling
+      let errorMsg = "Failed to update password";
+      
+      if (err.response?.status === 401) {
+        errorMsg = "Current password is incorrect";
+      } else if (err.response?.data?.message) {
+        errorMsg = err.response.data.message;
+      } else if (err.message) {
+        errorMsg = err.message;
+      }
+      
+      setMessage(errorMsg);
+      console.error("Password change error:", err);
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -325,7 +342,7 @@ const changePassword = async () => {
     return () => clearInterval(interval);
   }, []);
 
- const handleLogout = () => {
+  const handleLogout = () => {
     const confirmed = window.confirm("Are you sure you want to log out?");
     if (confirmed) {
       localStorage.removeItem("token");
@@ -346,6 +363,16 @@ const changePassword = async () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to-black p-4 flex gap-4">
+      {/* Confirmation Modal */}
+      {showConfirmModal && (
+        <ConfirmationModal
+          title="Confirm Changes"
+          details={confirmDetails}
+          onConfirm={confirmAction}
+          onCancel={() => setShowConfirmModal(false)}
+        />
+      )}
+
       {/* Sidebar */}
       <div
         className={`${
@@ -441,19 +468,18 @@ const changePassword = async () => {
       <div className="flex-1 flex flex-col gap-4">
         {/* Header */}
         <header className="bg-gray-50 shadow-sm p-4 flex items-center justify-center relative rounded-xl text-black">
-            {/* Mobile sidebar toggle */}
-            <button
-              onClick={toggleSidebar}
-              className="block md:hidden absolute left-4 text-black hover:text-red-700 focus:outline-none"
-            >
-              <Bars3Icon className="w-6 h-6" />
-            </button>
+          {/* Mobile sidebar toggle */}
+          <button
+            onClick={toggleSidebar}
+            className="block md:hidden absolute left-4 text-black hover:text-red-700 focus:outline-none"
+          >
+            <Bars3Icon className="w-6 h-6" />
+          </button>
 
-            <h1 className="text-large font-bold text-left w-full">
-              Manage Profile
-            </h1>
-          </header>
-
+          <h1 className="text-large font-bold text-left w-full">
+            Manage Profile
+          </h1>
+        </header>
 
         {/* Body */}
         <main className="bg-gray-50 rounded-xl p-6 shadow-sm overflow-auto">
@@ -489,15 +515,15 @@ const changePassword = async () => {
                 />
               )}
               {activeSection === "password" && (
-              <PasswordSection
-                passwords={passwords}
-                setPasswords={setPasswords} // ← add this
-                handlePasswordChange={handlePasswordChange}
-                actionLoading={actionLoading}
-                setActiveSection={setActiveSection}
-                confirmPasswordChange={confirmPasswordChange}
-              />
-            )}
+                <PasswordSection
+                  passwords={passwords}
+                  setPasswords={setPasswords}
+                  handlePasswordChange={handlePasswordChange}
+                  actionLoading={actionLoading}
+                  setActiveSection={setActiveSection}
+                  confirmPasswordChange={confirmPasswordChange}
+                />
+              )}
             </>
           )}
         </main>
@@ -656,7 +682,6 @@ const PasswordSection = ({
   <div className="bg-white shadow-lg rounded-2xl p-8 border border-gray-100">
     <h2 className="text-2xl font-semibold mb-6 text-gray-800">Change Password</h2>
 
-    {/* Changed from grid to space-y for better layout */}
     <div className="space-y-6">
       {[
         { label: "Current Password", name: "current_password" },
