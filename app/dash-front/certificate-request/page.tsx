@@ -858,7 +858,7 @@ if (initialLoading) {
           </select>
         </div>
         <div>
-          <label className="block text-gray-700 mb-1 font-medium">Purpose (Optional)</label>
+          <label className="block text-gray-700 mb-1 font-medium">Purpose </label>
           <input
             type="text"
             value={purpose}
