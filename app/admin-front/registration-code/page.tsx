@@ -270,7 +270,7 @@ export default function StaffRegistrationCodePage() {
     { name: "reports", label: "Reports", icon: ChartBarIcon },
   ];
 
- const handleLogout = () => {
+  const handleLogout = () => {
     const confirmed = window.confirm("Are you sure you want to log out?");
     if (confirmed) {
       localStorage.removeItem("token");
@@ -384,50 +384,54 @@ export default function StaffRegistrationCodePage() {
           <div className="flex items-center space-x-4"></div>
         </header>
 
-        <main className="flex-1 bg-gray-50 rounded-xl p-6 shadow-sm overflow-auto">
-          <h3 className="text-large font-semibold mb-4 text-black">Registration History</h3>
+        <main className="flex-1 bg-gray-50 rounded-xl p-4 sm:p-6 shadow-sm overflow-auto">
+          <h3 className="text-lg sm:text-xl font-semibold mb-4 text-black">Registration History</h3>
 
-          <div className="flex flex-col sm:flex-row gap-4 mb-6">
-            <input
-              type="text"
-              placeholder="Owner name"
-              value={ownerName}
-              onChange={(e) => setOwnerName(e.target.value)}
-              className="border rounded px-3 py-2 flex-1 text-black"
-            />
-            <button
-              onClick={generateCode}
-              disabled={actionLoading}
-              className="bg-black text-white px-4 py-2 rounded-xl hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            >
-              {actionLoading ? (
-                <>
-                  <LoadingSpinner size="sm" />
-                  <span className="leading-none">Generating...</span>
-                </>
-              ) : (
-                <span className="leading-none">Generate</span>
-              )}
-            </button>
+          <div className="flex flex-col gap-4 mb-6">
+            <div className="flex flex-col sm:flex-row gap-2">
+              <input
+                type="text"
+                placeholder="Owner name"
+                value={ownerName}
+                onChange={(e) => setOwnerName(e.target.value)}
+                className="border rounded-lg px-3 py-2 flex-1 text-black"
+              />
+              <button
+                onClick={generateCode}
+                disabled={actionLoading}
+                className="bg-black text-white px-4 py-2 rounded-xl hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 whitespace-nowrap"
+              >
+                {actionLoading ? (
+                  <>
+                    <LoadingSpinner size="sm" />
+                    <span className="leading-none">Generating...</span>
+                  </>
+                ) : (
+                  <span className="leading-none">Generate</span>
+                )}
+              </button>
+            </div>
 
-            <div className="flex items-center gap-2 ml-auto">
-              <span className="text-black font-medium">Show:</span>
-              <button
-                onClick={() => setFilter("unused")}
-                className={`px-3 py-1 rounded ${
-                  filter === "unused" ? "bg-red-700 text-white" : "bg-gray-200 text-black"
-                }`}
-              >
-                Unused
-              </button>
-              <button
-                onClick={() => setFilter("used")}
-                className={`px-3 py-1 rounded ${
-                  filter === "used" ? "bg-red-700 text-white" : "bg-gray-200 text-black"
-                }`}
-              >
-                Used
-              </button>
+            <div className="flex items-center gap-2 justify-between sm:justify-end">
+              <span className="text-black font-medium text-sm sm:text-base">Show:</span>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setFilter("unused")}
+                  className={`px-3 py-1.5 rounded-lg text-sm sm:text-base ${
+                    filter === "unused" ? "bg-red-700 text-white" : "bg-gray-200 text-black"
+                  }`}
+                >
+                  Unused
+                </button>
+                <button
+                  onClick={() => setFilter("used")}
+                  className={`px-3 py-1.5 rounded-lg text-sm sm:text-base ${
+                    filter === "used" ? "bg-red-700 text-white" : "bg-gray-200 text-black"
+                  }`}
+                >
+                  Used
+                </button>
+              </div>
             </div>
           </div>
 
@@ -437,115 +441,159 @@ export default function StaffRegistrationCodePage() {
               <p className="text-gray-600">Loading Registration Code...</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full border-collapse bg-white shadow-sm rounded-xl overflow-hidden text-sm sm:text-base">
-                <thead className="bg-gradient-to-br from-black via-red-800 to-black text-white">
-                <tr>
-                  <th className="px-4 py-2 text-left">Code</th>
-                  <th className="px-4 py-2 text-left">Owner</th>
-                  <th className="px-4 py-2 text-center">Status</th>
+            <>
+              {/* Desktop Table View */}
+              <div className="hidden sm:block overflow-x-auto">
+                <table className="min-w-full border-collapse bg-white shadow-sm rounded-xl overflow-hidden">
+                  <thead className="bg-gradient-to-br from-black via-red-800 to-black text-white">
+                    <tr>
+                      <th className="px-4 py-3 text-left">Code</th>
+                      <th className="px-4 py-3 text-left">Owner</th>
+                      <th className="px-4 py-3 text-center">Status</th>
+                      {filter === "unused" && (
+                        <th className="px-4 py-3 text-center">Actions</th>
+                      )}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {currentItems.map((c, index) => (
+                      <tr
+                        key={c.id}
+                        className={`border-t hover:bg-red-50 transition ${
+                          index % 2 === 0 ? "bg-white" : "bg-gray-50"
+                        }`}
+                      >
+                        <td className="px-4 py-3 font-medium text-black">{c.code}</td>
+                        <td className="px-4 py-3 text-black">{c.ownerName}</td>
+                        <td className="px-4 py-3 text-center">
+                          <span
+                            className={`px-3 py-1 rounded-full text-sm font-semibold ${
+                              c.isUsed ? "bg-green-200 text-green-800" : "bg-yellow-200 text-yellow-800"
+                            }`}
+                          >
+                            {c.isUsed ? "USED" : "UNUSED"}
+                          </span>
+                        </td>
+                        {filter === "unused" && (
+                          <td className="px-4 py-3 text-center">
+                            <button
+                              onClick={() => deleteCode(c.id)}
+                              disabled={actionLoading}
+                              className="bg-gray-600 text-white px-4 py-1.5 rounded-lg hover:bg-gray-700 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              Delete
+                            </button>
+                          </td>
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
 
-                  {/* Only show Actions column for UNUSED */}
-                  {filter === "unused" && (
-                    <th className="px-4 py-2 text-center">Actions</th>
-                  )}
-                </tr>
-              </thead>
-
-                <tbody>
-                  {currentItems.map((c, index) => (
-                    <tr
-                      key={c.id}
-                      className={`border-t hover:bg-red-50 transition ${
-                        index % 2 === 0 ? "bg-white" : "bg-gray-50"
-                      }`}
-                    >
-                      <td className="px-4 py-2 font-medium text-black">{c.code}</td>
-                      <td className="px-4 py-2 text-black">{c.ownerName}</td>
-                      <td className="px-4 py-2 text-center">
+              {/* Mobile Card View */}
+              <div className="sm:hidden space-y-3">
+                {currentItems.map((c) => (
+                  <div
+                    key={c.id}
+                    className="bg-white rounded-xl p-4 shadow-sm border border-gray-200"
+                  >
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <p className="text-xs text-gray-500 mb-1">Code</p>
+                          <p className="font-bold text-black break-all">{c.code}</p>
+                        </div>
                         <span
-                          className={`px-2 py-1 rounded-full text-xs sm:text-sm font-semibold ${
+                          className={`ml-2 px-2 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${
                             c.isUsed ? "bg-green-200 text-green-800" : "bg-yellow-200 text-yellow-800"
                           }`}
                         >
                           {c.isUsed ? "USED" : "UNUSED"}
                         </span>
-                      </td>
+                      </div>
+                      
+                      <div>
+                        <p className="text-xs text-gray-500 mb-1">Owner</p>
+                        <p className="text-black font-medium">{c.ownerName}</p>
+                      </div>
+
                       {filter === "unused" && (
-                        <td className="px-4 py-2 text-center">
+                        <div className="pt-2 border-t border-gray-200">
                           <button
                             onClick={() => deleteCode(c.id)}
                             disabled={actionLoading}
-                            className="bg-gray-600 text-white px-3 py-1 rounded hover:bg-gray-700 text-xs sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="w-full bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             Delete
                           </button>
-                        </td>
+                        </div>
                       )}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                    </div>
+                  </div>
+                ))}
+              </div>
 
               {/* Pagination */}
-              <div className="w-full mt-4 flex justify-center">
-                <div className="flex items-center gap-2 px-3 py-1.5 ">
+              <div className="w-full mt-6 flex flex-col sm:flex-row justify-center items-center gap-3">
+                <div className="flex items-center gap-2">
                   <button
                     onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
                     disabled={currentPage === 1}
-                    className="px-2 py-1 text-3xl text-gray-600 hover:text-black disabled:opacity-30 leading-none"
+                    className="px-2 py-1 text-2xl sm:text-3xl text-gray-600 hover:text-black disabled:opacity-30 leading-none"
                   >
                     ‹
                   </button>
 
-                  {Array.from({ length: totalPages }).map((_, i) => {
-                    const page = i + 1;
-                    if (page === 1 || page === totalPages || (page >= currentPage - 1 && page <= currentPage + 1)) {
-                      return (
-                        <button
-                          key={i}
-                          onClick={() => setCurrentPage(page)}
-                          className={`w-8 h-8 flex items-center justify-center rounded-full text-sm font-medium transition-all ${
-                            currentPage === page ? "bg-red-200 text-red-800" : "text-gray-700 hover:bg-gray-100"
-                          }`}
-                        >
-                          {page}
-                        </button>
-                      );
-                    }
-                    if (page === currentPage - 2 || page === currentPage + 2) return <span key={i} className="px-1 text-gray-400">...</span>;
-                    return null;
-                  })}
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: totalPages }).map((_, i) => {
+                      const page = i + 1;
+                      if (page === 1 || page === totalPages || (page >= currentPage - 1 && page <= currentPage + 1)) {
+                        return (
+                          <button
+                            key={i}
+                            onClick={() => setCurrentPage(page)}
+                            className={`w-8 h-8 flex items-center justify-center rounded-full text-sm font-medium transition-all ${
+                              currentPage === page ? "bg-red-200 text-red-800" : "text-gray-700 hover:bg-gray-100"
+                            }`}
+                          >
+                            {page}
+                          </button>
+                        );
+                      }
+                      if (page === currentPage - 2 || page === currentPage + 2) return <span key={i} className="px-1 text-gray-400">...</span>;
+                      return null;
+                    })}
+                  </div>
 
                   <button
                     onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
                     disabled={currentPage === totalPages}
-                    className="px-2 py-1 text-3xl text-gray-600 hover:text-black disabled:opacity-30 leading-none"
+                    className="px-2 py-1 text-2xl sm:text-3xl text-gray-600 hover:text-black disabled:opacity-30 leading-none"
                   >
                     ›
                   </button>
-
-                  <select
-                    value={itemsPerPage}
-                    onChange={(e) => {
-                      setItemsPerPage(Number(e.target.value));
-                      setCurrentPage(1);
-                    }}
-                    className="ml-2 bg-white border border-gray-300 text-sm rounded-lg px-2 py-1"
-                  >
-                    <option value={5}>5 / page</option>
-                    <option value={10}>10 / page</option>
-                    <option value={20}>20 / page</option>
-                    <option value={50}>50 / page</option>
-                  </select>
                 </div>
-              </div>
-            </div>
 
-            
+                <select
+                  value={itemsPerPage}
+                  onChange={(e) => {
+                    setItemsPerPage(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                  className="bg-white border border-gray-300 text-sm rounded-lg px-3 py-1.5"
+                >
+                  <option value={5}>5 / page</option>
+                  <option value={10}>10 / page</option>
+                  <option value={20}>20 / page</option>
+                  <option value={50}>50 / page</option>
+                </select>
+              </div>
+            </>
           )}
         </main>
       </div>
+
       {showConfirm && (
         <ConfirmationModal
           title="Generate Code?"
@@ -570,7 +618,6 @@ export default function StaffRegistrationCodePage() {
       )}
 
       {actionLoading && <LoadingOverlay message="Processing..." />}
-
     </div>
   );
 }
