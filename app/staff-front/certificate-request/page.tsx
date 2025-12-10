@@ -107,7 +107,7 @@ export default function AdminCertificateRequestsPage() {
     currentPage * ITEMS_PER_PAGE
   );
 
-   const features = [
+  const features = [
     { name: "the-dash-staff", label: "Home", icon: HomeIcon },
     { name: "staff-profile", label: "Manage Profile", icon: UserIcon },
     { name: "registration-request", label: "Registration Requests", icon: ClipboardDocumentIcon },
@@ -146,14 +146,13 @@ export default function AdminCertificateRequestsPage() {
   };
 
   // Reload entire page every 5 minutes
-   useEffect(() => {
+  useEffect(() => {
     const interval = setInterval(() => {
       window.location.reload();
     }, 300000); // 300000ms = 5 minutes
-    
-    return () => clearInterval(interval);
-  }, []);
-
+  
+  return () => clearInterval(interval);
+}, []);
   const fetchRequests = async () => {
     if (!token) return setMessage("Unauthorized: No token");
     setLoading(true);
@@ -323,22 +322,21 @@ const handleModalSubmit = async () => {
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
   return (
-   <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to-black p-4 flex gap-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-red-800 to-black p-4 flex gap-4">
+      {/* Loading Overlay for Actions */}
+      {actionLoading && <LoadingOverlay message={loadingMessage} />}
+
       {/* Sidebar */}
       <div
         className={`${
           sidebarOpen ? "w-64" : "w-16"
-        } bg-gray-50 shadow-lg rounded-xl transition-all duration-300 ease-in-out flex flex-col ${
-          sidebarOpen ? "block" : "hidden"
-        } md:block md:relative md:translate-x-0 ${
-          sidebarOpen ? "fixed inset-y-0 left-0 z-50 md:static md:translate-x-0" : ""
-        }`}
+        } bg-gray-50 shadow-lg rounded-xl transition-all duration-300 ease-in-out flex flex-col 
+        ${sidebarOpen ? "fixed inset-y-0 left-0 z-50 md:static md:translate-x-0" : "hidden md:flex"}`}
       >
-        {/* Logo + Close */}
         <div className="p-4 flex items-center justify-center">
           <img
             src="/niugan-logo.png"
-            alt="Logo"
+            alt="Company Logo"
             className={`rounded-full object-cover transition-all duration-300 ${
               sidebarOpen ? "w-30 h-30" : "w-8.5 h-8.5"
             }`}
@@ -351,42 +349,46 @@ const handleModalSubmit = async () => {
           </button>
         </div>
 
-        {/* Navigation */}
         <nav className="flex-1 mt-6">
           <ul>
-            {features.map(({ name, label, icon: Icon }) => {
-              const href = `/staff-front/${name}`;
-              const isActive = name === "certificate-request";
-              return (
-                <li key={name} className="mb-2">
-                  <Link href={href}>
+            {features.map(({ name, label, icon: Icon }) => (
+              <li key={name} className="mb-2">
+                <Link
+                  href={`/staff-front/${name}`}
+                  onClick={() => setActiveItem(name)}
+                  className={`relative flex items-center w-full px-4 py-2 text-left group transition-colors duration-200 ${
+                    activeItem === name
+                      ? "text-red-700 font-semibold"
+                      : "text-black hover:text-red-700"
+                  }`}
+                >
+                  {activeItem === name && (
+                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-700 rounded-r-full" />
+                  )}
+                  <Icon
+                    className={`w-6 h-6 mr-2 ${
+                      activeItem === name
+                        ? "text-red-700"
+                        : "text-gray-600 group-hover:text-red-700"
+                    }`}
+                  />
+                  {sidebarOpen && (
                     <span
-                      className={`relative flex items-center w-full px-4 py-2 text-left group transition-colors duration-200 ${
-                        isActive ? "text-red-700" : "text-black hover:text-red-700"
+                      className={`${
+                        activeItem === name
+                          ? "text-red-700"
+                          : "group-hover:text-red-700"
                       }`}
                     >
-                      {isActive && (
-                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-700 rounded-r-full" />
-                      )}
-                      <Icon
-                        className={`w-6 h-6 mr-2 ${
-                          isActive ? "text-red-700" : "text-gray-600 group-hover:text-red-700"
-                        }`}
-                      />
-                      {sidebarOpen && (
-                        <span className={`${isActive ? "text-red-700" : "group-hover:text-red-700"}`}>
-                          {label}
-                        </span>
-                      )}
+                      {label}
                     </span>
-                  </Link>
-                </li>
-              );
-            })}
+                  )}
+                </Link>
+              </li>
+            ))}
           </ul>
         </nav>
 
-        {/* Logout */}
         <div className="p-4">
           <button
             onClick={handleLogout}
@@ -397,7 +399,6 @@ const handleModalSubmit = async () => {
           </button>
         </div>
 
-        {/* Sidebar Toggle */}
         <div className="p-4 flex justify-center hidden md:flex">
           <button
             onClick={toggleSidebar}
@@ -412,9 +413,13 @@ const handleModalSubmit = async () => {
         </div>
       </div>
 
-      {/* Overlay */}
-      {sidebarOpen && <div className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden" onClick={toggleSidebar}></div>}
-  
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-white/80 z-40 md:hidden"
+          onClick={toggleSidebar}
+        ></div>
+      )}
+
       {/* Main Content */}
       <div className="flex-1 flex flex-col gap-4">
         <header className="bg-gray-50 shadow-sm p-4 flex justify-between items-center rounded-xl text-black">
@@ -464,199 +469,272 @@ const handleModalSubmit = async () => {
             </div>
           </div>
           {loading ? (
-          <div className="flex flex-col items-center justify-center py-20 gap-4">
-            <LoadingSpinner size="lg" />
-            <p className="text-gray-600">Loading requests...</p>
+  <div className="flex flex-col items-center justify-center py-20 gap-4">
+    <LoadingSpinner size="lg" />
+    <p className="text-gray-600">Loading requests...</p>
+  </div>
+) : filteredRequests.length === 0 ? (
+  <p className="text-center text-gray-700 py-10">
+    {statusFilter === "PENDING"
+      ? "No pending requests"
+      : statusFilter === "APPROVED"
+      ? "No approved requests"
+      : statusFilter === "REJECTED"
+      ? "No rejected requests"
+      : statusFilter === "CLAIMED"
+      ? "No claimed requests"
+      : "No requests found"}
+  </p>
+) : (
+  <>
+    {/* Mobile Card View */}
+    <div className="block md:hidden space-y-3">
+      {paginatedRequests.map((req) => (
+        <div key={req.request_id} className="bg-white p-3 sm:p-4 rounded-lg shadow border">
+          <div className="flex justify-between items-start mb-2">
+            <div className="flex-1 min-w-0 mr-2">
+              <p className="font-semibold text-gray-900 text-sm">
+                {req.resident.first_name} {req.resident.last_name}
+              </p>
+              <p className="text-xs text-gray-600">{req.certificate_type}</p>
+            </div>
+            <span className={`px-2 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${
+              req.status === "PENDING" ? "bg-yellow-200 text-yellow-800" :
+              req.status === "APPROVED" ? "bg-green-200 text-green-800" :
+              req.status === "REJECTED" ? "bg-red-200 text-red-800" :
+              "bg-purple-200 text-purple-800"
+            }`}>
+              {req.status}
+            </span>
           </div>
-        ) : filteredRequests.length === 0 ? (
-          <p className="text-center text-gray-700 py-10">
-            {statusFilter === "PENDING"
-              ? "No pending requests"
-              : statusFilter === "APPROVED"
-              ? "No approved requests"
-              : statusFilter === "REJECTED"
-              ? "No rejected requests"
-              : "No registration requests found"}
+          
+          <p className="text-xs text-gray-500 mb-3">
+            {new Date(req.requested_at).toLocaleDateString()}
           </p>
-        ) : (
-          <div className="overflow-x-auto">
-              <table className="min-w-full border-collapse bg-white shadow-sm rounded-xl overflow-hidden text-sm sm:text-base">
-                <thead className="bg-gradient-to-br from-black via-red-800 to-black text-white">
-                  <tr>
-                    <th className="px-3 py-2 text-left">Resident Name</th>
-                    <th className="px-3 py-2 text-left hidden sm:table-cell">Request ID</th>
-                    <th className="px-3 py-2 text-left">Certificate Type</th>
-                    <th className="px-3 py-2 text-left hidden sm:table-cell">Requested At</th>
-                    <th className="px-3 py-2 text-left">Status</th>
-                    <th className="px-3 py-2 text-left">Actions</th>
-                  </tr>
-                </thead>
+          
+          <div className="flex flex-wrap gap-2">
+            {req.status === "PENDING" && (
+              <>
+                <button
+                  onClick={() => openConfirmModal(req, "APPROVE")}
+                  className="bg-green-500 hover:bg-green-600 text-white px-3 py-1.5 rounded flex items-center gap-1 text-xs"
+                >
+                  <CheckIcon className="w-4 h-4" /> Approve
+                </button>
+                <button
+                  onClick={() => openConfirmModal(req, "REJECT")}
+                  className="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded flex items-center gap-1 text-xs"
+                >
+                  <XCircleIcon className="w-4 h-4" /> Reject
+                </button>
+              </>
+            )}
+            {req.status === "APPROVED" && !req.pickup_date && (
+              <button
+                onClick={() => openModal(req, "SCHEDULE")}
+                className="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1.5 rounded text-xs"
+              >
+                Schedule Pickup
+              </button>
+            )}
+            {req.status === "APPROVED" && req.pickup_date && (
+              <button
+                onClick={() => openModal(req, "CLAIMED")}
+                className="bg-purple-500 hover:bg-purple-600 text-white px-3 py-1.5 rounded text-xs"
+              >
+                Mark as Claimed
+              </button>
+            )}
+            <button
+              onClick={() => openModal(req, "VIEW")}
+              className="bg-indigo-500 hover:bg-indigo-600 text-white px-3 py-1.5 rounded text-xs"
+            >
+              View
+            </button>
+            <button
+              onClick={() => openModal(req, "ATTACH")}
+              className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 rounded flex items-center gap-1 text-xs"
+            >
+              <PaperClipIcon className="w-4 h-4" /> Attach
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
 
-                <tbody>
-                  {paginatedRequests.map((req, index) => (
-                    <tr
-                      key={req.request_id}
-                      className={`border-b hover:bg-red-50 transition ${
-                        index % 2 === 0 ? "bg-white" : "bg-gray-50"
-                      }`}
+    {/* Desktop Table View */}
+    <div className="hidden md:block overflow-x-auto">
+      <table className="min-w-full border-collapse bg-white shadow-sm rounded-xl overflow-hidden text-sm sm:text-base">
+        <thead className="bg-gradient-to-br from-black via-red-800 to-black text-white">
+          <tr>
+            <th className="px-3 py-2 text-left">Resident Name</th>
+            <th className="px-3 py-2 text-left">Request ID</th>
+            <th className="px-3 py-2 text-left">Certificate Type</th>
+            <th className="px-3 py-2 text-left">Requested At</th>
+            <th className="px-3 py-2 text-left">Status</th>
+            <th className="px-3 py-2 text-left">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {paginatedRequests.map((req, index) => (
+            <tr
+              key={req.request_id}
+              className={`border-b hover:bg-red-50 transition ${
+                index % 2 === 0 ? "bg-white" : "bg-gray-50"
+              }`}
+            >
+              <td className="px-3 py-2 font-medium text-black">
+                {req.resident.first_name} {req.resident.last_name}
+              </td>
+              <td className="px-3 py-2 text-gray-700">{req.request_id}</td>
+              <td className="px-3 py-2 text-gray-700">{req.certificate_type}</td>
+              <td className="px-3 py-2 text-gray-700">
+                {new Date(req.requested_at).toLocaleDateString()}{" "}
+                {new Date(req.requested_at).toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </td>
+              <td className="px-3 py-2">
+                {req.status === "PENDING" && (
+                  <span className="px-2 py-1 bg-yellow-200 text-yellow-800 rounded-full text-xs sm:text-sm font-semibold">
+                    Pending
+                  </span>
+                )}
+                {req.status === "APPROVED" && (
+                  <span className="px-2 py-1 bg-green-200 text-green-800 rounded-full text-xs sm:text-sm font-semibold">
+                    Approved
+                  </span>
+                )}
+                {req.status === "REJECTED" && (
+                  <span className="px-2 py-1 bg-red-200 text-red-800 rounded-full text-xs sm:text-sm font-semibold">
+                    Rejected
+                  </span>
+                )}
+                {req.status === "CLAIMED" && (
+                  <span className="px-2 py-1 bg-purple-200 text-purple-800 rounded-full text-xs sm:text-sm font-semibold">
+                    Claimed
+                  </span>
+                )}
+              </td>
+              <td className="px-3 py-2 flex flex-wrap gap-1">
+                {req.status === "PENDING" && (
+                  <>
+                    <button
+                      onClick={() => openConfirmModal(req, "APPROVE")}
+                      className="bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded flex items-center gap-1 text-xs sm:text-sm"
                     >
-                      <td className="px-3 py-2 font-medium text-black">
-                        {req.resident.first_name} {req.resident.last_name}
-                      </td>
-                      <td className="px-3 py-2 text-gray-700 hidden sm:table-cell">
-                        {req.request_id}
-                      </td>
-                      <td className="px-3 py-2 text-gray-700">{req.certificate_type}</td>
-                      <td className="px-3 py-2 text-gray-700">
-                        {new Date(req.requested_at).toLocaleDateString()} {new Date(req.requested_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </td>
-                      <td className="px-3 py-2">
-                        {req.status === "PENDING" && (
-                          <span className="px-2 py-1 bg-yellow-200 text-yellow-800 rounded-full text-xs sm:text-sm font-semibold">
-                            Pending
-                          </span>
-                        )}
-                        {req.status === "APPROVED" && (
-                          <span className="px-2 py-1 bg-green-200 text-green-800 rounded-full text-xs sm:text-sm font-semibold">
-                            Approved
-                          </span>
-                        )}
-                        {req.status === "REJECTED" && (
-                          <span className="px-2 py-1 bg-red-200 text-red-800 rounded-full text-xs sm:text-sm font-semibold">
-                            Rejected
-                          </span>
-                        )}
-                        {req.status === "CLAIMED" && (
-                          <span className="px-2 py-1 bg-purple-200 text-purple-800 rounded-full text-xs sm:text-sm font-semibold">
-                            Claimed
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-3 py-2 flex flex-wrap gap-1">
-                        {req.status === "PENDING" && (
-                          <>
-                            <button
-                            onClick={() => openConfirmModal(req, "APPROVE")}
-                            className="bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded flex items-center gap-1 text-xs sm:text-sm"
-                          >
-                            <CheckIcon className="w-4 h-4" /> Approve
-                          </button>
-
-                            <button
-                            onClick={() => openConfirmModal(req, "REJECT")}
-                            className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded flex items-center gap-1 text-xs sm:text-sm"
-                          >
-                            <XCircleIcon className="w-4 h-4" /> Reject
-                          </button>
-
-                          </>
-                        )}
-
-                        {req.status === "APPROVED" && !req.pickup_date && (
-                          <button
-                            onClick={() => openModal(req, "SCHEDULE")}
-                            className="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 rounded flex items-center gap-1 text-xs sm:text-sm"
-                          >
-                            Schedule Pickup
-                          </button>
-                        )}
-                        {req.status === "APPROVED" && req.pickup_date && (
-                          <button
-                            onClick={() => openModal(req, "CLAIMED")}
-                            className="bg-purple-500 hover:bg-purple-600 text-white px-2 py-1 rounded flex items-center gap-1 text-xs sm:text-sm"
-                          >
-                            Mark as Claimed
-                          </button>
-                        )}
-
-                        <button
-                          onClick={() => openModal(req, "VIEW")}
-                          className="bg-indigo-500 hover:bg-indigo-600 text-white px-2 py-1 rounded flex items-center gap-1 text-xs sm:text-sm"
-                        >
-                          View
-                        </button>
-
-                        <button
-                          onClick={() => openModal(req, "ATTACH")}
-                          className="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded flex items-center gap-1 text-xs sm:text-sm"
-                        >
-                          <PaperClipIcon className="w-4 h-4" /> Attach
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                      <CheckIcon className="w-4 h-4" /> Approve
+                    </button>
+                    <button
+                      onClick={() => openConfirmModal(req, "REJECT")}
+                      className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded flex items-center gap-1 text-xs sm:text-sm"
+                    >
+                      <XCircleIcon className="w-4 h-4" /> Reject
+                    </button>
+                  </>
+                )}
+                {req.status === "APPROVED" && !req.pickup_date && (
+                  <button
+                    onClick={() => openModal(req, "SCHEDULE")}
+                    className="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 rounded flex items-center gap-1 text-xs sm:text-sm"
+                  >
+                    Schedule Pickup
+                  </button>
+                )}
+                {req.status === "APPROVED" && req.pickup_date && (
+                  <button
+                    onClick={() => openModal(req, "CLAIMED")}
+                    className="bg-purple-500 hover:bg-purple-600 text-white px-2 py-1 rounded flex items-center gap-1 text-xs sm:text-sm"
+                  >
+                    Mark as Claimed
+                  </button>
+                )}
+                <button
+                  onClick={() => openModal(req, "VIEW")}
+                  className="bg-indigo-500 hover:bg-indigo-600 text-white px-2 py-1 rounded flex items-center gap-1 text-xs sm:text-sm"
+                >
+                  View
+                </button>
+                <button
+                  onClick={() => openModal(req, "ATTACH")}
+                  className="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded flex items-center gap-1 text-xs sm:text-sm"
+                >
+                  <PaperClipIcon className="w-4 h-4" /> Attach
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
 
               {/* Pagination */}
-              <div className="w-full mt-5 flex justify-center">
-                <div className="flex items-center gap-2 px-3 py-1.5">
-                  <button
-                    onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                    disabled={currentPage === 1}
-                    className="px-2 py-1 text-3xl text-gray-500 hover:text-gray-700 disabled:opacity-30"
-                  >
-                    ‹
-                  </button>
+<div className="w-full mt-5 flex flex-col sm:flex-row justify-center items-center gap-3">
+  <div className="flex items-center gap-1 sm:gap-2">
+    <button
+      onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+      disabled={currentPage === 1}
+      className="px-2 py-1 text-2xl sm:text-3xl text-gray-500 hover:text-gray-700 disabled:opacity-30"
+    >
+      ‹
+    </button>
 
-                  {Array.from({ length: totalPages }).map((_, i) => {
-                    const page = i + 1;
+    {Array.from({ length: totalPages }).map((_, i) => {
+      const page = i + 1;
+      if (
+        page === 1 ||
+        page === totalPages ||
+        (page >= currentPage - 1 && page <= currentPage + 1)
+      ) {
+        return (
+          <button
+            key={i}
+            onClick={() => setCurrentPage(page)}
+            className={`w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-full text-xs sm:text-sm font-medium transition-all ${
+              currentPage === page
+                ? "bg-red-100 text-red-700"
+                : "text-gray-700 hover:bg-gray-100"
+            }`}
+          >
+            {page}
+          </button>
+        );
+      }
+      if (page === currentPage - 2 || page === currentPage + 2) {
+        return (
+          <div key={i} className="px-1 text-gray-400 text-xs sm:text-base">
+            ...
+          </div>
+        );
+      }
+      return null;
+    })}
 
-                    if (
-                      page === 1 ||
-                      page === totalPages ||
-                      (page >= currentPage - 1 && page <= currentPage + 1)
-                    ) {
-                      return (
-                        <button
-                          key={i}
-                          onClick={() => setCurrentPage(page)}
-                          className={`w-8 h-8 flex items-center justify-center rounded-full text-sm font-medium transition-all ${
-                            currentPage === page
-                              ? "bg-red-100 text-red-700"
-                              : "text-gray-700 hover:bg-gray-100"
-                          }`}
-                        >
-                          {page}
-                        </button>
-                      );
-                    }
+    <button
+      onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+      disabled={currentPage === totalPages}
+      className="px-2 py-1 text-2xl sm:text-3xl text-gray-500 hover:text-gray-700 disabled:opacity-30"
+    >
+      ›
+    </button>
+  </div>
 
-                    if (page === currentPage - 2 || page === currentPage + 2) {
-                      return (
-                        <div key={i} className="px-1 text-gray-400">
-                          ...
-                        </div>
-                      );
-                    }
-
-                    return null;
-                  })}
-
-                  <button
-                    onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-                    disabled={currentPage === totalPages}
-                    className="px-2 py-1 text-3xl text-gray-500 hover:text-gray-700 disabled:opacity-30"
-                  >
-                    ›
-                  </button>
-
-                  <select
-                    value={ITEMS_PER_PAGE}
-                    onChange={(e) => {
-                      setCurrentPage(1);
-                      setITEMS_PER_PAGE(Number(e.target.value));
-                    }}
-                    className="ml-3 bg-white border border-gray-300 text-sm rounded-xl px-3 py-1 focus:ring-0"
-                  >
-                    <option value={5}>5 / page</option>
-                    <option value={10}>10 / page</option>
-                    <option value={20}>20 / page</option>
-                    <option value={50}>50 / page</option>
-                  </select>
-                </div>
-              </div>
-            </div>
+  <select
+    value={ITEMS_PER_PAGE}
+    onChange={(e) => {
+      setCurrentPage(1);
+      setITEMS_PER_PAGE(Number(e.target.value));
+    }}
+    className="bg-white border border-gray-300 text-xs sm:text-sm rounded-xl px-3 py-1.5 focus:ring-0 w-32"
+  >
+    <option value={5}>5 / page</option>
+    <option value={10}>10 / page</option>
+    <option value={20}>20 / page</option>
+    <option value={50}>50 / page</option>
+  </select>
+</div>
+            </>
           )}
         </main>
       </div>
@@ -666,7 +744,7 @@ const handleModalSubmit = async () => {
       {/* Confirm Modal */}
       {confirmOpen && requestToConfirm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-xl w-96 max-h-[90vh] flex flex-col gap-4 text-black">
+        <div className="bg-white p-4 sm:p-6 rounded-xl w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
             <h2 className="text-lg font-bold">
               {confirmAction === "APPROVE" ? "Confirm Approval" : "Confirm Rejection"}
             </h2>
@@ -722,58 +800,66 @@ const handleModalSubmit = async () => {
         </div>
       )}
 
-      {rejectConfirmOpen && requestToReject && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-xl w-96 max-h-[90vh] flex flex-col gap-4 text-black">
-            <h2 className="text-lg font-bold">Confirm Rejection</h2>
+{rejectConfirmOpen && requestToReject && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="bg-white p-4 sm:p-6 rounded-xl w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
+      <h2 className="text-lg font-bold">Confirm Rejection</h2>
 
-            <p>
-              Are you sure you want to reject the certificate request for{" "}
-              <span className="font-semibold">
-                {requestToReject.resident.first_name} {requestToReject.resident.last_name}
-              </span>?
-            </p>
+      <p className="text-sm sm:text-base">
+        Are you sure you want to reject the certificate request for{" "}
+        <span className="font-semibold">
+          {requestToReject.resident.first_name} {requestToReject.resident.last_name}
+        </span>?
+      </p>
 
-            <div className="flex justify-end gap-2 mt-4">
-             <button
-              onClick={async () => {
-                    setRejectConfirmOpen(false);
-                    setActionLoading(true);
-                    setLoadingMessage("Rejecting request...");
+      <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 mt-4">
+        {/* ADD THIS CANCEL BUTTON */}
+        <button
+          onClick={() => setRejectConfirmOpen(false)}
+          className="w-full sm:w-auto px-4 py-2 rounded bg-gray-300 hover:bg-gray-400"
+        >
+          Cancel
+        </button>
 
-                    try {
-                      await axios.put(
-                        "/api/staff/certificate-request",
-                        {
-                          request_id: Number(requestToReject.request_id),
-                          action: "REJECT",
-                          rejection_reason: remarks,
-                        },
-                        { headers: { Authorization: `Bearer ${token}` } }
-                      );
+        <button
+          onClick={async () => {
+            setRejectConfirmOpen(false);
+            setActionLoading(true);
+            setLoadingMessage("Rejecting request...");
 
-                      setMessage("Request rejected successfully");
-                      await fetchRequests();
-                    } catch (err: any) {
-                      console.error(err);
-                      setMessage("Failed to reject request");
-                    }
+            try {
+              await axios.put(
+                "/api/staff/certificate-request",
+                {
+                  request_id: Number(requestToReject.request_id),
+                  action: "REJECT",
+                  rejection_reason: remarks,
+                },
+                { headers: { Authorization: `Bearer ${token}` } }
+              );
 
-                      setActionLoading(false);
-                    }}
-                className="px-4 py-2 rounded bg-red-500 hover:bg-red-600 text-white"
-                disabled={actionLoading}
-              >
-                Yes, Reject
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+              setMessage("Request rejected successfully");
+              await fetchRequests();
+            } catch (err: any) {
+              console.error(err);
+              setMessage("Failed to reject request");
+            }
+
+            setActionLoading(false);
+          }}
+          className="w-full sm:w-auto px-4 py-2 rounded bg-red-500 hover:bg-red-600 text-white"
+          disabled={actionLoading}
+        >
+          Yes, Reject
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
       {modalOpen && selectedRequest && modalType && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 text-black">
-          <div className="bg-white p-6 rounded-xl w-96 max-h-[90vh] overflow-y-auto">
+          <div className="bg-white p-4 sm:p-6 rounded-xl w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
             {modalType === "REJECT" && <h2 className="text-lg font-bold mb-4">Reject Request</h2>}
             {modalType === "SCHEDULE" && <h2 className="text-lg font-bold mb-4">Schedule Pickup</h2>}
             {modalType === "ATTACH" && <h2 className="text-lg font-bold mb-4">Attach File / Add Remarks</h2>}
