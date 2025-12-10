@@ -123,6 +123,8 @@ export default function FeedbackPage() {
   const [selectedCategory, setSelectedCategory] = useState<number | "">("");
   const [language, setLanguage] = useState<"en" | "tl">("en");
   const [modalImage, setModalImage] = useState<string | null>(null)
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
@@ -173,6 +175,22 @@ export default function FeedbackPage() {
       setCategories([]);
     }
   };
+
+  // Pagination calculations
+const totalPages = Math.ceil(filteredFeedbacks.length / itemsPerPage);
+const startIndex = (currentPage - 1) * itemsPerPage;
+const endIndex = startIndex + itemsPerPage;
+const paginatedFeedbacks = filteredFeedbacks.slice(startIndex, endIndex);
+
+const handlePageChange = (page: number) => {
+  setCurrentPage(page);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+};
+
+  useEffect(() => {
+  filterRequests();
+  setCurrentPage(1); // Reset to first page when filter changes
+}, [statusFilter, feedbacks]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -666,7 +684,7 @@ const SpinnerOverlay = ({ message = "Loading..." }: { message?: string }) => {
                             </td>
                           </tr>
                         ) : (
-                          filteredFeedbacks.map((fb) => (
+                          paginatedFeedbacks.map((fb) => (
                             <tr key={fb.feedback_id} className="hover:bg-gray-50 transition-colors duration-200 text-black text-xs sm:text-sm md:text-base">
                               <td className="p-2 sm:p-4 border-b border-gray-200">
                                 {fb.category ? (language === "en" ? fb.category.english_name : fb.category.tagalog_name) : "-"}
@@ -709,6 +727,70 @@ const SpinnerOverlay = ({ message = "Loading..." }: { message?: string }) => {
                       </tbody>
                     </table>
                   </div>
+
+          {/* Pagination Controls */}
+          {!pageLoading && filteredFeedbacks.length > 0 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 px-2">
+              {/* Results info */}
+              <div className="text-sm text-gray-600">
+                Showing <span className="font-semibold">{startIndex + 1}</span> to{' '}
+                <span className="font-semibold">{Math.min(endIndex, filteredFeedbacks.length)}</span> of{' '}
+                <span className="font-semibold">{filteredFeedbacks.length}</span> complaints
+              </div>
+
+              
+
+    {/* Pagination buttons */}
+    <div className="flex items-center gap-2">
+      <button
+        onClick={() => handlePageChange(currentPage - 1)}
+        disabled={currentPage === 1}
+        className="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 text-sm font-medium"
+      >
+        Previous
+      </button>
+
+      <div className="flex gap-1">
+        {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+          if (
+            page === 1 ||
+            page === totalPages ||
+            (page >= currentPage - 1 && page <= currentPage + 1)
+          ) {
+            return (
+              <button
+                key={page}
+                onClick={() => handlePageChange(page)}
+                className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                  currentPage === page
+                    ? 'bg-gradient-to-br from-black via-red-800 to-black text-white shadow-md'
+                    : 'border border-gray-300 text-gray-700 bg-white hover:bg-gray-50'
+                }`}
+              >
+                {page}
+              </button>
+            );
+          } else if (page === currentPage - 2 || page === currentPage + 2) {
+            return (
+              <span key={page} className="px-2 py-2 text-gray-400">
+                ...
+              </span>
+            );
+          }
+          return null;
+        })}
+      </div>
+
+      <button
+        onClick={() => handlePageChange(currentPage + 1)}
+        disabled={currentPage === totalPages}
+        className="px-3 py-2 rounded-lg border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 text-sm font-medium"
+      >
+        Next
+      </button>
+    </div>
+  </div>
+)}
 
                   {/* Modal for Proof Image */}
                   {modalImage && (

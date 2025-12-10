@@ -29,12 +29,6 @@ function cleanContent(content: string | null): string {
   return content.replace(/\[EXP_DAYS:\d+\]$/, "");
 }
 
-function daysUntil(date: Date) {
-  const now = new Date();
-  const diffMs = date.getTime() - now.getTime();
-  return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-}
-
 export async function GET(req: NextRequest) {
   try {
     const userId = getUserIdFromToken(req);
@@ -62,24 +56,30 @@ export async function GET(req: NextRequest) {
     const rawAnnouncements = await prisma.announcement.findMany({
       where: { is_public: true },
       orderBy: { posted_at: "desc" },
-      take: 5,
     });
 
-    // Normalize expiration logic to match admin
-    const announcements = rawAnnouncements.map((ann) => {
-      const expirationDays = extractExpirationDays(ann.content);
-      const postedAt = new Date(ann.posted_at);
+    const now = new Date();
 
-      const expirationDate = new Date(postedAt);
-      expirationDate.setDate(expirationDate.getDate() + expirationDays);
+    // Normalize expiration logic and FILTER OUT expired announcements
+    const announcements = rawAnnouncements
+      .map((ann) => {
+        const expirationDays = extractExpirationDays(ann.content);
+        const postedAt = new Date(ann.posted_at);
 
-      return {
-        ...ann,
-        content: cleanContent(ann.content),
-        expiration_days: expirationDays,
-        expiration_date: expirationDate.toISOString(),
-      };
-    });
+        const expirationDate = new Date(postedAt);
+        expirationDate.setDate(expirationDate.getDate() + expirationDays);
+
+        return {
+          ...ann,
+          content: cleanContent(ann.content),
+          expiration_days: expirationDays,
+          expiration_date: expirationDate.toISOString(),
+          _expirationDate: expirationDate, // Temp field for filtering
+        };
+      })
+      .filter((ann) => ann._expirationDate > now) // Remove expired announcements
+      .slice(0, 5) // Take only 5 most recent non-expired
+      .map(({ _expirationDate, ...rest }) => rest); // Remove temp field
 
     // Dashboard summary
     const totalCertificates = await prisma.certificateRequest.count({

@@ -105,6 +105,10 @@ export default function Dashboard() {
   const [statusFilter, setStatusFilter] = useState<"PENDING" | "" | "APPROVED" | "REJECTED" | "CLAIMED">("PENDING");
   const [messageType, setMessageType] = useState<"success" | "error" | "">("");
   
+  // Pagination States
+  const [ITEMS_PER_PAGE, setITEMS_PER_PAGE] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
+  
   // Loading States
   const [initialLoading, setInitialLoading] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -182,6 +186,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     filterRequests();
+    setCurrentPage(1); // Reset to first page when filter changes
   }, [statusFilter, requests]);
 
   const filterRequests = () => {
@@ -191,6 +196,12 @@ export default function Dashboard() {
     }
     setFilteredRequests(filtered);
   };
+
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredRequests.length / ITEMS_PER_PAGE);
+  const indexOfLastItem = currentPage * ITEMS_PER_PAGE;
+  const indexOfFirstItem = indexOfLastItem - ITEMS_PER_PAGE;
+  const paginatedRequests = filteredRequests.slice(indexOfFirstItem, indexOfLastItem);
 
   const handleRequestSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -655,7 +666,7 @@ if (initialLoading) {
                 </thead>
 
                 <tbody>
-                  {filteredRequests.map((req) => (
+                  {paginatedRequests.map((req) => (
                     <tr key={req.request_id}
                   className="hover:bg-gray-50 transition duration-200"
                 >
@@ -737,6 +748,77 @@ if (initialLoading) {
       </table>
     </div>
   )}
+
+  {/* Pagination Controls */}
+  {filteredRequests.length > 0 && (
+    <div className="w-full mt-5 flex justify-center">
+      <div className="flex items-center gap-2 px-3 py-1.5">
+        <button
+          onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+          disabled={currentPage === 1}
+          className="px-2 py-1 text-3xl text-gray-500 hover:text-gray-700 disabled:opacity-30"
+        >
+          ‹
+        </button>
+
+        {Array.from({ length: totalPages }).map((_, i) => {
+          const page = i + 1;
+
+          if (
+            page === 1 ||
+            page === totalPages ||
+            (page >= currentPage - 1 && page <= currentPage + 1)
+          ) {
+            return (
+              <button
+                key={i}
+                onClick={() => setCurrentPage(page)}
+                className={`w-8 h-8 flex items-center justify-center rounded-full text-sm font-medium transition-all ${
+                  currentPage === page
+                    ? "bg-red-700 text-white"
+                    : "text-gray-700 hover:bg-gray-100"
+                }`}
+              >
+                {page}
+              </button>
+            );
+          }
+
+          if (page === currentPage - 2 || page === currentPage + 2) {
+            return (
+              <div key={i} className="px-1 text-gray-400">
+                ...
+              </div>
+            );
+          }
+
+          return null;
+        })}
+
+        <button
+          onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+          disabled={currentPage === totalPages}
+          className="px-2 py-1 text-3xl text-gray-500 hover:text-gray-700 disabled:opacity-30"
+        >
+          ›
+        </button>
+
+        <select
+          value={ITEMS_PER_PAGE}
+          onChange={(e) => {
+            setCurrentPage(1);
+            setITEMS_PER_PAGE(Number(e.target.value));
+          }}
+          className="ml-3 bg-white border border-gray-300 text-sm rounded-xl px-3 py-1 focus:ring-0"
+        >
+          <option value={5}>5 / page</option>
+          <option value={10}>10 / page</option>
+          <option value={20}>20 / page</option>
+          <option value={50}>50 / page</option>
+        </select>
+      </div>
+    </div>
+  )}
 </div>
 
 {/* Request Modal */}
@@ -772,7 +854,7 @@ if (initialLoading) {
             <option value="">Select a type</option>
             <option value="Barangay Clearance">Barangay Clearance</option>
             <option value="Indigency Certificate">Indigency Certificate</option>
-            <option value="Barangay Business Clearance">Business Business Clearance</option>
+            <option value="Barangay Business Clearance">Barangay Business Clearance</option>
           </select>
         </div>
         <div>
