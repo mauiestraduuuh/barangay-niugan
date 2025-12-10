@@ -410,174 +410,134 @@ export default function AdminFeedbackPage() {
           <h1 className="text-large font-bold">Complaints Management</h1>
           <div className="flex items-center space-x-4"></div>
         </header>
+<main className="bg-white rounded-2xl shadow-lg p-4 md:p-6 transition-all duration-300">
+  {/* Header - Mobile Optimized */}
+  <div className="mb-4">
+    <h3 className="text-lg md:text-xl font-semibold text-black mb-3">Resident Complaints</h3>
+    
+    {/* Filters - Stacked on Mobile */}
+    <div className="space-y-3">
+      {/* Status Filter */}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+        <label className="text-sm font-semibold text-gray-600 whitespace-nowrap">Filter Status:</label>
+        <div className="relative w-full sm:w-auto">
+          <select
+            className="w-full appearance-none bg-white border border-gray-300 rounded-lg px-3 py-2 pr-8 text-sm font-medium text-gray-700 shadow-sm hover:border-red-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-200"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as any)}
+          >
+            <option value="">All Statuses</option>
+            <option value="PENDING">Pending</option>
+            <option value="IN_PROGRESS">In Progress</option>
+            <option value="RESOLVED">Resolved</option>
+          </select>
+          <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </div>
+        </div>
+      </div>
 
-        <main className="bg-white rounded-2xl shadow-lg p-6 transition-all duration-300">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-3">
-            <h3 className="text-large font-semibold text-black">Resident Complaints</h3>
-            <div className="flex items-center gap-3">
-              <label className="text-sm font-semibold text-gray-600">Filter Status:</label>
-              <div className="relative">
-                <select
-                  className="appearance-none bg-white border border-gray-300 rounded-lg px-3 py-2 pr-8 text-sm font-medium text-gray-700 shadow-sm hover:border-red-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-200"
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value as any)}
-                >
-                  <option value="">All Statuses</option>
-                  <option value="PENDING">Pending</option>
-                  <option value="IN_PROGRESS">In Progress</option>
-                  <option value="RESOLVED">Resolved</option>
-                </select>
-                <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </div>
-              </div>
+      {/* Group and Category Filters */}
+      <div className="flex flex-col sm:flex-row gap-2">
+        <div className="flex items-center gap-2 flex-1">
+          <label className="text-sm font-semibold text-gray-600 whitespace-nowrap">Group:</label>
+          <select
+            value={groupFilter}
+            onChange={(e) => {
+              setGroupFilter(e.target.value);
+              setCategoryFilter("");
+            }}
+            className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+          >
+            <option value="">All</option>
+            {groups.map((g) => (
+              <option key={g} value={g}>
+                {g}
+              </option>
+            ))}
+          </select>
+        </div>
 
-              {/* Group filter */}
-              <label className="text-sm font-semibold text-gray-600">Group:</label>
-              <select
-                value={groupFilter}
-                onChange={(e) => {
-                  setGroupFilter(e.target.value);
-                  setCategoryFilter(""); // reset category
-                }}
-                className="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
-              >
-                <option value="">All</option>
-                {groups.map((g) => (
-                  <option key={g} value={g}>
-                    {g}
+        {groupFilter && (
+          <div className="flex items-center gap-2 flex-1">
+            <label className="text-sm font-semibold text-gray-600 whitespace-nowrap">Category:</label>
+            <select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+            >
+              <option value="">All</option>
+              {categories
+                .filter((c) => c.group === groupFilter)
+                .map((c) => (
+                  <option key={c.category_id} value={c.category_id}>
+                    {c.english_name} / {c.tagalog_name}
                   </option>
                 ))}
-              </select>
-
-              {/* Category filter */}
-              {groupFilter && (
-                <>
-                  <label className="text-sm text-black font-medium ml-2">Category:</label>
-                  <select
-                    value={categoryFilter}
-                    onChange={(e) => setCategoryFilter(e.target.value)}
-                    className="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
-                  >
-                    <option value="">All</option>
-                    {categories
-                      .filter((c) => c.group === groupFilter)
-                      .map((c) => (
-                        <option key={c.category_id} value={c.category_id}>
-                          {c.english_name} / {c.tagalog_name}
-                        </option>
-                      ))}
-                  </select>
-                </>
-              )}
-            </div>
+            </select>
           </div>
-
-          {message && (
-            <div 
-              className={`px-4 py-2 rounded-lg mb-4 text-center font-medium ${
-                messageType === "success" 
-                  ? "bg-green-100 text-green-700" 
-                  : "bg-red-100 text-red-700"
-              }`}
-            >
-              {message}
-            </div>
-          )}
-
-         {loading ? (
-  <div className="flex flex-col items-center justify-center py-20 gap-4">
-    <LoadingSpinner size="lg" />
-    <p className="text-gray-600">Loading complaints...</p>
-  </div>
-) : (
-  <>
-    {/* Desktop Table */}
-    <div className="hidden md:block overflow-x-auto">
-      <table className="min-w-full border border-gray-200 rounded-lg overflow-hidden">
-        <thead className="bg-gradient-to-br from-black via-red-800 to-black text-white text-sm uppercase font-semibold">
-          <tr>
-            <th className="px-4 py-3 text-left">Resident Name</th>
-            <th className="px-4 py-3 text-left">Status</th>
-            <th className="px-4 py-3 text-left">Date Submitted</th>
-            <th className="px-4 py-3 text-left">Category</th>
-            <th className="px-4 py-3 text-left">Responded By</th>
-            <th className="px-4 py-3 text-center">Actions</th>
-          </tr>
-        </thead>
-        <tbody className="text-sm text-black divide-y divide-gray-200">
-          {paginatedFeedbacks.map((f) => (
-            <tr key={f.feedback_id} className="hover:bg-gray-50 transition">
-              <td className="px-4 py-3 font-medium whitespace-nowrap">
-                {f.resident?.first_name} {f.resident?.last_name}
-              </td>
-              <td className="px-4 py-3">
-                <select
-                  value={f.status}
-                  onChange={(e) =>
-                    handleStatusSelectChange(f.feedback_id, e.target.value as any, f.response)
-                  }
-                  disabled={f.status === "RESOLVED" || actionLoading}
-                  className={`border rounded-md px-2 py-1 text-xs font-medium focus:outline-none focus:ring-1 ${getStatusClass(
-                    f.status
-                  )}`}
-                >
-                  <option value="PENDING">Pending</option>
-                  <option value="IN_PROGRESS">In Progress</option>
-                  <option value="RESOLVED">Resolved</option>
-                </select>
-              </td>
-              <td className="px-4 py-3 whitespace-nowrap">
-                {f.submitted_at
-                  ? new Date(f.submitted_at).toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                    })
-                  : "—"}
-              </td>
-              <td className="px-4 py-3">{f.category ? `${f.category.english_name} / ${f.category.tagalog_name}` : "—"}</td>
-              <td className="px-4 py-3">{f.respondedBy ? `Admin #${f.respondedBy.id}` : "—"}</td>
-              <td className="px-4 py-3 text-center space-x-2">
-                <button
-                  className="bg-gray-500 hover:bg-gray-600 text-white px-3 py-1 rounded-md text-sm transition"
-                  onClick={() => setViewFeedback(f)}
-                >
-                  View
-                </button>
-                {f.status !== "RESOLVED" && (
-                  <button
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-md text-sm transition"
-                    onClick={() => {
-                      setSelectedFeedback(f);
-                      setReplyText(f.response || "");
-                      setReplyFile(null);
-                    }}
-                  >
-                    Reply
-                  </button>
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+        )}
+      </div>
     </div>
-    
-    {/* Mobile Cards */}
-    <div className="md:hidden space-y-4">
-      {paginatedFeedbacks.map((f) => (
-        <div key={f.feedback_id} className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-          {/* Header Section */}
-          <div className="bg-gradient-to-r from-gray-50 to-gray-100 p-3 border-b border-gray-200">
-            <div className="flex justify-between items-start gap-2">
-              <div className="flex-1 min-w-0">
-                <h3 className="font-semibold text-black text-sm truncate">
+  </div>
+
+  {message && (
+    <div 
+      className={`px-4 py-2 rounded-lg mb-4 text-center font-medium text-sm ${
+        messageType === "success" 
+          ? "bg-green-100 text-green-700" 
+          : "bg-red-100 text-red-700"
+      }`}
+    >
+      {message}
+    </div>
+  )}
+
+  {loading ? (
+    <div className="flex flex-col items-center justify-center py-20 gap-4">
+      <LoadingSpinner size="lg" />
+      <p className="text-gray-600">Loading complaints...</p>
+    </div>
+  ) : (
+    <>
+      {/* Desktop Table */}
+      <div className="hidden lg:block overflow-x-auto">
+        <table className="min-w-full border border-gray-200 rounded-lg overflow-hidden">
+          <thead className="bg-gradient-to-br from-black via-red-800 to-black text-white text-sm uppercase font-semibold">
+            <tr>
+              <th className="px-4 py-3 text-left">Resident Name</th>
+              <th className="px-4 py-3 text-left">Status</th>
+              <th className="px-4 py-3 text-left">Date Submitted</th>
+              <th className="px-4 py-3 text-left">Category</th>
+              <th className="px-4 py-3 text-left">Responded By</th>
+              <th className="px-4 py-3 text-center">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="text-sm text-black divide-y divide-gray-200">
+            {paginatedFeedbacks.map((f) => (
+              <tr key={f.feedback_id} className="hover:bg-gray-50 transition">
+                <td className="px-4 py-3 font-medium whitespace-nowrap">
                   {f.resident?.first_name} {f.resident?.last_name}
-                </h3>
-                <p className="text-xs text-gray-600 mt-0.5">
+                </td>
+                <td className="px-4 py-3">
+                  <select
+                    value={f.status}
+                    onChange={(e) =>
+                      handleStatusSelectChange(f.feedback_id, e.target.value as any, f.response)
+                    }
+                    disabled={f.status === "RESOLVED" || actionLoading}
+                    className={`border rounded-md px-2 py-1 text-xs font-medium focus:outline-none focus:ring-1 ${getStatusClass(
+                      f.status
+                    )}`}
+                  >
+                    <option value="PENDING">Pending</option>
+                    <option value="IN_PROGRESS">In Progress</option>
+                    <option value="RESOLVED">Resolved</option>
+                  </select>
+                </td>
+                <td className="px-4 py-3 whitespace-nowrap">
                   {f.submitted_at
                     ? new Date(f.submitted_at).toLocaleDateString("en-US", {
                         month: "short",
@@ -585,138 +545,179 @@ export default function AdminFeedbackPage() {
                         year: "numeric",
                       })
                     : "—"}
-                </p>
+                </td>
+                <td className="px-4 py-3">{f.category ? `${f.category.english_name} / ${f.category.tagalog_name}` : "—"}</td>
+                <td className="px-4 py-3">{f.respondedBy ? `Admin #${f.respondedBy.id}` : "—"}</td>
+                <td className="px-4 py-3 text-center space-x-2">
+                  <button
+                    className="bg-gray-500 hover:bg-gray-600 text-white px-3 py-1 rounded-md text-sm transition"
+                    onClick={() => setViewFeedback(f)}
+                  >
+                    View
+                  </button>
+                  {f.status !== "RESOLVED" && (
+                    <button
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-md text-sm transition"
+                      onClick={() => {
+                        setSelectedFeedback(f);
+                        setReplyText(f.response || "");
+                        setReplyFile(null);
+                      }}
+                    >
+                      Reply
+                    </button>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      
+      {/* Mobile Cards */}
+      <div className="lg:hidden space-y-3">
+        {paginatedFeedbacks.map((f) => (
+          <div key={f.feedback_id} className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+            {/* Header Section */}
+            <div className="bg-gradient-to-r from-gray-50 to-gray-100 p-3 border-b border-gray-200">
+              <div className="flex justify-between items-start gap-2">
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-black text-sm break-words">
+                    {f.resident?.first_name} {f.resident?.last_name}
+                  </h3>
+                  <p className="text-xs text-gray-600 mt-0.5">
+                    {f.submitted_at
+                      ? new Date(f.submitted_at).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                        })
+                      : "—"}
+                  </p>
+                </div>
+                <select
+                  value={f.status}
+                  onChange={(e) => handleStatusSelectChange(f.feedback_id, e.target.value as any, f.response)}
+                  disabled={f.status === "RESOLVED" || actionLoading}
+                  className={`border rounded-md px-2 py-1 text-xs font-medium focus:outline-none focus:ring-1 flex-shrink-0 ${getStatusClass(
+                    f.status
+                  )}`}
+                >
+                  <option value="PENDING">Pending</option>
+                  <option value="IN_PROGRESS">In Progress</option>
+                  <option value="RESOLVED">Resolved</option>
+                </select>
               </div>
-              <select
-                value={f.status}
-                onChange={(e) => handleStatusSelectChange(f.feedback_id, e.target.value as any, f.response)}
-                disabled={f.status === "RESOLVED" || actionLoading}
-                className={`border rounded-md px-2 py-1 text-xs font-medium focus:outline-none focus:ring-1 flex-shrink-0 ${getStatusClass(
-                  f.status
-                )}`}
-              >
-                <option value="PENDING">Pending</option>
-                <option value="IN_PROGRESS">In Progress</option>
-                <option value="RESOLVED">Resolved</option>
-              </select>
             </div>
-          </div>
 
-          {/* Details Section */}
-          <div className="p-3 space-y-2">
-            {f.category && (
-              <div className="flex items-start gap-2">
-                <span className="text-xs font-medium text-gray-500 flex-shrink-0">Category:</span>
+            {/* Details Section */}
+            <div className="p-3 space-y-2">
+              {f.category && (
+                <div className="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-2">
+                  <span className="text-xs font-medium text-gray-500 flex-shrink-0">Category:</span>
+                  <span className="text-xs text-black break-words">
+                    {f.category.english_name} / {f.category.tagalog_name}
+                  </span>
+                </div>
+              )}
+              
+              <div className="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-2">
+                <span className="text-xs font-medium text-gray-500 flex-shrink-0">Responded By:</span>
                 <span className="text-xs text-black">
-                  {f.category.english_name} / {f.category.tagalog_name}
+                  {f.respondedBy ? `Admin #${f.respondedBy.id}` : "Not yet assigned"}
                 </span>
               </div>
-            )}
-            
-            <div className="flex items-start gap-2">
-              <span className="text-xs font-medium text-gray-500 flex-shrink-0">Responded By:</span>
-              <span className="text-xs text-black">
-                {f.respondedBy ? `Admin #${f.respondedBy.id}` : "Not yet assigned"}
-              </span>
+            </div>
+
+            {/* Actions Section */}
+            <div className="p-3 bg-gray-50 border-t border-gray-200 flex flex-col sm:flex-row gap-2">
+              <button 
+                className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-md text-sm flex-1 transition-colors duration-200 font-medium" 
+                onClick={() => setViewFeedback(f)}
+              >
+                View Details
+              </button>
+              {f.status !== "RESOLVED" && (
+                <button
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm flex-1 transition-colors duration-200 font-medium"
+                  onClick={() => {
+                    setSelectedFeedback(f);
+                    setReplyText(f.response || "");
+                    setReplyFile(null);
+                  }}
+                >
+                  Reply
+                </button>
+              )}
             </div>
           </div>
+        ))}
+      </div>
+      
+      {/* Pagination - Mobile Optimized */}
+      <div className="w-full mt-5 flex justify-center overflow-x-auto">
+        <div className="flex items-center gap-2 px-3 py-1.5">
+          <button
+            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1}
+            className="px-2 py-1 text-2xl md:text-3xl text-gray-500 hover:text-gray-700 disabled:opacity-30"
+          >
+            ‹
+          </button>
 
-          {/* Actions Section */}
-          <div className="p-3 bg-gray-50 border-t border-gray-200 flex gap-2">
-            <button 
-              className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-md text-sm flex-1 transition-colors duration-200 font-medium" 
-              onClick={() => setViewFeedback(f)}
-            >
-              View Details
-            </button>
-            {f.status !== "RESOLVED" && (
-              <button
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm flex-1 transition-colors duration-200 font-medium"
-                onClick={() => {
-                  setSelectedFeedback(f);
-                  setReplyText(f.response || "");
-                  setReplyFile(null);
-                }}
-              >
-                Reply
-              </button>
-            )}
+          <div className="flex items-center gap-1">
+            {Array.from({ length: totalPages }).map((_, i) => {
+              const page = i + 1;
+              if (page === 1 || page === totalPages || (page >= currentPage - 1 && page <= currentPage + 1)) {
+                return (
+                  <button
+                    key={i}
+                    onClick={() => setCurrentPage(page)}
+                    className={`w-7 h-7 md:w-8 md:h-8 flex items-center justify-center rounded-full text-xs md:text-sm font-medium transition-all ${
+                      currentPage === page ? "bg-red-100 text-red-700" : "text-gray-700 hover:bg-gray-100"
+                    }`}
+                  >
+                    {page}
+                  </button>
+                );
+              }
+              if (page === currentPage - 2 || page === currentPage + 2) {
+                return (
+                  <div key={i} className="px-1 text-gray-400 text-xs">
+                    ...
+                  </div>
+                );
+              }
+              return null;
+            })}
           </div>
+
+          <button
+            onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+            disabled={currentPage === totalPages}
+            className="px-2 py-1 text-2xl md:text-3xl text-gray-500 hover:text-gray-700 disabled:opacity-30"
+          >
+            ›
+          </button>
+
+          <select
+            value={ITEMS_PER_PAGE}
+            onChange={(e) => {
+              setCurrentPage(1);
+              setITEMS_PER_PAGE(Number(e.target.value));
+            }}
+            className="ml-2 bg-white border border-gray-300 text-xs md:text-sm rounded-xl px-2 md:px-3 py-1 focus:ring-0"
+          >
+            <option value={5}>5 / page</option>
+            <option value={10}>10 / page</option>
+            <option value={20}>20 / page</option>
+            <option value={50}>50 / page</option>
+          </select>
         </div>
-      ))}
-    </div>
-              
-              {/* PAGINATION CONTROLS */}
-              <div className="w-full mt-5 flex justify-center">
-                <div className="flex items-center gap-2 px-3 py-1.5 ">
-                  {/* Previous Button */}
-                  <button
-                    onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                    disabled={currentPage === 1}
-                    className="px-2 py-1 text-3xl text-gray-500 hover:text-gray-700 disabled:opacity-30"
-                  >
-                    ‹
-                  </button>
-
-                  {/* Page Numbers */}
-                  {Array.from({ length: totalPages }).map((_, i) => {
-                    const page = i + 1;
-
-                    // Show only near numbers + first + last + ellipsis
-                    if (page === 1 || page === totalPages || (page >= currentPage - 1 && page <= currentPage + 1)) {
-                      return (
-                        <button
-                          key={i}
-                          onClick={() => setCurrentPage(page)}
-                          className={`w-8 h-8 flex items-center justify-center rounded-full text-sm font-medium transition-all ${
-                            currentPage === page ? "bg-red-100 text-red-700" : "text-gray-700 hover:bg-gray-100"
-                          }`}
-                        >
-                          {page}
-                        </button>
-                      );
-                    }
-
-                    // Ellipsis (only render once)
-                    if (page === currentPage - 2 || page === currentPage + 2) {
-                      return (
-                        <div key={i} className="px-1 text-gray-400">
-                          ...
-                        </div>
-                      );
-                    }
-
-                    return null;
-                  })}
-
-                  {/* Next Button */}
-                  <button
-                    onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-                    disabled={currentPage === totalPages}
-                    className="px-2 py-1 text-3xl text-gray-500 hover:text-gray-700 disabled:opacity-30"
-                  >
-                    ›
-                  </button>
-
-                  {/* Rows Per Page Dropdown */}
-                  <select
-                    value={ITEMS_PER_PAGE}
-                    onChange={(e) => {
-                      setCurrentPage(1);
-                      setITEMS_PER_PAGE(Number(e.target.value));
-                    }}
-                    className="ml-3 bg-white border border-gray-300 text-sm rounded-xl px-3 py-1 focus:ring-0"
-                  >
-                    <option value={5}>5 / page</option>
-                    <option value={10}>10 / page</option>
-                    <option value={20}>20 / page</option>
-                    <option value={50}>50 / page</option>
-                  </select>
-                </div>
-              </div>
-            </>
-          )}
-        </main>
+      </div>
+    </>
+  )}
+</main>
       </div>
 
       {/* Reply Modal */}
