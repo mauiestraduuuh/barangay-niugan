@@ -682,7 +682,7 @@ export default function AdminFeedbackPage() {
                     }}
                     className="ml-3 bg-white border border-gray-300 text-sm rounded-xl px-3 py-1 focus:ring-0"
                   >
-                    <option value={2}>2 / page</option>
+                    <option value={5}>5 / page</option>
                     <option value={10}>10 / page</option>
                     <option value={20}>20 / page</option>
                     <option value={50}>50 / page</option>
