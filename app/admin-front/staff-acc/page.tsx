@@ -150,29 +150,55 @@ const fetchStaff = async () => {
 };
 
 
-  const handleDelete = async () => {
-    if (!selectedStaff) return;
+const handleDelete = async () => {
+  if (!selectedStaff) return;
 
-    try {
-      const res = await fetch("/api/admin/staff", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ staffId: selectedStaff.staff_id }),
-      });
+  try {
+    setActionLoading(true); // Show loading state
+    
+    // Get the token from localStorage
+    const token = localStorage.getItem("token");
+    
+    if (!token) {
+      alert("Authentication token not found. Please log in again.");
+      router.push("/auth-front/login");
+      return;
+    }
 
-      if (res.ok) {
-        setStaffList((prev) => prev.filter((s) => s.staff_id !== selectedStaff.staff_id));
-        setShowDeleteModal(false);
-        setSelectedStaff(null);
+    const res = await fetch("/api/admin/staff", {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`, // ⭐ This was missing!
+      },
+      body: JSON.stringify({ staffId: selectedStaff.staff_id }),
+    });
+
+    if (res.ok) {
+      // Success: remove from local state
+      setStaffList((prev) => prev.filter((s) => s.staff_id !== selectedStaff.staff_id));
+      setShowDeleteModal(false);
+      setSelectedStaff(null);
+      alert("Staff member deleted successfully.");
+    } else {
+      const err = await res.json();
+      
+      // Handle specific error cases
+      if (res.status === 403) {
+        alert("Access denied. You don't have permission to delete staff.");
+      } else if (res.status === 404) {
+        alert("Staff member not found.");
       } else {
-        const err = await res.json();
         alert(err?.error || "Failed to delete staff.");
       }
-    } catch (error) {
-      console.error("Delete failed:", error);
-      alert("Delete failed. Check console.");
     }
-  };
+  } catch (error) {
+    console.error("Delete failed:", error);
+    alert("Delete failed. Please check your connection and try again.");
+  } finally {
+    setActionLoading(false); // Hide loading state
+  }
+};
 
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -550,27 +576,36 @@ const fetchStaff = async () => {
           </div>
         )}
 
-        {/* Delete Modal */}
-        {showDeleteModal && selectedStaff && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="bg-white p-6 rounded-xl shadow-lg max-w-sm w-full">
-              <h2 className="text-lg font-semibold mb-2">Confirm Deletion</h2>
-              <p className="text-gray-700 mb-4">
-                Are you sure you want to delete{" "}
-                <span className="font-semibold capitalize">{selectedStaff.first_name} {selectedStaff.last_name}</span>?
-              </p>
-              <div className="flex justify-end gap-3">
-                <button onClick={() => setShowDeleteModal(false)} className="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300">
-                  Cancel
-                </button>
-                <button onClick={handleDelete} className="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-700">
-                  Delete
-                </button>
-              </div>
+      {showDeleteModal && selectedStaff && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-xl shadow-lg max-w-sm w-full">
+            <h2 className="text-lg font-semibold mb-2">Confirm Deletion</h2>
+            <p className="text-gray-700 mb-4">
+              Are you sure you want to delete{" "}
+              <span className="font-semibold capitalize">
+                {selectedStaff.first_name} {selectedStaff.last_name}
+              </span>?
+            </p>
+            <div className="flex justify-end gap-3">
+              <button 
+                onClick={() => setShowDeleteModal(false)} 
+                disabled={actionLoading}
+                className="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleDelete} 
+                disabled={actionLoading}
+                className="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 flex items-center gap-2"
+              >
+                {actionLoading && <LoadingSpinner size="sm" />}
+                {actionLoading ? "Deleting..." : "Delete"}
+              </button>
             </div>
           </div>
-        )}
-
+        </div>
+      )}
       </div>
     </div>
   );
