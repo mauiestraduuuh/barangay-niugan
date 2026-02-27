@@ -600,19 +600,44 @@ const updateProfile = async () => {
                   <div className="bg-white shadow-lg rounded-2xl p-8 border border-gray-100">
                     <h3 className="text-large font-semibold text-black mb-6">Personal Details</h3>
                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {[
-                        { label: "User ID", value: profile.user_id },
-                        { label: "Household Number", value: profile.household_number || "N/A" }, // <-- added
-                        { label: "Birthdate", value: profile.birthdate ? profile.birthdate.split("T")[0] : "N/A" },
-                        { label: "Email", value: profile.email || "N/A" },
-                        { label: "Address", value: profile.address || "N/A" },
-                        { label: "Contact Number", value: profile.contact_no || "N/A" },
-                      ].map(({ label, value }) => (
-                        <div key={label} className="p-4 bg-gray-50 hover:bg-gray-100 rounded-lg transition border border-gray-200">
-                          <p className="text-xs font-semibold text-black uppercase tracking-wide">{label}</p>
-                          <p className="text-black mt-1">{value}</p>
-                        </div>
-                      ))}
+                         {[
+                    {
+                      label: "User ID",
+                      value:
+                        typeof profile.user_id === "string" && (profile.user_id as string).length > 16
+                          ? `${(profile.user_id as string).slice(0, 16)}...`
+                          : String(profile.user_id),
+                      full:
+                        typeof profile.user_id === "string" && (profile.user_id as string).length > 16
+                          ? String(profile.user_id)
+                          : null,
+                    },
+                    { label: "Household Number", value: profile.household_number || "N/A", full: null },
+                    {
+                      label: "Birthdate",
+                      value: profile.birthdate ? profile.birthdate.split("T")[0] : "N/A",
+                      full: null,
+                    },
+                    { label: "Email", value: profile.email || "N/A", full: null },
+                    { label: "Address", value: profile.address || "N/A", full: null },
+                    { label: "Contact Number", value: profile.contact_no || "N/A", full: null },
+                  ].map(({ label, value, full }) => (
+                    <div
+                      key={label}
+                      title={full ?? undefined}
+                      className="p-4 bg-gray-50 hover:bg-gray-100 rounded-lg transition border border-gray-200 min-w-0 overflow-hidden"
+                    >
+                      <p className="text-xs font-semibold text-black uppercase tracking-wide truncate">
+                        {label}
+                      </p>
+                      <p className="text-black mt-1 text-sm truncate break-all">
+                        {value}
+                      </p>
+                      {full && (
+                        <p className="text-xs text-gray-400 mt-1 italic"></p>
+                      )}
+                    </div>
+                  ))}
                     </div>
                   </div>
                 </div>

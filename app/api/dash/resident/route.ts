@@ -4,8 +4,19 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/../lib/prisma";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import crypto from "crypto";
 
 const JWT_SECRET = process.env.JWT_SECRET!;
+const ID_HASH_SECRET = process.env.ID_HASH_SECRET ?? "fallback-secret";
+
+// ================= HELPER: HASH ID =================
+function hashId(id: number | string | null): string | null {
+  if (id === null || id === undefined) return null;
+  return crypto
+    .createHmac("sha256", ID_HASH_SECRET)
+    .update(String(id))
+    .digest("hex");
+}
 
 // Helper to get userId from JWT token
 function getUserIdFromToken(req: NextRequest): number | null {
@@ -27,6 +38,17 @@ function serializeResident(resident: any) {
     ...resident,
     head_id: resident.head_id !== null ? resident.head_id.toString() : null,
     household_id: resident.household_id !== null ? resident.household_id.toString() : null,
+  };
+}
+
+// Helper to hash all ID fields in the response
+function hashResidentIds(resident: any) {
+  return {
+    ...resident,
+    resident_id: hashId(resident.resident_id),
+    user_id: hashId(resident.user_id),
+    head_id: resident.head_id !== null ? hashId(resident.head_id) : null,
+    household_id: resident.household_id !== null ? hashId(resident.household_id) : null,
   };
 }
 
@@ -55,8 +77,11 @@ export async function GET(req: NextRequest) {
     if (!resident)
       return NextResponse.json({ error: "Resident not found" }, { status: 404 });
 
+    const serialized = serializeResident(resident);
+    const hashed = hashResidentIds(serialized);
+
     const data = {
-      ...serializeResident(resident),
+      ...hashed,
       photo_url: resident.photo_url,
       is_renter: resident.is_renter,
       email: resident.user?.username || null,
@@ -112,25 +137,23 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const formData = await req.formData();
-    const first_name = formData.get('first_name') as string;
-    const last_name = formData.get('last_name') as string;
-    const birthdate = formData.get('birthdate') as string;
-    const contact_no = formData.get('contact_no') as string;
-    const address = formData.get('address') as string;
-    const photo = formData.get('photo') as File | null;
+    const first_name = formData.get("first_name") as string;
+    const last_name = formData.get("last_name") as string;
+    const birthdate = formData.get("birthdate") as string;
+    const contact_no = formData.get("contact_no") as string;
+    const address = formData.get("address") as string;
+    const photo = formData.get("photo") as File | null;
 
-    // Validate required fields
     if (!first_name || !last_name) {
       return NextResponse.json(
-        { error: "First name and last name are required" }, 
+        { error: "First name and last name are required" },
         { status: 400 }
       );
     }
 
-    // Validate birthdate format
     if (birthdate && isNaN(new Date(birthdate).getTime())) {
       return NextResponse.json(
-        { error: "Invalid birthdate format" }, 
+        { error: "Invalid birthdate format" },
         { status: 400 }
       );
     }
@@ -138,42 +161,38 @@ export async function PUT(req: NextRequest) {
     let photo_url: string | undefined = undefined;
 
     if (photo && photo.size > 0) {
-      // Validate file size (5MB limit)
       const maxSize = 5 * 1024 * 1024;
       if (photo.size > maxSize) {
         return NextResponse.json(
-          { error: "Image size must be less than 5MB" }, 
+          { error: "Image size must be less than 5MB" },
           { status: 400 }
         );
       }
 
-      // Validate file type
-      const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/heic'];
+      const validTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/heic"];
       if (!validTypes.includes(photo.type)) {
         return NextResponse.json(
-          { error: "Invalid file type. Please upload JPEG, PNG, or WEBP image" }, 
+          { error: "Invalid file type. Please upload JPEG, PNG, or WEBP image" },
           { status: 400 }
         );
       }
 
       try {
         const buffer = Buffer.from(await photo.arrayBuffer());
-        const base64Image = buffer.toString('base64');
+        const base64Image = buffer.toString("base64");
         const mimeType = photo.type;
-        
-        // Store as data URL (works everywhere including Vercel)
         photo_url = `data:${mimeType};base64,${base64Image}`;
       } catch (uploadError) {
         console.error("File upload error:", uploadError);
         return NextResponse.json(
-          { error: "Failed to process image" }, 
+          { error: "Failed to process image" },
           { status: 500 }
         );
       }
     }
 
     const resident = await prisma.resident.findFirst({ where: { user_id: userId } });
-    if (!resident) 
+    if (!resident)
       return NextResponse.json({ error: "Resident not found" }, { status: 404 });
 
     const updateData: any = {
@@ -193,7 +212,9 @@ export async function PUT(req: NextRequest) {
       data: updateData,
     });
 
-    return NextResponse.json(serializeResident(updatedResident));
+    // Hash IDs in the PUT response as well
+    const serialized = serializeResident(updatedResident);
+    return NextResponse.json(hashResidentIds(serialized));
   } catch (err) {
     console.error("Update resident error:", err);
     return NextResponse.json({ error: "Failed to update resident" }, { status: 500 });

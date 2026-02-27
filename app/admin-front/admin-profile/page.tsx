@@ -459,18 +459,44 @@ export default function AdminProfilePage() {
                     <h3 className="text-xl font-semibold text-black mb-6">Personal Details</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                       {[
-                        { label: "User ID", value: profile.user_id },
-                        { label: "Created At", value: new Date(profile.created_at).toLocaleDateString() },
-                        { label: "Updated At", value: new Date(profile.updated_at).toLocaleDateString() },
-                      ].map(({ label, value }) => (
-                        <div
-                          key={label}
-                          className="p-4 bg-gray-50 hover:bg-gray-100 rounded-lg transition border border-gray-200"
-                        >
-                          <p className="text-xs font-semibold text-black uppercase tracking-wide">{label}</p>
-                          <p className="text-black mt-1">{value}</p>
-                        </div>
-                      ))}
+                          {
+                            label: "User ID",
+                            value:
+                              typeof profile.user_id === "string"
+                                ? `${(profile.user_id as string).slice(0, 16)}...`
+                                : String(profile.user_id),
+                            full: String(profile.user_id),
+                            truncated: typeof profile.user_id === "string",
+                          },
+                          {
+                            label: "Created At",
+                            value: new Date(profile.created_at).toLocaleDateString(),
+                            full: "",
+                            truncated: false,
+                          },
+                          {
+                            label: "Updated At",
+                            value: new Date(profile.updated_at).toLocaleDateString(),
+                            full: "",
+                            truncated: false,
+                          },
+                        ].map(({ label, value, full, truncated }) => (
+                          <div
+                            key={label}
+                            title={truncated ? full : undefined}
+                            className="p-4 bg-gray-50 hover:bg-gray-100 rounded-lg transition border border-gray-200 min-w-0"
+                          >
+                            <p className="text-xs font-semibold text-black uppercase tracking-wide">
+                              {label}
+                            </p>
+                            <p className="text-black mt-1 text-sm truncate" title={truncated ? full : undefined}>
+                              {value}
+                            </p>
+                            {truncated && (
+                              <p className="text-xs text-gray-400 mt-1 italic"></p>
+                            )}
+                          </div>
+                        ))}
                     </div>
                   </div>
                 </div>

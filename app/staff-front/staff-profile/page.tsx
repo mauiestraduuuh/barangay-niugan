@@ -21,12 +21,12 @@ import {
 } from "@heroicons/react/24/outline";
 
 interface StaffProfile {
-  user_id: number;
+  user_id: string | number;
   username: string;
   role: string;
   created_at: string;
   updated_at: string;
-  staff_id: number;
+  staff_id: string | number;
   first_name: string;
   last_name: string;
   birthdate: string;
@@ -36,13 +36,13 @@ interface StaffProfile {
   photo_url: string | null;
   senior_mode: boolean;
   is_head_of_family: boolean;
-  head_id: number | null;
+  head_id: string | number | null;
   household_number: string | null;
   is_4ps_member: boolean;
   is_indigenous: boolean;
   is_slp_beneficiary: boolean;
   is_pwd: boolean;
-  household_id: number | null;
+  household_id: string | number | null;
 }
 
 // Loading Spinner Component
@@ -149,7 +149,7 @@ export default function StaffProfilePage() {
         role: staff.role,
         created_at: staff.created_at,
         updated_at: staff.updated_at,
-        staff_id: staff.staffs[0]?.staff_id ?? 0,
+        staff_id: staff.staff_id ?? staff.staffs?.[0]?.staff_id ?? "",
         first_name: staff.staffs[0]?.first_name ?? "",
         last_name: staff.staffs[0]?.last_name ?? "",
         birthdate: staff.staffs[0]?.birthdate ?? "",
@@ -568,21 +568,31 @@ const OverviewSection = ({ profile, setActiveSection }: any) => (
       <h3 className="text-xl font-semibold text-black mb-6">Personal Details</h3>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {[
-          { label: "Staff ID", value: profile.staff_id },
-          { label: "User ID", value: profile.user_id },
-          { label: "Gender", value: profile.gender ?? "N/A" },
+          { label: "Staff ID", value: profile.staff_id, isHash: typeof profile.staff_id === "string" && (profile.staff_id as string).length > 16 },
+          { label: "User ID", value: profile.user_id, isHash: typeof profile.user_id === "string" && (profile.user_id as string).length > 16 },
+          { label: "Gender", value: profile.gender ?? "N/A", isHash: false },
           {
             label: "Birthdate",
             value: profile.birthdate ? new Date(profile.birthdate).toLocaleDateString() : "N/A",
+            isHash: false,
           },
-          { label: "Contact", value: profile.contact_no ?? "N/A" },
-          { label: "Address", value: profile.address ?? "N/A" },
-          { label: "Created At", value: new Date(profile.created_at).toLocaleDateString() },
-          { label: "Updated At", value: new Date(profile.updated_at).toLocaleDateString() },
-        ].map(({ label, value }) => (
-          <div key={label} className="p-4 bg-gray-50 hover:bg-gray-100 rounded-lg transition border border-gray-200">
-            <p className="text-xs font-semibold text-black uppercase tracking-wide">{label}</p>
-            <p className="text-black mt-1">{value}</p>
+          { label: "Contact", value: profile.contact_no ?? "N/A", isHash: false },
+          { label: "Address", value: profile.address ?? "N/A", isHash: false },
+          { label: "Created At", value: new Date(profile.created_at).toLocaleDateString(), isHash: false },
+          { label: "Updated At", value: new Date(profile.updated_at).toLocaleDateString(), isHash: false },
+        ].map(({ label, value, isHash }) => (
+          <div
+            key={label}
+            title={isHash ? String(value) : undefined}
+            className="p-4 bg-gray-50 hover:bg-gray-100 rounded-lg transition border border-gray-200 min-w-0 overflow-hidden"
+          >
+            <p className="text-xs font-semibold text-black uppercase tracking-wide truncate">{label}</p>
+            <p className="text-black mt-1 text-sm truncate">
+              {isHash ? `${String(value).slice(0, 16)}...` : String(value)}
+            </p>
+            {isHash && (
+              <p className="text-xs text-gray-400 mt-1 italic"></p>
+            )}
           </div>
         ))}
       </div>
