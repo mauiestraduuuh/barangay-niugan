@@ -44,7 +44,8 @@ export async function GET(req: NextRequest) {
         pickup_date: true,
         pickup_time: true,
         claim_code: true,
-        rejection_reason: true, //new field reason for rejection
+        rejection_reason: true,
+        file_path: true,
       },
       orderBy: { requested_at: "desc" },
     });
