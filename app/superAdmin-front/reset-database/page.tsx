@@ -200,7 +200,7 @@ export default function ResetDatabasePage() {
           {step === "gate" && (
             <form onSubmit={handleUnlock} className="space-y-4">
               <p className="text-slate-500 text-sm">
-                This action will scan for inactive records and send OTP confirmations via SMS
+               This action will scan for inactive records and post a public announcement
                 before any deletion occurs. Enter your developer key to proceed.
               </p>
               <div>
@@ -296,8 +296,8 @@ export default function ResetDatabasePage() {
                     />
                   )}
                   <div className="bg-slate-50 border border-slate-200 rounded-lg px-4 py-3 text-xs text-slate-600">
-                    Each person will receive an SMS with a 6-digit OTP. They call or visit the
-                    barangay and give the code to staff, who enters it here to confirm their status.
+                    A public announcement will be posted listing affected members. They visit the
+                    barangay hall and give their OTP to staff, who enters it here to confirm their status.
                   </div>
                   <button
                     onClick={handleNotify}
@@ -305,9 +305,7 @@ export default function ResetDatabasePage() {
                     className="w-full bg-red-700 hover:bg-red-800 disabled:opacity-50 text-white font-semibold py-2.5 rounded-lg transition text-sm flex items-center justify-center gap-2"
                   >
                     <Send className="w-4 h-4" />
-                    {loading
-                      ? "Sending OTPs…"
-                      : `Send OTP to ${inactiveRecords.length} People`}
+                    {loading ? "Notifying…" : `Notify ${inactiveRecords.length} People & Post Announcement`}
                   </button>
                 </>
               )}
