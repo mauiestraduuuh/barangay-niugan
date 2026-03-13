@@ -375,3 +375,18 @@ model Notification {
 
   user User @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
 }
+
+//
+// DELETION CONFIRMATIONS
+//
+model DeletionConfirmation {
+  id           Int       @id @default(autoincrement())
+  record_id    Int
+  record_type  String    // "resident" | "staff"
+  full_name    String
+  contact_no   String?
+  token        String    @unique @default(uuid())
+  status       String    @default("pending")
+  notified_at  DateTime  @default(now())
+  responded_at DateTime?
+}
