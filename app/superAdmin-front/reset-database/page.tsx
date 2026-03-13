@@ -100,7 +100,28 @@ export default function ResetDatabasePage() {
     }
   }, []);
 
-  // ── Step 3: Send OTPs ────────────────────────────────────────────────────────
+  // ── View current status (skip scan) ─────────────────────────────────────────
+  const handleViewStatus = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res  = await fetch("/api/superadmin/reset-db/status", { headers: authHeader });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to fetch status.");
+      if ((data.confirmations ?? []).length === 0) {
+        setError("No existing notifications found. Run a scan first.");
+        return;
+      }
+      setConfirmations(data.confirmations);
+      setStep("status");
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ── Step 3: Notify ───────────────────────────────────────────────────────────
   const handleNotify = async () => {
     setLoading(true);
     setError(null);
@@ -200,7 +221,7 @@ export default function ResetDatabasePage() {
           {step === "gate" && (
             <form onSubmit={handleUnlock} className="space-y-4">
               <p className="text-slate-500 text-sm">
-               This action will scan for inactive records and post a public announcement
+                This action will scan for inactive records and post a public announcement
                 before any deletion occurs. Enter your developer key to proceed.
               </p>
               <div>
@@ -242,7 +263,7 @@ export default function ResetDatabasePage() {
                 <span>
                   This will scan for residents and staff with{" "}
                   <strong>no recorded activity in {currentYear}</strong>. No data will be deleted
-                  yet — OTP confirmations are sent first.
+                  yet — notifications are sent first.
                 </span>
               </div>
               <button
@@ -252,6 +273,14 @@ export default function ResetDatabasePage() {
               >
                 <DatabaseZap className="w-4 h-4" />
                 {loading ? "Scanning…" : `Scan for Inactive Records (${currentYear})`}
+              </button>
+              <button
+                onClick={handleViewStatus}
+                disabled={loading}
+                className="w-full border border-slate-200 hover:bg-slate-50 text-slate-600 font-medium py-2.5 rounded-lg transition text-sm flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+                View Current Status
               </button>
             </div>
           )}
@@ -327,14 +356,23 @@ export default function ResetDatabasePage() {
                 })}
               </div>
 
-              <button
-                onClick={handleRefreshStatus}
-                disabled={loading}
-                className="w-full border border-slate-200 hover:bg-slate-50 text-slate-700 font-medium py-2 rounded-lg transition text-sm flex items-center justify-center gap-2 disabled:opacity-50"
-              >
-                <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
-                Refresh Status
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleRefreshStatus}
+                  disabled={loading}
+                  className="flex-1 border border-slate-200 hover:bg-slate-50 text-slate-700 font-medium py-2 rounded-lg transition text-sm flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+                  Refresh Status
+                </button>
+                <button
+                  onClick={() => { setStep("scan"); setError(null); }}
+                  disabled={loading}
+                  className="border border-slate-200 hover:bg-slate-50 text-slate-600 font-medium py-2 px-4 rounded-lg transition text-sm disabled:opacity-50"
+                >
+                  ← Back to Scan
+                </button>
+              </div>
 
               {confirmations.length > 0 && (
                 <div className="overflow-x-auto rounded-xl border border-slate-100">
@@ -395,7 +433,7 @@ export default function ResetDatabasePage() {
 
               {toDelete.length === 0 && confirmations.length > 0 && (
                 <p className="text-center text-sm text-slate-500">
-                  No confirmed departures yet. Enter OTPs as residents/staff call in.
+                  No confirmed departures yet. Enter OTPs as residents/staff come in.
                 </p>
               )}
             </div>
