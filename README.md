@@ -1,4 +1,4 @@
-# Baranagay Niugan Mqanagement System with Digital ID Integration
+# Baranagay Niugan Management System with Digital ID Integration
 
 This is a web-based e-governance system designed for the residents of Barangay Niugan with features for the centralization of resident information, automation of barangay services, provision of secure and accessible digital identification with the use of QR codes. The system utilizes a Role-Based Access Control with the following users: Admin, Staff, Residents, and Super Admin.
 
@@ -20,6 +20,7 @@ This is a web-based e-governance system designed for the residents of Barangay N
 * Deployment: Vercel
 
 ## Project Structure
+```bash
 main/
 	app/
 		admin-front/
@@ -116,6 +117,7 @@ main/
 	declarations.d.ts
 	eslint.config.mjs
 	next.config.mjs
+```
 
 
 ## Installation and Setup
@@ -127,18 +129,28 @@ git clone
 https://github.com/mauiestraduuuh/barangay-niugan
 -repo.git
 cd barangay-niugan
+```
 
 ### 2. Install Dependencies
 
-npm install
+```bash
+npm install nextjs
+npm install prisma@client
+```
 
-### 3. Create a .env file
+### 3. Create an .env file in the folder path "main/app"
 
-PALAGAY NG LAMAN NG ENV NATIN
+#### 3.1 Copy and paste the following to the .env file
+
+```bash
+
+```
 
 ### 4. Run the development server
 
+```bash
 npm run dev
+```
 
 #### If setup is complete: 
 
@@ -150,17 +162,10 @@ npm run dev
 
 ## Authors
 
-Estrada, Maureen M. (Project Manager, Database Lead)
-De Borja, Chynna Mae B.(Frontend Developer)
-Merzo, Josh Gerald C. (Frontend Developer)
-Perpetua, Rowela G. (Backend Developer, Documentation)
-Villahermosa, Johanna R. (Backend Developer)
-
-
-
-
-
-
-
+* Estrada, Maureen M. (Project Manager, Database Lead)
+* De Borja, Chynna Mae B.(Frontend Developer)
+* Merzo, Josh Gerald C. (Frontend Developer)
+* Perpetua, Rowela G. (Backend Developer, Documentation)
+* Villahermosa, Johanna R. (Backend Developer)
 
 
