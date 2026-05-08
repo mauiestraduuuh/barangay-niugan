@@ -1,8 +1,59 @@
-# Baranagay Niugan Mqanagement System with Digital ID Integration
+<h1 align="center">Barangay Niugan Management System</h1>
 
-This is a web-based e-governance system designed for the residents of Barangay Niugan with features for the centralization of resident information, automation of barangay services, provision of secure and accessible digital identification with the use of QR codes. The system utilizes a Role-Based Access Control with the following users: Admin, Staff, Residents, and Super Admin.
+<p align="center">
+  <strong>
+    A web-based e-governance platform with digital ID integration, resident management, and automated barangay services.
+  </strong>
+</p>
 
-## Features:
+<p align="center">
+  <a href="https://barangay-niugan-d9yi.vercel.app">
+    <strong>Live Website</strong>
+  </a>
+</p>
+
+---
+
+<a id="table-of-contents"></a>
+
+# 📚 Table of Contents
+
+- [About the Project](#about-the-project)
+- [Key Features](#key-features)
+- [Tech Stack](#tech-stack)
+- [Project Structure](#project-structure)
+- [Getting Started](#getting-started)
+- [User Roles & Permissions](#user-roles--permissions)
+- [Usage Guide](#usage-guide)
+- [API Overview](#api-overview)
+- [Contributing](#contributing)
+- [Security](#security)
+- [Authors](#authors)
+- [License](#license)
+
+---
+
+<a id="about-the-project"></a>
+
+# 📖 About the Project
+
+The **Barangay Niugan Management System with Digital ID Integration** is a full-stack web-based e-governance platform developed to improve barangay operations through centralized resident management, automated public services, and secure digital identification.
+
+The system allows barangay officials and residents to efficiently manage records, request certificates, receive announcements, and verify identities through QR-code-enabled digital IDs.
+
+The platform implements **Role-Based Access Control (RBAC)** with dedicated dashboards and permissions for:
+
+- `SUPER ADMIN`
+- `ADMIN`
+- `STAFF`
+- `RESIDENT`
+
+---
+
+<a id="key-features"></a>
+
+# ✨ Key Features
+
 * Centralised Resident Information
 * Digital ID with QR code Verification
 * Role-Based Access Control (User Roles: Superadmin, Admin, Staff, Residents)
@@ -12,14 +63,28 @@ This is a web-based e-governance system designed for the residents of Barangay N
 * Reports and Analytics for Admin and Staff Users
 * Responsive Design (Compatible with both desktop and mobile device use)
 
-## Technologies Used:
-* Frontend: Next.js, Tailwind CSS
-* Backend: Next.js API routes (Node.js)
-* Database: Postegre.SQL (Supabase / Prisma)
-* Platforms: Git, GitHub, VSCode
-* Deployment: Vercel
+---
 
-## Project Structure
+<a id="tech-stack"></a>
+
+# 🛠️ Tech Stack
+
+| Layer | Technologies |
+| --- | --- |
+| Frontend | Next.js, React, Tailwind CSS |
+| Backend | Next.js API Routes, Node.js |
+| Database | PostgreSQL, Prisma ORM, Supabase |
+| Authentication | Custom Authentication + Role-Based Access |
+| Deployment | Vercel |
+| Tools | Git, GitHub, VS Code |
+
+---
+
+<a id="project-structure"></a>
+
+# 🗂️ Project Structure
+
+```bash
 main/
 	app/
 		admin-front/
@@ -116,51 +181,212 @@ main/
 	declarations.d.ts
 	eslint.config.mjs
 	next.config.mjs
+```
 
+> The project follows a modular structure separating frontend pages, backend API routes, and Prisma database configuration.
 
-## Installation and Setup
+---
 
-### 1. Clone the repository
+<a id="getting-started"></a>
+
+# 🚀 Getting Started
+
+## Prerequisites
+
+Before running the project locally, make sure the following are installed:
+
+- Node.js `18+`
+- npm
+- PostgreSQL Database / Supabase Project
+- Git
+
+---
+
+## Installation
+
+### 1. Clone the Repository
 
 ```bash
-git clone
-https://github.com/mauiestraduuuh/barangay-niugan
--repo.git
-cd barangay-niugan
+git clone https://github.com/mauiestraduuuh/barangay-niugan-repo.git
+
+cd barangay-niugan-repo
+```
+
+---
 
 ### 2. Install Dependencies
 
+```bash
 npm install
+```
 
-### 3. Create a .env file
+---
 
-PALAGAY NG LAMAN NG ENV NATIN
+### 3. Create Environment Variables
 
-### 4. Run the development server
+Create a `.env` file in the root directory.
 
+Example:
+
+```env
+DATABASE_URL=
+
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+
+DIRECT_URL=
+```
+
+> Do not commit real environment variables or credentials to GitHub.
+
+---
+
+### 4. Generate Prisma Client
+
+```bash
+npx prisma generate
+```
+
+---
+
+### 5. Run Database Migration
+
+```bash
+npx prisma migrate dev
+```
+
+---
+
+### 6. Start the Development Server
+
+```bash
 npm run dev
+```
 
-#### If setup is complete: 
+Open the application:
 
-* Repository is cloned successfully
-* Dependencies are installated correctly
-* Developer server is running
+```bash
+http://localhost:3000
+```
+> The local host server will automatically open once the 'npm run dev' command is set
+---
 
-## Testing and Evaluation
+<a id="user-roles--permissions"></a>
 
-## Authors
+# 👥 User Roles & Permissions
 
-Estrada, Maureen M. (Project Manager, Database Lead)
-De Borja, Chynna Mae B.(Frontend Developer)
-Merzo, Josh Gerald C. (Frontend Developer)
-Perpetua, Rowela G. (Backend Developer, Documentation)
-Villahermosa, Johanna R. (Backend Developer)
+| Feature / Access | SUPER ADMIN | ADMIN | STAFF | RESIDENT |
+| --- | --- | --- | --- | --- |
+| Login Authentication | ✅ | ✅ | ✅ | ✅ |
+| Manage Resident Records | ✅ | ✅ | ✅ | ❌ |
+| Generate Certificates | ✅ | ✅ | ✅ | ❌ |
+| Request Certificates | ❌ | ❌ | ❌ | ✅ |
+| View Dashboard | ✅ | ✅ | ✅ | ✅ |
+| Manage Announcements | ✅ | ✅ | ✅ | ❌ |
+| Approve Registrations | ✅ | ✅ | ❌ | ❌ |
+| Manage Staff/Admin Accounts | ✅ | ✅ | ❌ | ❌ |
+| Reset Database | ✅ | ❌ | ❌ | ❌ |
+| Access Digital ID | ❌ | ❌ | ❌ | ✅ |
 
+## Administrative Distinctions
 
+- `SUPER ADMIN` has complete system access including database reset and admin account management.
+- `ADMIN` oversees barangay operations, resident services, and barangay staff account management.
+- `STAFF` assists with operational workflows and certificate management.
+- `RESIDENT` accesses personal services such as digital ID and certificate requests.
 
+---
 
+<a id="usage-guide"></a>
 
+# 🧭 Usage Guide
 
+## Resident Workflow
 
+1. Register an account.
+2. Wait for approval from barangay administration.
+3. Login to the resident dashboard.
+4. Access digital ID and request barangay certificates.
+5. View announcements and notifications.
 
+## Admin / Staff Workflow
 
+1. Login using authorized credentials.
+2. Access administrative dashboard.
+3. Manage resident records and announcements.
+4. Review registration requests.
+5. Process certificate requests and reports.
+
+---
+
+<a id="api-overview"></a>
+
+# 🔌 API Overview
+
+The backend API is built using **Next.js API Routes**.
+
+## Main Route Groups
+
+| Route Group | Description |
+| --- | --- |
+| `/api/auth` | Authentication and registration |
+| `/api/admin` | Admin management features |
+| `/api/dash` | Resident dashboard services |
+| `/api/staff` | Staff operations |
+| `/api/superadmin` | Super admin operations |
+
+---
+
+<a id="contributing"></a>
+
+# 🤝 Contributing
+
+Contributions are welcome for bug fixes, improvements, and feature enhancements.
+
+## Contribution Workflow
+
+1. Fork the repository.
+2. Create a feature branch.
+3. Commit changes with clear messages.
+4. Push changes to your branch.
+5. Open a pull request.
+
+---
+
+<a id="security"></a>
+
+# 🛡️ Security
+
+## Security Best Practices
+
+- Never expose `.env` files publicly.
+- Restrict admin credentials to authorized users only.
+- Rotate sensitive credentials regularly.
+- Validate and sanitize all user input.
+- Use HTTPS in production deployments.
+
+## Important Notice
+
+> Demo or development credentials should never be reused in production environments.
+
+---
+
+<a id="authors"></a>
+
+# 👨‍💻 Authors
+
+| Name | Role |
+| --- | --- |
+| Estrada, Maureen M. | Project Manager, Database Lead |
+| De Borja, Chynna Mae B. | Frontend Developer |
+| Merzo, Josh Gerald C. | Frontend Developer |
+| Perpetua, Rowela G. | Backend Developer, Documentation |
+| Villahermosa, Johanna R. | Backend Developer |
+
+---
+
+<a id="license"></a>
+
+# 📄 License
+
+This project is currently proprietary and intended for academic and organizational use unless otherwise stated by the project owners.
