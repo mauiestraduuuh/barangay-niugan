@@ -23,6 +23,7 @@
 - [Tech Stack](#tech-stack)
 - [Project Structure](#project-structure)
 - [Getting Started](#getting-started)
+- [Demo Accounts](#demo-accounts)
 - [User Roles & Permissions](#user-roles--permissions)
 - [Usage Guide](#usage-guide)
 - [API Overview](#api-overview)
@@ -271,6 +272,18 @@ http://localhost:3000
 ---
 
 <a id="user-roles--permissions"></a>
+
+# Demo Accounts 
+<a id="demo-accounts"></a>
+
+🔑 Demo Accounts
+
+The following accounts can be used for testing and demonstration purposes.
+
+Role	Username / Email	Password
+RESIDENT	mae121202@gmail.com	wordpass321
+ADMIN	adminchandler	success
+STAFF	account	password
 
 # 👥 User Roles & Permissions
 
