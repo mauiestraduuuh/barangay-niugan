@@ -23,6 +23,7 @@
 - [Tech Stack](#tech-stack)
 - [Project Structure](#project-structure)
 - [Getting Started](#getting-started)
+- [Demo Accounts](#demo-accounts)
 - [User Roles & Permissions](#user-roles--permissions)
 - [Usage Guide](#usage-guide)
 - [API Overview](#api-overview)
